@@ -1,0 +1,15 @@
+[package]
+name = "clipboard_storage"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+rkyv.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+parking_lot.workspace = true
+storage_utils = { path = "../storage_utils" }
+
+[dev-dependencies]
+tempfile = "3.8"

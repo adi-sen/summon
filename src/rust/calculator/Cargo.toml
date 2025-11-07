@@ -1,0 +1,9 @@
+[package]
+name = "calculator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+evalexpr = "11.3"
+chrono = "0.4"
+chrono-tz = "0.10.4"

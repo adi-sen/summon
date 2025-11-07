@@ -1,0 +1,11 @@
+[package]
+name = "settings_storage"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rkyv.workspace = true
+storage_utils = { path = "../storage_utils" }
+
+[dev-dependencies]
+tempfile = "3.0"

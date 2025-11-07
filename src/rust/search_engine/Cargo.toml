@@ -1,0 +1,17 @@
+[package]
+name = "search_engine"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+nucleo-matcher.workspace = true
+lru.workspace = true
+parking_lot.workspace = true
+rustc-hash.workspace = true
+compact_str.workspace = true
+smallvec.workspace = true
+
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
