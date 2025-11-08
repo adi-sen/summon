@@ -1,0 +1,17 @@
+.build/
+build/
+DerivedData/
+.swiftpm/
+*.xcodeproj/
+
+target/
+*.dylib
+
+.DS_Store
+.env
+*.log
+*.swp
+.rkyv_cache
+benchmarks/
+/OPTIMIZATION_SUMMARY.md
+/RELEASE_NOTES.md

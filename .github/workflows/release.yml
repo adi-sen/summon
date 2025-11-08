@@ -1,0 +1,63 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - "v*"
+
+permissions:
+    contents: write
+
+jobs:
+    build-macos:
+        runs-on: macos-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Rust
+              uses: actions-rust-lang/setup-rust-toolchain@v1
+              with:
+                  toolchain: stable
+
+            - name: Setup Swift
+              run: |
+                  swift --version
+                  xcode-select --print-path
+
+            - name: Build app
+              run: |
+                  chmod +x scripts/build-release.sh scripts/package.sh
+                  VERSION=${GITHUB_REF#refs/tags/v} ./scripts/package.sh
+
+            - name: Create distribution archives
+              run: |
+                  VERSION=${GITHUB_REF#refs/tags/v}
+                  cd .build/macos
+                  ditto -c -k --sequesterRsrc --keepParent Summon.app ../../Summon-${VERSION}.zip
+                  cd ../..
+                  hdiutil create \
+                    -volname "Summon" \
+                    -srcfolder .build/macos/Summon.app \
+                    -ov \
+                    -format UDZO \
+                    Summon-${VERSION}.dmg
+
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Summon-release
+                  path: |
+                      Summon-*.dmg
+                      Summon-*.zip
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  files: |
+                      Summon-*.dmg
+                      Summon-*.zip
+                  generate_release_notes: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

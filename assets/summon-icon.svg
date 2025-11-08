@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark background -->
+  <rect width="1024" height="1024" rx="180" fill="#18181b"/>
+
+  <!-- Monochrome angle bracket > -->
+  <path d="M 380 256 L 680 512 L 380 768"
+        fill="none"
+        stroke="#fafafa"
+        stroke-width="100"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        opacity="0.95"/>
+</svg>

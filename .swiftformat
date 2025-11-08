@@ -1,0 +1,33 @@
+# SwiftFormat Configuration for Invoke
+
+--swiftversion 5.9
+
+# Indentation
+--indent tab
+--tabwidth 4
+--xcodeindentation enabled
+
+# Wrapping
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+
+# Spacing
+--trimwhitespace always
+--commas inline
+--semicolons never
+
+# Organization
+--importgrouping testable-bottom
+--stripunusedargs closure-only
+
+# Rules
+--enable isEmpty
+--enable sortedImports
+--enable redundantReturn
+
+# Disabled rules
+--disable redundantSelf
+--disable hoistPatternLet
