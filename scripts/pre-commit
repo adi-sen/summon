@@ -1,0 +1,24 @@
+#!/bin/bash
+# Pre-commit hook for Rust formatting
+
+set -e
+
+echo "Running Rust formatter..."
+
+RUST_FILES=$(find src/rust -name "*.rs" -type f)
+
+if [ -z "$RUST_FILES" ]; then
+    echo "No Rust files found"
+    exit 0
+fi
+
+cargo +nightly fmt --all -- --check
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Rust formatting check failed. Run 'cargo +nightly fmt --all' to fix."
+    exit 1
+fi
+
+echo "Rust formatting check passed"
+exit 0

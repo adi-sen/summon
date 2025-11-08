@@ -1,0 +1,17 @@
+[apps.Summon]
+product = "Summon"
+version = "0.0.1"
+bundle_identifier = "com.summon.app"
+category = "public.app-category.productivity"
+minimum_macos_version = "12.0"
+# icon = "AppIcon.icns"
+
+[apps.Summon.extra_plist_entries]
+# Make this a UI element (hide from Dock)
+LSUIElement = true
+
+# Request accessibility permissions for global hotkeys
+NSAppleEventsUsageDescription = "Summon needs access to control your Mac for quick actions."
+
+CFBundleShortVersionString = "0.0.1"
+CFBundleName = "Summon"
