@@ -225,24 +225,12 @@ final class ActionManager: ObservableObject {
 	}
 
 	private func importNativeExtensions() {
-		let nativeExtensions: [(id: String, name: String, keyword: String, icon: String)] = [
-			("obsidian-workspaces", "Obsidian Workspaces", "obs", "doc.text.image")
-		]
-
-		for ext in nativeExtensions {
-			if actions.contains(where: { $0.id == ext.id }) {
-				continue
-			}
-
-			let action = Action(
-				id: ext.id,
-				name: ext.name,
-				icon: ext.icon,
-				enabled: false, // Disabled by default so users can opt-in
-				kind: .nativeExtension(keyword: ext.keyword, extensionId: ext.id)
-			)
-			add(action)
-		}
+		// Native extensions can be registered here if needed
+		// Example:
+		// let nativeExtensions: [(id: String, name: String, keyword: String, icon: String)] = [
+		//     ("my-native-extension", "My Extension", "mye", "star.fill")
+		// ]
+		// Currently empty - native extensions should be rare and only for performance-critical features
 	}
 
 	func importDefaults() {
@@ -295,9 +283,7 @@ final class ActionManager: ObservableObject {
 	}
 
 	func search(query: String) -> [FFI.SwiftActionResult] {
-		print("ActionManager.search called with query: '\(query)'")
 		let results = FFI.actionManagerSearch(handle.handle, query: query)
-		print("ActionManager.search returned \(results.count) results")
 		return results
 	}
 }

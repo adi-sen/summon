@@ -957,7 +957,6 @@ func settings_storage_save(
 @_silgen_name("settings_free")
 func settings_free(_ settings: UnsafeMutablePointer<FFI.CAppSettings>?)
 
-
 extension FFI {
 	typealias ActionManagerHandle = OpaquePointer
 
@@ -1103,7 +1102,6 @@ extension FFI {
 		guard let handle else { return false }
 		return action_manager_import_defaults(handle)
 	}
-
 }
 
 @_silgen_name("action_manager_new")
@@ -1159,7 +1157,6 @@ func action_manager_get_all_json(_ handle: OpaquePointer?) -> UnsafeMutablePoint
 
 @_silgen_name("action_manager_import_defaults")
 func action_manager_import_defaults(_ handle: OpaquePointer?) -> Bool
-
 
 @_silgen_name("string_free")
 func string_free(_ s: UnsafeMutablePointer<CChar>?)

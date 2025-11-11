@@ -373,6 +373,9 @@ struct AddActionView: View {
 	@State private var keyword = ""
 	@State private var url = ""
 	@State private var icon = "globe"
+	@State private var customIconImage: NSImage?
+	@State private var customIconPath: String?
+	@State private var useCustomIcon = false
 
 	var body: some View {
 		VStack(spacing: 0) {
@@ -393,90 +396,310 @@ struct AddActionView: View {
 
 			Divider().background(Color.white.opacity(0.1))
 
-			VStack(alignment: .leading, spacing: 16) {
-				VStack(alignment: .leading, spacing: 6) {
-					Text("Name")
-						.font(Font(settings.uiFont.withSize(12)))
-						.foregroundColor(settings.textColorUI)
-					TextField("e.g., Google Search", text: $name)
-						.textFieldStyle(PlainTextFieldStyle())
-						.font(Font(settings.uiFont.withSize(13)))
-						.foregroundColor(settings.textColorUI)
-						.padding(10)
-						.background(settings.searchBarColorUI)
-						.cornerRadius(6)
-				}
-
-				VStack(alignment: .leading, spacing: 6) {
-					Text("Keyword")
-						.font(Font(settings.uiFont.withSize(12)))
-						.foregroundColor(settings.textColorUI)
-					TextField("e.g., g", text: $keyword)
-						.textFieldStyle(PlainTextFieldStyle())
-						.font(Font(settings.uiFont.withSize(13)))
-						.foregroundColor(settings.textColorUI)
-						.padding(10)
-						.background(settings.searchBarColorUI)
-						.cornerRadius(6)
-				}
-
-				VStack(alignment: .leading, spacing: 6) {
-					Text("URL (use {query} for search term)")
-						.font(Font(settings.uiFont.withSize(12)))
-						.foregroundColor(settings.textColorUI)
-					TextField("e.g., https://google.com/search?q={query}", text: $url)
-						.textFieldStyle(PlainTextFieldStyle())
-						.font(Font(settings.uiFont.withSize(13)))
-						.foregroundColor(settings.textColorUI)
-						.padding(10)
-						.background(settings.searchBarColorUI)
-						.cornerRadius(6)
-				}
-
-				VStack(alignment: .leading, spacing: 6) {
-					Text("Icon (SF Symbol)")
-						.font(Font(settings.uiFont.withSize(12)))
-						.foregroundColor(settings.textColorUI)
-					TextField("e.g., globe", text: $icon)
-						.textFieldStyle(PlainTextFieldStyle())
-						.font(Font(settings.uiFont.withSize(13)))
-						.foregroundColor(settings.textColorUI)
-						.padding(10)
-						.background(settings.searchBarColorUI)
-						.cornerRadius(6)
-				}
-
-				HStack(spacing: 10) {
-					Spacer()
-					Button("Cancel") {
-						presentationMode.wrappedValue.dismiss()
+			ScrollView {
+				VStack(alignment: .leading, spacing: 16) {
+					VStack(alignment: .leading, spacing: 6) {
+						Text("Name")
+							.font(Font(settings.uiFont.withSize(12)))
+							.foregroundColor(settings.textColorUI)
+						TextField("e.g., Google Search", text: $name)
+							.textFieldStyle(PlainTextFieldStyle())
+							.font(Font(settings.uiFont.withSize(13)))
+							.foregroundColor(settings.textColorUI)
+							.padding(10)
+							.background(settings.searchBarColorUI)
+							.cornerRadius(6)
 					}
-					.buttonStyle(PlainButtonStyle())
-					.foregroundColor(settings.textColorUI)
-					.padding(.horizontal, 16)
-					.padding(.vertical, 8)
-					.background(settings.searchBarColorUI)
-					.cornerRadius(6)
 
-					Button("Add") {
-						let id = UUID().uuidString
-						actionManager.addQuickLink(id: id, name: name, keyword: keyword, url: url, icon: icon)
-						presentationMode.wrappedValue.dismiss()
+					VStack(alignment: .leading, spacing: 6) {
+						Text("Keyword")
+							.font(Font(settings.uiFont.withSize(12)))
+							.foregroundColor(settings.textColorUI)
+						TextField("e.g., g", text: $keyword)
+							.textFieldStyle(PlainTextFieldStyle())
+							.font(Font(settings.uiFont.withSize(13)))
+							.foregroundColor(settings.textColorUI)
+							.padding(10)
+							.background(settings.searchBarColorUI)
+							.cornerRadius(6)
 					}
-					.buttonStyle(PlainButtonStyle())
-					.foregroundColor(Color.white)
-					.padding(.horizontal, 16)
-					.padding(.vertical, 8)
-					.background(settings.accentColorUI)
-					.cornerRadius(6)
-					.disabled(name.isEmpty || keyword.isEmpty || url.isEmpty)
-					.opacity(name.isEmpty || keyword.isEmpty || url.isEmpty ? 0.5 : 1.0)
+
+					VStack(alignment: .leading, spacing: 6) {
+						Text("URL (use {query} for search term)")
+							.font(Font(settings.uiFont.withSize(12)))
+							.foregroundColor(settings.textColorUI)
+						TextField("e.g., https://google.com/search?q={query}", text: $url)
+							.textFieldStyle(PlainTextFieldStyle())
+							.font(Font(settings.uiFont.withSize(13)))
+							.foregroundColor(settings.textColorUI)
+							.padding(10)
+							.background(settings.searchBarColorUI)
+							.cornerRadius(6)
+					}
+
+					VStack(alignment: .leading, spacing: 10) {
+						Text("Icon")
+							.font(Font(settings.uiFont.withSize(12)))
+							.foregroundColor(settings.textColorUI)
+
+						HStack(spacing: 12) {
+							Button(action: { useCustomIcon = false }) {
+								HStack(spacing: 8) {
+									Image(systemName: useCustomIcon ? "circle" : "circle.fill")
+										.font(.system(size: 12))
+									Text("SF Symbol")
+										.font(Font(settings.uiFont.withSize(12)))
+								}
+								.foregroundColor(settings.textColorUI)
+								.padding(.horizontal, 12)
+								.padding(.vertical, 8)
+								.background(
+									useCustomIcon
+										? settings.searchBarColorUI.opacity(0.5)
+										: settings.accentColorUI.opacity(0.2)
+								)
+								.cornerRadius(6)
+							}
+							.buttonStyle(PlainButtonStyle())
+
+							Button(action: { useCustomIcon = true }) {
+								HStack(spacing: 8) {
+									Image(systemName: useCustomIcon ? "circle.fill" : "circle")
+										.font(.system(size: 12))
+									Text("Upload Image")
+										.font(Font(settings.uiFont.withSize(12)))
+								}
+								.foregroundColor(settings.textColorUI)
+								.padding(.horizontal, 12)
+								.padding(.vertical, 8)
+								.background(
+									useCustomIcon
+										? settings.accentColorUI.opacity(0.2)
+										: settings.searchBarColorUI.opacity(0.5)
+								)
+								.cornerRadius(6)
+							}
+							.buttonStyle(PlainButtonStyle())
+						}
+
+						if useCustomIcon {
+							VStack(alignment: .leading, spacing: 8) {
+								HStack(spacing: 12) {
+									if let customImage = customIconImage {
+										Image(nsImage: customImage)
+											.resizable()
+											.interpolation(.high)
+											.frame(width: 32, height: 32)
+											.background(Color.white.opacity(0.1))
+											.cornerRadius(6)
+									} else {
+										RoundedRectangle(cornerRadius: 6)
+											.fill(settings.searchBarColorUI)
+											.frame(width: 32, height: 32)
+											.overlay(
+												Image(systemName: "photo.badge.plus")
+													.font(.system(size: 14))
+													.foregroundColor(settings.secondaryTextColorUI)
+											)
+									}
+
+									Button(action: { selectImage() }) {
+										HStack(spacing: 6) {
+											Image(systemName: "photo")
+												.font(.system(size: 12))
+											Text(customIconImage == nil ? "Choose Image" : "Change Image")
+												.font(Font(settings.uiFont.withSize(12)))
+										}
+										.foregroundColor(settings.accentColorUI)
+										.padding(.horizontal, 12)
+										.padding(.vertical, 8)
+										.background(settings.searchBarColorUI)
+										.cornerRadius(6)
+									}
+									.buttonStyle(PlainButtonStyle())
+
+									if customIconImage != nil {
+										Button(action: { clearCustomIcon() }) {
+											Text("Remove")
+												.font(Font(settings.uiFont.withSize(12)))
+												.foregroundColor(Color.red)
+												.padding(.horizontal, 12)
+												.padding(.vertical, 8)
+												.background(settings.searchBarColorUI)
+												.cornerRadius(6)
+										}
+										.buttonStyle(PlainButtonStyle())
+									}
+								}
+
+								Text("Supports PNG, JPG, GIF • Large images will be resized")
+									.font(Font(settings.uiFont.withSize(10)))
+									.foregroundColor(settings.secondaryTextColorUI.opacity(0.6))
+							}
+							.padding(12)
+							.background(settings.searchBarColorUI.opacity(0.3))
+							.cornerRadius(6)
+						} else {
+							HStack(spacing: 12) {
+								Image(systemName: icon.isEmpty ? "globe" : icon)
+									.font(.system(size: 20))
+									.foregroundColor(settings.accentColorUI)
+									.frame(width: 32, height: 32)
+									.background(settings.searchBarColorUI.opacity(0.3))
+									.cornerRadius(6)
+
+								TextField("e.g., globe, magnifyingglass, star.fill", text: $icon)
+									.textFieldStyle(PlainTextFieldStyle())
+									.font(Font(settings.uiFont.withSize(13)))
+									.foregroundColor(settings.textColorUI)
+									.padding(10)
+									.background(settings.searchBarColorUI)
+									.cornerRadius(6)
+							}
+						}
+					}
+
+					HStack(spacing: 10) {
+						Spacer()
+						Button("Cancel") {
+							presentationMode.wrappedValue.dismiss()
+						}
+						.buttonStyle(PlainButtonStyle())
+						.foregroundColor(settings.textColorUI)
+						.padding(.horizontal, 16)
+						.padding(.vertical, 8)
+						.background(settings.searchBarColorUI)
+						.cornerRadius(6)
+
+						Button("Add") {
+							addWebSearch()
+						}
+						.buttonStyle(PlainButtonStyle())
+						.foregroundColor(Color.white)
+						.padding(.horizontal, 16)
+						.padding(.vertical, 8)
+						.background(settings.accentColorUI)
+						.cornerRadius(6)
+						.disabled(name.isEmpty || keyword.isEmpty || url.isEmpty)
+						.opacity(name.isEmpty || keyword.isEmpty || url.isEmpty ? 0.5 : 1.0)
+					}
+					.padding(.top, 4)
 				}
-				.padding(.top, 4)
+				.padding(24)
 			}
-			.padding(24)
 		}
-		.frame(width: 480, height: 440)
+		.frame(width: 520, height: 520)
 		.background(settings.backgroundColorUI)
+	}
+
+	private func selectImage() {
+		let panel = NSOpenPanel()
+		panel.allowedContentTypes = [.png, .jpeg, .gif, .bmp, .tiff]
+		panel.allowsMultipleSelection = false
+		panel.canChooseDirectories = false
+		panel.message = "Select an icon image"
+
+		if panel.runModal() == .OK, let url = panel.url {
+			if let image = NSImage(contentsOf: url) {
+				customIconImage = resizeImage(image, targetSize: NSSize(width: 32, height: 32))
+				customIconPath = saveCustomIcon(customIconImage!)
+			}
+		}
+	}
+
+	private func clearCustomIcon() {
+		customIconImage = nil
+		if let path = customIconPath {
+			try? FileManager.default.removeItem(atPath: path)
+			customIconPath = nil
+		}
+	}
+
+	private func resizeImage(_ image: NSImage, targetSize: NSSize) -> NSImage {
+		// Create bitmap representation
+		guard
+			let imageData = image.tiffRepresentation,
+			let bitmap = NSBitmapImageRep(data: imageData)
+		else {
+			return image
+		}
+
+		let sourceSize = NSSize(width: bitmap.pixelsWide, height: bitmap.pixelsHigh)
+		let widthRatio = targetSize.width / sourceSize.width
+		let heightRatio = targetSize.height / sourceSize.height
+		let scaleFactor = min(widthRatio, heightRatio)
+
+		let scaledSize = NSSize(
+			width: sourceSize.width * scaleFactor,
+			height: sourceSize.height * scaleFactor
+		)
+
+		let resized = NSImage(size: targetSize)
+		resized.lockFocus()
+
+		// Fill with transparent background
+		NSColor.clear.setFill()
+		NSRect(origin: .zero, size: targetSize).fill()
+
+		// Set high quality interpolation
+		NSGraphicsContext.current?.imageInterpolation = .high
+
+		// Center the image
+		let xOffset = (targetSize.width - scaledSize.width) / 2
+		let yOffset = (targetSize.height - scaledSize.height) / 2
+
+		// Draw the original image
+		image.draw(
+			in: NSRect(x: xOffset, y: yOffset, width: scaledSize.width, height: scaledSize.height),
+			from: NSRect(origin: .zero, size: image.size),
+			operation: .sourceOver,
+			fraction: 1.0
+		)
+
+		resized.unlockFocus()
+		return resized
+	}
+
+	private func saveCustomIcon(_ image: NSImage) -> String? {
+		let customIconsDir =
+			"\(NSHomeDirectory())/Library/Application Support/Summon/CustomIcons"
+
+		try? FileManager.default.createDirectory(
+			atPath: customIconsDir,
+			withIntermediateDirectories: true,
+			attributes: nil
+		)
+
+		let iconId = UUID().uuidString
+		let iconPath = "\(customIconsDir)/\(iconId).png"
+
+		guard
+			let tiffData = image.tiffRepresentation,
+			let bitmapImage = NSBitmapImageRep(data: tiffData),
+			let pngData = bitmapImage.representation(using: .png, properties: [:])
+		else {
+			return nil
+		}
+
+		try? pngData.write(to: URL(fileURLWithPath: iconPath))
+		return iconPath
+	}
+
+	private func addWebSearch() {
+		let id = UUID().uuidString
+		let finalIcon: String = if useCustomIcon, let path = customIconPath {
+			path
+		} else {
+			icon
+		}
+
+		actionManager.addQuickLink(
+			id: id,
+			name: name,
+			keyword: keyword,
+			url: url,
+			icon: finalIcon
+		)
+		presentationMode.wrappedValue.dismiss()
 	}
 }

@@ -4,21 +4,19 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Snippet {
-	pub id: String,
+	pub id:      String,
 	pub trigger: String,
 	pub content: String,
 	pub enabled: bool,
 }
 
 pub struct SnippetMatcher {
-	snippets: RwLock<Vec<Snippet>>,
+	snippets:  RwLock<Vec<Snippet>>,
 	automaton: RwLock<Option<AhoCorasick>>,
 }
 
 impl SnippetMatcher {
-	pub fn new() -> Self {
-		Self { snippets: RwLock::new(Vec::new()), automaton: RwLock::new(None) }
-	}
+	pub fn new() -> Self { Self { snippets: RwLock::new(Vec::new()), automaton: RwLock::new(None) } }
 
 	pub fn update_snippets(&self, snippets: Vec<Snippet>) {
 		let enabled_snippets: Vec<Snippet> = snippets.into_iter().filter(|s| s.enabled).collect();
@@ -63,9 +61,7 @@ impl SnippetMatcher {
 }
 
 impl Default for SnippetMatcher {
-	fn default() -> Self {
-		Self::new()
-	}
+	fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]
@@ -78,13 +74,13 @@ mod tests {
 
 		let snippets = vec![
 			Snippet {
-				id: "1".to_string(),
+				id:      "1".to_string(),
 				trigger: "\\email".to_string(),
 				content: "test@example.com".to_string(),
 				enabled: true,
 			},
 			Snippet {
-				id: "2".to_string(),
+				id:      "2".to_string(),
 				trigger: "\\phone".to_string(),
 				content: "123-456-7890".to_string(),
 				enabled: true,
@@ -105,7 +101,7 @@ mod tests {
 		let matcher = SnippetMatcher::new();
 
 		let snippets = vec![Snippet {
-			id: "1".to_string(),
+			id:      "1".to_string(),
 			trigger: "\\test".to_string(),
 			content: "replacement".to_string(),
 			enabled: true,
@@ -124,7 +120,12 @@ mod tests {
 
 		let snippets = vec![
 			Snippet { id: "1".to_string(), trigger: "\\enabled".to_string(), content: "yes".to_string(), enabled: true },
-			Snippet { id: "2".to_string(), trigger: "\\disabled".to_string(), content: "no".to_string(), enabled: false },
+			Snippet {
+				id:      "2".to_string(),
+				trigger: "\\disabled".to_string(),
+				content: "no".to_string(),
+				enabled: false,
+			},
 		];
 
 		matcher.update_snippets(snippets);

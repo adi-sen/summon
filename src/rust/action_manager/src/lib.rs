@@ -9,16 +9,12 @@ use aho_corasick::AhoCorasick;
 use parking_lot::RwLock;
 use storage_utils::RkyvStorage;
 
-use crate::{
-	action::{Action, ActionKind, ActionResult},
-	native_extensions::ExtensionRegistry,
-	pattern::{create_result, match_pattern},
-};
+use crate::{action::{Action, ActionKind, ActionResult}, native_extensions::ExtensionRegistry, pattern::{create_result, match_pattern}};
 
 pub struct ActionManager {
-	storage: Arc<RkyvStorage<Action>>,
-	actions: Arc<RwLock<Vec<Action>>>,
-	extensions: Arc<ExtensionRegistry>,
+	storage:         Arc<RkyvStorage<Action>>,
+	actions:         Arc<RwLock<Vec<Action>>>,
+	extensions:      Arc<ExtensionRegistry>,
 	keyword_matcher: Arc<RwLock<Option<AhoCorasick>>>,
 }
 
@@ -96,19 +92,15 @@ impl ActionManager {
 		Ok(modified)
 	}
 
-	pub fn get_all(&self) -> Vec<Action> {
-		self.actions.read().clone()
-	}
+	pub fn get_all(&self) -> Vec<Action> { self.actions.read().clone() }
 
 	pub fn get_by_type(&self, filter: impl Fn(&ActionKind) -> bool) -> Vec<Action> {
 		self.actions.read().iter().filter(|a| filter(&a.kind)).cloned().collect()
 	}
 
 	pub fn search(&self, query: &str) -> Vec<ActionResult> {
-		println!("[ActionManager] Searching with query: '{}'", query);
 		let actions = self.actions.read();
 		let mut results = Vec::new();
-		println!("[ActionManager] Found {} enabled actions", actions.iter().filter(|a| a.enabled).count());
 
 		for action in actions.iter().filter(|a| a.enabled) {
 			match &action.kind {
@@ -182,41 +174,29 @@ impl ActionManager {
 
 	pub fn import_defaults(&self) -> std::io::Result<()> {
 		let defaults = vec![
-			Action::quick_link("google", "Google", "g", "https://www.google.com/search?q={query}", "globe.americas.fill"),
-			Action::quick_link(
-				"duckduckgo",
-				"DuckDuckGo",
-				"ddg",
-				"https://duckduckgo.com/?q={query}",
-				"shield.fill",
-			),
-			Action::quick_link(
-				"github",
-				"GitHub",
-				"gh",
-				"https://github.com/search?q={query}",
-				"chevron.left.forwardslash.chevron.right",
-			),
+			Action::quick_link("google", "Google", "g", "https://www.google.com/search?q={query}", "web:google"),
+			Action::quick_link("duckduckgo", "DuckDuckGo", "ddg", "https://duckduckgo.com/?q={query}", "web:duckduckgo"),
+			Action::quick_link("github", "GitHub", "gh", "https://github.com/search?q={query}", "web:github"),
 			Action::quick_link(
 				"stackoverflow",
 				"Stack Overflow",
 				"so",
 				"https://stackoverflow.com/search?q={query}",
-				"bubble.left.and.bubble.right.fill",
+				"web:stackoverflow",
 			),
 			Action::quick_link(
 				"wikipedia",
 				"Wikipedia",
 				"wiki",
 				"https://en.wikipedia.org/wiki/Special:Search?search={query}",
-				"book.closed.fill",
+				"web:wikipedia",
 			),
 			Action::quick_link(
 				"youtube",
 				"YouTube",
 				"yt",
 				"https://www.youtube.com/results?search_query={query}",
-				"play.rectangle.fill",
+				"web:youtube",
 			),
 		];
 
@@ -229,9 +209,7 @@ impl ActionManager {
 		Ok(())
 	}
 
-	pub fn storage_path(&self) -> &Path {
-		self.storage.path()
-	}
+	pub fn storage_path(&self) -> &Path { self.storage.path() }
 
 	fn rebuild_keyword_matcher(&self) {
 		let actions = self.actions.read();

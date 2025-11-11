@@ -1485,17 +1485,35 @@ struct WebSearchesSettingsTab: View {
 			if quickLinks.isEmpty {
 				VStack {
 					Spacer()
-					VStack(spacing: 8) {
+					VStack(spacing: 16) {
 						Image(systemName: "magnifyingglass")
 							.font(.system(size: 48))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
 						Text("No web searches yet")
 							.font(Font(settings.uiFont.withSize(15)))
 							.foregroundColor(settings.secondaryTextColorUI)
-						Text("Press ⌘N to add a web search or import defaults")
+
+						HStack(spacing: 12) {
+							Button(action: { actionManager.importDefaults() }) {
+								HStack(spacing: 6) {
+									Image(systemName: "arrow.counterclockwise")
+										.font(.system(size: 12))
+									Text("Import Defaults")
+										.font(Font(settings.uiFont.withSize(12)))
+								}
+								.foregroundColor(Color.white)
+								.padding(.horizontal, 16)
+								.padding(.vertical, 10)
+								.background(settings.accentColorUI)
+								.cornerRadius(6)
+							}
+							.buttonStyle(PlainButtonStyle())
+						}
+						.padding(.top, 8)
+
+						Text("Or press ⌘N to add a web search")
 							.font(Font(settings.uiFont.withSize(11)))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.5))
-							.padding(.top, 4)
 					}
 					Spacer()
 				}
@@ -1513,7 +1531,7 @@ struct ExtensionsSettingsTab: View {
 	@ObservedObject var actionManager = ActionManager.shared
 	@State private var selectedExtensionId: String? = nil
 	@State private var showingCreateExtension = false
-	@State private var lastKeyTime: Date = Date()
+	@State private var lastKeyTime: Date = .init()
 	@State private var pendingGKey = false
 	@State private var eventMonitor: Any? = nil
 
@@ -1535,7 +1553,7 @@ struct ExtensionsSettingsTab: View {
 			}
 			let key = chars.lowercased()
 
-			if event.modifierFlags.contains(.command) && key == "n" {
+			if event.modifierFlags.contains(.command), key == "n" {
 				showingCreateExtension = true
 				return nil
 			}
@@ -1543,7 +1561,8 @@ struct ExtensionsSettingsTab: View {
 			guard !extensions.isEmpty,
 			      !showingCreateExtension,
 			      NSApp.keyWindow?.firstResponder as? NSTextView == nil,
-			      NSApp.keyWindow?.firstResponder as? NSTextField == nil else {
+			      NSApp.keyWindow?.firstResponder as? NSTextField == nil
+			else {
 				return event
 			}
 
@@ -1552,18 +1571,20 @@ struct ExtensionsSettingsTab: View {
 				case "n":
 					if let currentId = selectedExtensionId,
 					   let currentIndex = extensions.firstIndex(where: { $0.id == currentId }),
-					   currentIndex < extensions.count - 1 {
+					   currentIndex < extensions.count - 1
+					{
 						selectedExtensionId = extensions[currentIndex + 1].id
-					} else if selectedExtensionId == nil && !extensions.isEmpty {
+					} else if selectedExtensionId == nil, !extensions.isEmpty {
 						selectedExtensionId = extensions.first?.id
 					}
 					return nil
 				case "p":
 					if let currentId = selectedExtensionId,
 					   let currentIndex = extensions.firstIndex(where: { $0.id == currentId }),
-					   currentIndex > 0 {
+					   currentIndex > 0
+					{
 						selectedExtensionId = extensions[currentIndex - 1].id
-					} else if selectedExtensionId == nil && !extensions.isEmpty {
+					} else if selectedExtensionId == nil, !extensions.isEmpty {
 						selectedExtensionId = extensions.last?.id
 					}
 					return nil
@@ -1582,7 +1603,7 @@ struct ExtensionsSettingsTab: View {
 				}
 			}
 
-			if pendingGKey && Date().timeIntervalSince(lastKeyTime) > 0.5 {
+			if pendingGKey, Date().timeIntervalSince(lastKeyTime) > 0.5 {
 				pendingGKey = false
 			}
 
@@ -1594,9 +1615,10 @@ struct ExtensionsSettingsTab: View {
 			case "j":
 				if let currentId = selectedExtensionId,
 				   let currentIndex = extensions.firstIndex(where: { $0.id == currentId }),
-				   currentIndex < extensions.count - 1 {
+				   currentIndex < extensions.count - 1
+				{
 					selectedExtensionId = extensions[currentIndex + 1].id
-				} else if selectedExtensionId == nil && !extensions.isEmpty {
+				} else if selectedExtensionId == nil, !extensions.isEmpty {
 					selectedExtensionId = extensions.first?.id
 				}
 				return nil
@@ -1604,9 +1626,10 @@ struct ExtensionsSettingsTab: View {
 			case "k":
 				if let currentId = selectedExtensionId,
 				   let currentIndex = extensions.firstIndex(where: { $0.id == currentId }),
-				   currentIndex > 0 {
+				   currentIndex > 0
+				{
 					selectedExtensionId = extensions[currentIndex - 1].id
-				} else if selectedExtensionId == nil && !extensions.isEmpty {
+				} else if selectedExtensionId == nil, !extensions.isEmpty {
 					selectedExtensionId = extensions.last?.id
 				}
 				return nil

@@ -21,6 +21,7 @@ enum ActionIconGenerator {
 			"github.com": NSColor(red: 0.13, green: 0.13, blue: 0.13, alpha: 1.0),
 			"google.com": NSColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1.0),
 			"youtube.com": NSColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0),
+			"duckduckgo.com": NSColor(red: 0.87, green: 0.33, blue: 0.13, alpha: 1.0),
 			"twitter.com": NSColor(red: 0.11, green: 0.63, blue: 0.95, alpha: 1.0),
 			"x.com": NSColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0),
 			"reddit.com": NSColor(red: 1.0, green: 0.27, blue: 0.0, alpha: 1.0),
@@ -32,13 +33,14 @@ enum ActionIconGenerator {
 
 		let domainSymbols: [String: String] = [
 			"github.com": "chevron.left.forwardslash.chevron.right",
-			"google.com": "magnifyingglass",
+			"google.com": "globe.americas.fill",
 			"youtube.com": "play.rectangle.fill",
+			"duckduckgo.com": "shield.fill",
 			"twitter.com": "bird.fill",
 			"x.com": "xmark",
 			"reddit.com": "bubble.left.and.bubble.right.fill",
-			"stackoverflow.com": "questionmark.circle.fill",
-			"wikipedia.org": "book.fill",
+			"stackoverflow.com": "bubble.left.and.bubble.right.fill",
+			"wikipedia.org": "book.closed.fill",
 			"amazon.com": "cart.fill",
 			"linkedin.com": "briefcase.fill"
 		]

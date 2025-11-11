@@ -486,13 +486,11 @@ struct ContentView: View {
 					})
 
 				let actionResults = ActionManager.shared.search(query: query)
-				print("[ContentView] Got \(actionResults.count) action results")
 				allResults.append(
 					contentsOf: actionResults.map { result in
-						print("[ContentView] Mapping result: '\(result.title)' with url: '\(result.url)'")
-						let icon = ActionIconGenerator.generateIcon(
-							for: result.title,
+						let icon = loadActionIcon(
 							iconName: result.icon,
+							title: result.title,
 							url: result.url
 						)
 
@@ -536,6 +534,23 @@ struct ContentView: View {
 
 		searchTask = task
 		DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.15, execute: task)
+	}
+
+	private func loadActionIcon(iconName: String, title: String, url: String) -> NSImage? {
+		if iconName.hasPrefix("/") || iconName.hasPrefix("~"),
+		   let image = NSImage(contentsOfFile: NSString(string: iconName).expandingTildeInPath as String)
+		{
+			return image
+		}
+
+		if iconName.hasPrefix("web:") {
+			let path = "\(NSHomeDirectory())/Library/Application Support/Summon/WebIcons/\(String(iconName.dropFirst(4))).png"
+			if let image = NSImage(contentsOfFile: path) {
+				return image
+			}
+		}
+
+		return ActionIconGenerator.generateIcon(for: title, iconName: iconName, url: url)
 	}
 
 	private func evaluateCalculator(_ query: String) -> String? {

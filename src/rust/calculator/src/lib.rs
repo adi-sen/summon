@@ -24,13 +24,13 @@ fn normalize_timezone(tz: &str) -> &str {
 
 #[derive(Clone, Debug)]
 pub struct CalculationEntry {
-	pub query: String,
+	pub query:  String,
 	pub result: String,
 }
 
 pub struct Calculator {
 	exchange_rates: HashMap<String, f64>,
-	history: VecDeque<CalculationEntry>,
+	history:        VecDeque<CalculationEntry>,
 }
 
 impl Calculator {
@@ -202,19 +202,13 @@ impl Calculator {
 		self.history.push_back(CalculationEntry { query, result });
 	}
 
-	pub fn get_history(&self) -> &VecDeque<CalculationEntry> {
-		&self.history
-	}
+	pub fn get_history(&self) -> &VecDeque<CalculationEntry> { &self.history }
 
-	pub fn clear_history(&mut self) {
-		self.history.clear();
-	}
+	pub fn clear_history(&mut self) { self.history.clear(); }
 }
 
 impl Default for Calculator {
-	fn default() -> Self {
-		Self::new()
-	}
+	fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]
