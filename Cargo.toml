@@ -8,6 +8,7 @@ members = [
     "src/rust/app_storage",
     "src/rust/settings_storage",
     "src/rust/storage_utils",
+    "src/rust/action_manager",
     "src/rust/ffi",
 ]
 resolver = "2"
@@ -25,13 +26,13 @@ bitcode = "0.6"
 rkyv = { version = "0.7", features = ["validation"] }
 nucleo-matcher = "0.3.1"
 fuzzy-matcher = "0.3.7"
-lru = "0.12"
+lru = "0.16"
 libc = "0.2"
 parking_lot = "0.12.4"
 mimalloc = "0.1.47"
 rustc-hash = "2.0"
 smallvec = "1.13"
-compact_str = { version = "0.8", features = ["serde"] }
+compact_str = { version = "0.9", features = ["serde"] }
 paste = "1.0"
 
 [profile.release]

@@ -87,21 +87,15 @@ struct Dropdown<T: Hashable>: View {
 		panel.level = .popUpMenu
 		panel.contentView = controller.view
 
-		// Use the content size stored in the controller (controller.view.frame gets reset to zero)
 		let size = controller.contentSize
-
-		// Position dropdown below the button using its actual screen frame
-		// buttonViewFrame is already in screen coordinates (bottom-left origin)
 		let dropdownY = buttonViewFrame.minY - size.height - 4
 
-		// Align dropdown horizontally
-		let xPosition: CGFloat = if alignRight {
-			// Align right edge of dropdown with right edge of button
-			buttonViewFrame.maxX - size.width
-		} else {
-			// Align left edge of dropdown with left edge of button
-			buttonViewFrame.minX
-		}
+		let xPosition: CGFloat =
+			if alignRight {
+				buttonViewFrame.maxX - size.width
+			} else {
+				buttonViewFrame.minX
+			}
 
 		let origin = NSPoint(x: xPosition, y: dropdownY)
 
@@ -217,7 +211,9 @@ class DropdownController<T: Hashable>: NSViewController {
 		fatalError("init(coder:) has not been implemented")
 	}
 
-	private func makeButton(for item: T, index: Int, itemHeight: CGFloat, padding: CGFloat) -> NSButton {
+	private func makeButton(for item: T, index: Int, itemHeight: CGFloat, padding: CGFloat)
+		-> NSButton
+	{
 		let theme = settings.theme
 		let font = settings.uiFont.withSize(13)
 		let isSelected = item == selection.wrappedValue
@@ -274,11 +270,14 @@ class DropdownController<T: Hashable>: NSViewController {
 		stackView.orientation = .vertical
 		stackView.spacing = spacing
 		stackView.alignment = .leading
-		stackView.edgeInsets = NSEdgeInsets(top: padding, left: padding, bottom: padding, right: padding)
+		stackView.edgeInsets = NSEdgeInsets(
+			top: padding, left: padding, bottom: padding, right: padding
+		)
 		stackView.translatesAutoresizingMaskIntoConstraints = false
 
 		for (index, item) in items.enumerated() {
-			stackView.addArrangedSubview(makeButton(for: item, index: index, itemHeight: itemHeight, padding: padding))
+			stackView.addArrangedSubview(
+				makeButton(for: item, index: index, itemHeight: itemHeight, padding: padding))
 		}
 
 		if items.count > 8 {
@@ -291,7 +290,8 @@ class DropdownController<T: Hashable>: NSViewController {
 
 			NSLayoutConstraint.activate([
 				stackView.leadingAnchor.constraint(equalTo: scrollView.documentView!.leadingAnchor),
-				stackView.trailingAnchor.constraint(equalTo: scrollView.documentView!.trailingAnchor),
+				stackView.trailingAnchor.constraint(
+					equalTo: scrollView.documentView!.trailingAnchor),
 				stackView.topAnchor.constraint(equalTo: scrollView.documentView!.topAnchor)
 			])
 		} else {
@@ -362,12 +362,13 @@ class HoverableMenuButton: NSButton {
 			context.duration = 0.15
 			context.allowsImplicitAnimation = true
 
-			layer?.backgroundColor = NSColor(
-				red: theme.accentColor.0,
-				green: theme.accentColor.1,
-				blue: theme.accentColor.2,
-				alpha: isSelected ? 0.18 : 0.08
-			).cgColor
+			layer?.backgroundColor =
+				NSColor(
+					red: theme.accentColor.0,
+					green: theme.accentColor.1,
+					blue: theme.accentColor.2,
+					alpha: isSelected ? 0.18 : 0.08
+				).cgColor
 		}
 	}
 
@@ -379,12 +380,14 @@ class HoverableMenuButton: NSButton {
 			context.duration = 0.15
 			context.allowsImplicitAnimation = true
 
-			layer?.backgroundColor = isSelected ? NSColor(
-				red: theme.accentColor.0,
-				green: theme.accentColor.1,
-				blue: theme.accentColor.2,
-				alpha: 0.12
-			).cgColor : NSColor.clear.cgColor
+			layer?.backgroundColor =
+				isSelected
+					? NSColor(
+						red: theme.accentColor.0,
+						green: theme.accentColor.1,
+						blue: theme.accentColor.2,
+						alpha: 0.12
+					).cgColor : NSColor.clear.cgColor
 		}
 	}
 }

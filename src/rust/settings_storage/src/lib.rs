@@ -1,5 +1,3 @@
-//! Settings storage using rkyv for zero-copy deserialization.
-
 use std::{io, path::Path};
 
 use rkyv::{Archive, Deserialize, Serialize};

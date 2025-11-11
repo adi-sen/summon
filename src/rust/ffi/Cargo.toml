@@ -11,6 +11,7 @@ clipboard_storage = { path = "../clipboard_storage" }
 snippet_storage = { path = "../snippet_storage" }
 app_storage = { path = "../app_storage" }
 settings_storage = { path = "../settings_storage" }
+action_manager = { path = "../action_manager" }
 serde.workspace = true
 serde_json.workspace = true
 libc.workspace = true

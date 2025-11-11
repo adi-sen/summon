@@ -129,7 +129,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 		indexApplications()
 		indexCommands()
 
-		// Periodic memory cleanup
 		Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
 			self?.performMemoryCleanup()
 		}
@@ -215,7 +214,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 	}
 
 	@objc private func handleShowSettings() {
-		// Small delay to ensure launcher window hide animation completes
 		DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
 			self?.showSettingsWindow()
 		}
@@ -224,7 +222,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 	@objc private func handleSettingsChanged() {
 		print("Settings changed - clearing app cache...")
 
-		// Clear cache on main thread - it will rebuild on next search
 		DispatchQueue.main.async { [weak self] in
 			guard let self else { return }
 			self.clearAppCache()

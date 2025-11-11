@@ -15,7 +15,6 @@ final class LRUCache<Key: Hashable, Value> {
 		queue.sync {
 			guard let value = cache[key] else { return nil }
 
-			// Update access order (move to end = most recently used)
 			if let index = accessOrder.firstIndex(of: key) {
 				accessOrder.remove(at: index)
 				accessOrder.append(key)
@@ -35,7 +34,6 @@ final class LRUCache<Key: Hashable, Value> {
 
 			accessOrder.append(key)
 
-			// Evict least recently used if over capacity
 			while accessOrder.count > maxSize {
 				let oldest = accessOrder.removeFirst()
 				cache.removeValue(forKey: oldest)

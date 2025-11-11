@@ -121,7 +121,7 @@ final class ClipboardStorage {
 
 		let size = Int32(pngData.count)
 
-		guard size < 10_000_000 else { // >10MB
+		guard size < 10_000_000 else {
 			print("Skipping large image: \(size / 1024 / 1024) MB")
 			return
 		}

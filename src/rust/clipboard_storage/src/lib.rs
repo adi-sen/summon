@@ -1,15 +1,9 @@
-//! Clipboard storage using rkyv for zero-copy deserialization.
-//!
-//! This module provides efficient storage and retrieval of clipboard history
-//! using memory-mapped rkyv archives for minimal RAM usage.
-
 use std::{io, path::Path};
 
 use rkyv::{Archive, Deserialize, Serialize};
 use storage_utils::RkyvStorage;
 
-/// Type of clipboard item
-#[derive(Archive, Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Archive, Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[archive(compare(PartialEq))]
 #[archive_attr(derive(Debug))]
 pub enum ClipboardItemType {
@@ -36,8 +30,7 @@ impl ClipboardItemType {
 	}
 }
 
-/// Image dimensions
-#[derive(Archive, Deserialize, Serialize, Debug, Clone, Copy)]
+#[derive(Archive, Deserialize, Serialize, Debug, Clone, Copy, PartialEq)]
 #[archive(compare(PartialEq))]
 #[archive_attr(derive(Debug))]
 pub struct ImageSize {
@@ -45,8 +38,7 @@ pub struct ImageSize {
 	pub height: f64,
 }
 
-/// A single clipboard entry
-#[derive(Archive, Deserialize, Serialize, Debug, Clone)]
+#[derive(Archive, Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[archive(compare(PartialEq))]
 #[archive_attr(derive(Debug))]
 pub struct ClipboardEntry {
@@ -93,7 +85,6 @@ impl ClipboardEntry {
 	}
 }
 
-/// Clipboard history storage
 pub struct ClipboardStorage {
 	storage: RkyvStorage<ClipboardEntry>,
 }

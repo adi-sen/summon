@@ -13,7 +13,7 @@ enum AppConstants {
 
 	enum Clipboard {
 		static let pageSize = 9
-		static let maxContentSize = 1_048_576 // 1MB
+		static let maxContentSize = 1_048_576
 		static let defaultRetentionDays = 30
 		static let defaultMaxItems = 100
 	}
@@ -30,7 +30,7 @@ enum AppConstants {
 	}
 
 	enum Performance {
-		static let clipboardCheckInterval: TimeInterval = 0.2 // 200ms
+		static let clipboardCheckInterval: TimeInterval = 0.2
 		static let searchDebounceDelay: TimeInterval = 0.1
 	}
 }

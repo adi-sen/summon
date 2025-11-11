@@ -1,8 +1,15 @@
-//! Concise C FFI using macros for DRY code
 #![allow(clippy::missing_safety_doc)]
 
-use std::{ffi::{CStr, CString}, ptr, sync::Arc};
+use std::{
+	ffi::{CStr, CString},
+	ptr,
+	sync::Arc,
+};
 
+use action_manager::{
+	ActionManager,
+	action::{Action, PatternActionType, ResultAction},
+};
 use app_storage::{AppEntry, AppStorage};
 use calculator::Calculator;
 use clipboard_storage::{ClipboardEntry, ClipboardStorage};
@@ -10,7 +17,10 @@ use compact_str::CompactString;
 use libc::{c_char, size_t};
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap;
-use search_engine::{SearchEngine, indexer::{IndexedItem, ItemType}};
+use search_engine::{
+	SearchEngine,
+	indexer::{IndexedItem, ItemType},
+};
 use settings_storage::{AppSettings, SettingsStorage};
 use snippet_matcher::{Snippet, SnippetMatcher};
 use snippet_storage::SnippetStorage;
@@ -63,9 +73,9 @@ pub struct SearchEngineHandle {
 
 #[repr(C)]
 pub struct CSearchResult {
-	pub id:    *mut c_char,
-	pub name:  *mut c_char,
-	pub path:  *mut c_char,
+	pub id: *mut c_char,
+	pub name: *mut c_char,
+	pub path: *mut c_char,
 	pub score: i64,
 }
 
@@ -139,9 +149,9 @@ pub unsafe extern "C" fn search_engine_search(
 	let c_results: Vec<CSearchResult> = results
 		.into_iter()
 		.map(|r| CSearchResult {
-			id:    CString::new(r.item.id.as_str()).unwrap().into_raw(),
-			name:  CString::new(r.item.name.as_str()).unwrap().into_raw(),
-			path:  r.item.path.and_then(|p| CString::new(p.as_str()).ok()).map(CString::into_raw).unwrap_or(ptr::null_mut()),
+			id: CString::new(r.item.id.as_str()).unwrap().into_raw(),
+			name: CString::new(r.item.name.as_str()).unwrap().into_raw(),
+			path: r.item.path.and_then(|p| CString::new(p.as_str()).ok()).map(CString::into_raw).unwrap_or(ptr::null_mut()),
 			score: r.score,
 		})
 		.collect();
@@ -203,7 +213,7 @@ pub unsafe extern "C" fn search_engine_stats(
 #[repr(C)]
 pub struct CStringArray {
 	pub data: *mut *mut c_char,
-	pub len:  size_t,
+	pub len: size_t,
 }
 
 #[unsafe(no_mangle)]
@@ -236,7 +246,6 @@ pub unsafe extern "C" fn search_engine_scan_apps(
 
 	let engine = unsafe { &(*handle).engine };
 
-	// Collect all new apps first (single read lock)
 	let mut new_apps = Vec::new();
 	{
 		let lock = engine.lock();
@@ -275,17 +284,16 @@ pub unsafe extern "C" fn search_engine_scan_apps(
 		}
 	}
 
-	// Batch insert all new apps (single write lock)
 	let added_count = new_apps.len();
 	if !new_apps.is_empty() {
 		let items: Vec<IndexedItem> = new_apps
 			.into_iter()
 			.map(|(full_path, name)| IndexedItem {
-				id:        CompactString::new(&full_path),
-				name:      CompactString::new(&name),
+				id: CompactString::new(&full_path),
+				name: CompactString::new(&name),
 				item_type: ItemType::Application,
-				path:      Some(CompactString::new(&full_path)),
-				metadata:  FxHashMap::default(),
+				path: Some(CompactString::new(&full_path)),
+				metadata: FxHashMap::default(),
 			})
 			.collect();
 
@@ -419,14 +427,14 @@ storage_handle!(ClipboardStorageHandle, ClipboardStorage, clipboard_storage);
 
 #[repr(C)]
 pub struct CClipboardEntry {
-	pub content:         *mut c_char,
-	pub timestamp:       f64,
-	pub item_type:       u8,
+	pub content: *mut c_char,
+	pub timestamp: f64,
+	pub item_type: u8,
 	pub image_file_path: *mut c_char,
-	pub image_width:     f64,
-	pub image_height:    f64,
-	pub size:            i32,
-	pub source_app:      *mut c_char,
+	pub image_width: f64,
+	pub image_height: f64,
+	pub size: i32,
+	pub source_app: *mut c_char,
 }
 
 #[unsafe(no_mangle)]
@@ -493,22 +501,18 @@ pub unsafe extern "C" fn clipboard_storage_get_entries(
 		.map(|e| {
 			let (width, height) = e.image_size.map(|s| (s.width, s.height)).unwrap_or((0.0, 0.0));
 			CClipboardEntry {
-				content:         CString::new(e.content).unwrap().into_raw(),
-				timestamp:       e.timestamp,
-				item_type:       e.item_type.as_u8(),
+				content: CString::new(e.content).unwrap().into_raw(),
+				timestamp: e.timestamp,
+				item_type: e.item_type.as_u8(),
 				image_file_path: e
 					.image_file_path
 					.and_then(|p| CString::new(p).ok())
 					.map(CString::into_raw)
 					.unwrap_or(ptr::null_mut()),
-				image_width:     width,
-				image_height:    height,
-				size:            e.size,
-				source_app:      e
-					.source_app
-					.and_then(|s| CString::new(s).ok())
-					.map(CString::into_raw)
-					.unwrap_or(ptr::null_mut()),
+				image_width: width,
+				image_height: height,
+				size: e.size,
+				source_app: e.source_app.and_then(|s| CString::new(s).ok()).map(CString::into_raw).unwrap_or(ptr::null_mut()),
 			}
 		})
 		.collect();
@@ -643,10 +647,10 @@ storage_handle!(SnippetStorageHandle, SnippetStorage, snippet_storage);
 
 #[repr(C)]
 pub struct CSnippet {
-	pub id:       *mut c_char,
-	pub trigger:  *mut c_char,
-	pub content:  *mut c_char,
-	pub enabled:  bool,
+	pub id: *mut c_char,
+	pub trigger: *mut c_char,
+	pub content: *mut c_char,
+	pub enabled: bool,
 	pub category: *mut c_char,
 }
 
@@ -710,10 +714,10 @@ fn snippets_to_c(snippets: Vec<snippet_storage::Snippet>) -> (*mut CSnippet, siz
 	let c_snippets: Vec<CSnippet> = snippets
 		.into_iter()
 		.map(|s| CSnippet {
-			id:       CString::new(s.id).unwrap().into_raw(),
-			trigger:  CString::new(s.trigger).unwrap().into_raw(),
-			content:  CString::new(s.content).unwrap().into_raw(),
-			enabled:  s.enabled,
+			id: CString::new(s.id).unwrap().into_raw(),
+			trigger: CString::new(s.trigger).unwrap().into_raw(),
+			content: CString::new(s.content).unwrap().into_raw(),
+			enabled: s.enabled,
 			category: CString::new(s.category).unwrap().into_raw(),
 		})
 		.collect();
@@ -866,17 +870,17 @@ storage_handle!(SettingsStorageHandle, SettingsStorage, settings_storage);
 
 #[repr(C)]
 pub struct CAppSettings {
-	pub theme:                    *mut c_char,
-	pub custom_font_name:         *mut c_char,
-	pub font_size:                *mut c_char,
-	pub max_results:              i32,
-	pub max_clipboard_items:      i32,
+	pub theme: *mut c_char,
+	pub custom_font_name: *mut c_char,
+	pub font_size: *mut c_char,
+	pub max_results: i32,
+	pub max_clipboard_items: i32,
 	pub clipboard_retention_days: i32,
-	pub quick_select_modifier:    *mut c_char,
-	pub enable_commands:          bool,
-	pub show_tray_icon:           bool,
-	pub show_dock_icon:           bool,
-	pub hide_traffic_lights:      bool,
+	pub quick_select_modifier: *mut c_char,
+	pub enable_commands: bool,
+	pub show_tray_icon: bool,
+	pub show_dock_icon: bool,
+	pub hide_traffic_lights: bool,
 }
 
 #[unsafe(no_mangle)]
@@ -888,17 +892,17 @@ pub unsafe extern "C" fn settings_storage_get(handle: *mut SettingsStorageHandle
 	let settings = unsafe { (*handle).inner.get() };
 
 	Box::into_raw(Box::new(CAppSettings {
-		theme:                    CString::new(settings.theme).unwrap().into_raw(),
-		custom_font_name:         CString::new(settings.custom_font_name).unwrap().into_raw(),
-		font_size:                CString::new(settings.font_size).unwrap().into_raw(),
-		max_results:              settings.max_results,
-		max_clipboard_items:      settings.max_clipboard_items,
+		theme: CString::new(settings.theme).unwrap().into_raw(),
+		custom_font_name: CString::new(settings.custom_font_name).unwrap().into_raw(),
+		font_size: CString::new(settings.font_size).unwrap().into_raw(),
+		max_results: settings.max_results,
+		max_clipboard_items: settings.max_clipboard_items,
 		clipboard_retention_days: settings.clipboard_retention_days,
-		quick_select_modifier:    CString::new(settings.quick_select_modifier).unwrap().into_raw(),
-		enable_commands:          settings.enable_commands,
-		show_tray_icon:           settings.show_tray_icon,
-		show_dock_icon:           settings.show_dock_icon,
-		hide_traffic_lights:      settings.hide_traffic_lights,
+		quick_select_modifier: CString::new(settings.quick_select_modifier).unwrap().into_raw(),
+		enable_commands: settings.enable_commands,
+		show_tray_icon: settings.show_tray_icon,
+		show_dock_icon: settings.show_dock_icon,
+		hide_traffic_lights: settings.hide_traffic_lights,
 	}))
 }
 
@@ -1032,4 +1036,224 @@ pub unsafe extern "C" fn settings_storage_get_clipboard_shortcut(handle: *mut Se
 		"modifiers": settings.clipboard_shortcut_mods
 	});
 	CString::new(json.to_string()).unwrap().into_raw()
+}
+
+
+pub struct ActionManagerHandle {
+	manager: ActionManager,
+}
+
+#[repr(C)]
+pub struct CActionResult {
+	pub id: *mut c_char,
+	pub title: *mut c_char,
+	pub subtitle: *mut c_char,
+	pub icon: *mut c_char,
+	pub url: *mut c_char,
+	pub score: f32,
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_new(path: *const c_char) -> *mut ActionManagerHandle {
+	if path.is_null() {
+		return ptr::null_mut();
+	}
+
+	match ActionManager::new(cstr!(path)) {
+		Ok(manager) => Box::into_raw(Box::new(ActionManagerHandle { manager })),
+		Err(_) => ptr::null_mut(),
+	}
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_free(handle: *mut ActionManagerHandle) {
+	if !handle.is_null() {
+		unsafe { drop(Box::from_raw(handle)) };
+	}
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_search(
+	handle: *mut ActionManagerHandle,
+	query: *const c_char,
+	out_count: *mut size_t,
+) -> *mut CActionResult {
+	if handle.is_null() || query.is_null() || out_count.is_null() {
+		return ptr::null_mut();
+	}
+
+	let results = unsafe { (*handle).manager.search(cstr!(query)) };
+
+	if results.is_empty() {
+		unsafe { *out_count = 0 };
+		return ptr::null_mut();
+	}
+
+	let c_results: Vec<CActionResult> = results
+		.into_iter()
+		.map(|r| {
+			let url = match r.action {
+				ResultAction::OpenUrl(url) => CString::new(url).unwrap().into_raw(),
+				ResultAction::CopyText(text) => CString::new(text).unwrap().into_raw(),
+				ResultAction::RunCommand { cmd, .. } => CString::new(cmd).unwrap().into_raw(),
+			};
+
+			CActionResult {
+				id: CString::new(r.id).unwrap().into_raw(),
+				title: CString::new(r.title).unwrap().into_raw(),
+				subtitle: CString::new(r.subtitle).unwrap().into_raw(),
+				icon: CString::new(r.icon).unwrap().into_raw(),
+				url,
+				score: r.score,
+			}
+		})
+		.collect();
+
+	unsafe { *out_count = c_results.len() };
+	Box::into_raw(c_results.into_boxed_slice()) as *mut CActionResult
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_results_free(results: *mut CActionResult, count: size_t) {
+	if results.is_null() || count == 0 {
+		return;
+	}
+
+	unsafe {
+		for i in 0..count {
+			let result = &(*results.add(i));
+			if !result.id.is_null() {
+				drop(CString::from_raw(result.id));
+			}
+			if !result.title.is_null() {
+				drop(CString::from_raw(result.title));
+			}
+			if !result.subtitle.is_null() {
+				drop(CString::from_raw(result.subtitle));
+			}
+			if !result.icon.is_null() {
+				drop(CString::from_raw(result.icon));
+			}
+			if !result.url.is_null() {
+				drop(CString::from_raw(result.url));
+			}
+		}
+		drop(Vec::from_raw_parts(results, count, count));
+	}
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_add_json(handle: *mut ActionManagerHandle, json: *const c_char) -> bool {
+	if handle.is_null() || json.is_null() {
+		return false;
+	}
+
+	let action: Action = match serde_json::from_str(cstr!(json)) {
+		Ok(a) => a,
+		Err(_) => return false,
+	};
+
+	unsafe { (*handle).manager.add(action).is_ok() }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_add_quick_link(
+	handle: *mut ActionManagerHandle,
+	id: *const c_char,
+	name: *const c_char,
+	keyword: *const c_char,
+	url: *const c_char,
+	icon: *const c_char,
+) -> bool {
+	if handle.is_null() || id.is_null() || name.is_null() || keyword.is_null() || url.is_null() {
+		return false;
+	}
+
+	let action = Action::quick_link(cstr!(id), cstr!(name), cstr!(keyword), cstr!(url), cstr!(icon));
+
+	unsafe { (*handle).manager.add(action).is_ok() }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_add_pattern(
+	handle: *mut ActionManagerHandle,
+	id: *const c_char,
+	name: *const c_char,
+	pattern: *const c_char,
+	url: *const c_char,
+	icon: *const c_char,
+) -> bool {
+	if handle.is_null() || id.is_null() || name.is_null() || pattern.is_null() || url.is_null() {
+		return false;
+	}
+
+	let action = Action::pattern(
+		cstr!(id),
+		cstr!(name),
+		cstr!(pattern),
+		PatternActionType::OpenUrl(cstr!(url).to_string()),
+		cstr!(icon),
+	);
+
+	unsafe { (*handle).manager.add(action).is_ok() }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_update_json(handle: *mut ActionManagerHandle, json: *const c_char) -> bool {
+	if handle.is_null() || json.is_null() {
+		return false;
+	}
+
+	let action: Action = match serde_json::from_str(cstr!(json)) {
+		Ok(a) => a,
+		Err(_) => return false,
+	};
+
+	unsafe { (*handle).manager.update(action).unwrap_or(false) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_remove(handle: *mut ActionManagerHandle, id: *const c_char) -> bool {
+	if handle.is_null() || id.is_null() {
+		return false;
+	}
+
+	unsafe { (*handle).manager.remove(cstr!(id)).unwrap_or(false) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_toggle(handle: *mut ActionManagerHandle, id: *const c_char) -> bool {
+	if handle.is_null() || id.is_null() {
+		return false;
+	}
+
+	unsafe { (*handle).manager.toggle(cstr!(id)).unwrap_or(false) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_get_all_json(handle: *mut ActionManagerHandle) -> *mut c_char {
+	if handle.is_null() {
+		return ptr::null_mut();
+	}
+
+	let actions = unsafe { (*handle).manager.get_all() };
+	let json = serde_json::to_string(&actions).unwrap_or_default();
+
+	CString::new(json).unwrap().into_raw()
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn action_manager_import_defaults(handle: *mut ActionManagerHandle) -> bool {
+	if handle.is_null() {
+		return false;
+	}
+
+	unsafe { (*handle).manager.import_defaults().is_ok() }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn string_free(s: *mut c_char) {
+	if !s.is_null() {
+		unsafe { drop(CString::from_raw(s)) };
+	}
 }

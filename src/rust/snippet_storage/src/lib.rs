@@ -1,15 +1,9 @@
-//! Snippet storage using rkyv for zero-copy deserialization.
-//!
-//! This module provides efficient storage and retrieval of text snippets
-//! using memory-mapped rkyv archives for minimal RAM usage.
-
 use std::{io, path::Path};
 
 use rkyv::{Archive, Deserialize, Serialize};
 use storage_utils::RkyvStorage;
 
-/// A text expansion snippet
-#[derive(Archive, Deserialize, Serialize, Debug, Clone)]
+#[derive(Archive, Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[archive(compare(PartialEq))]
 #[archive_attr(derive(Debug))]
 pub struct Snippet {
@@ -34,7 +28,6 @@ impl Snippet {
 	}
 }
 
-/// Snippet storage manager
 pub struct SnippetStorage {
 	storage: RkyvStorage<Snippet>,
 }

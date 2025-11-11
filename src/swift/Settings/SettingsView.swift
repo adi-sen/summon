@@ -10,7 +10,14 @@ struct SettingsView: View {
 		ZStack {
 			mainContent
 		}
-		.frame(width: 900, height: 750)
+		.frame(
+			minWidth: 1200,
+			idealWidth: 1400,
+			maxWidth: .infinity,
+			minHeight: 800,
+			idealHeight: 900,
+			maxHeight: .infinity
+		)
 		.onAppear { setupEventMonitor() }
 		.onDisappear { removeEventMonitor() }
 	}
@@ -72,8 +79,16 @@ struct SettingsView: View {
 				selectedTab = 5
 				NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
 			}
-			TabButton(title: "Shortcuts", isSelected: selectedTab == 6) {
+			TabButton(title: "Web Searches", isSelected: selectedTab == 6) {
 				selectedTab = 6
+				NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
+			}
+			TabButton(title: "Extensions", isSelected: selectedTab == 7) {
+				selectedTab = 7
+				NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
+			}
+			TabButton(title: "Shortcuts", isSelected: selectedTab == 8) {
+				selectedTab = 8
 				NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
 			}
 			Spacer()
@@ -92,6 +107,9 @@ struct SettingsView: View {
 		case 3: ClipboardSettingsTab()
 		case 4: CommandsSettingsTab()
 		case 5: SnippetsSettingsTab()
+		case 6: WebSearchesSettingsTab()
+		case 7: ExtensionsSettingsTab()
+		case 8: ShortcutsSettingsTab()
 		default: ShortcutsSettingsTab()
 		}
 	}
@@ -127,6 +145,12 @@ struct SettingsView: View {
 				case "7":
 					selectedTab = 6
 					return nil
+				case "8":
+					selectedTab = 7
+					return nil
+				case "9":
+					selectedTab = 8
+					return nil
 				case "q":
 					NSApp.keyWindow?.close()
 					return nil
@@ -139,7 +163,7 @@ struct SettingsView: View {
 				   let chars = event.charactersIgnoringModifiers,
 				   chars.allSatisfy(\.isNumber)
 				{
-					return nil // Consume all Command+number to prevent quick select
+					return nil
 				}
 			}
 
@@ -153,7 +177,7 @@ struct SettingsView: View {
 				if let chars = event.charactersIgnoringModifiers, hasModifier,
 				   chars.allSatisfy(\.isNumber)
 				{
-					return nil // Consume quick select events
+					return nil
 				}
 			}
 
@@ -288,7 +312,7 @@ struct SearchSettingsTab: View {
 								Button(action: {
 									if settings.searchFolders.count > 1 {
 										settings.searchFolders.removeAll { $0 == folder }
-										settings.saveAndReindex() // Trigger re-indexing
+										settings.saveAndReindex()
 									}
 								}) {
 									Image(systemName: "xmark.circle.fill")
@@ -1440,5 +1464,252 @@ struct EditSnippetView: View {
 				green: settings.theme.backgroundColor.1,
 				blue: settings.theme.backgroundColor.2
 			))
+	}
+}
+
+struct WebSearchesSettingsTab: View {
+	@ObservedObject var settings = AppSettings.shared
+	@ObservedObject var actionManager = ActionManager.shared
+
+	var quickLinks: [Action] {
+		actionManager.actions.filter { action in
+			if case .quickLink = action.kind {
+				return true
+			}
+			return false
+		}
+	}
+
+	var body: some View {
+		Group {
+			if quickLinks.isEmpty {
+				VStack {
+					Spacer()
+					VStack(spacing: 8) {
+						Image(systemName: "magnifyingglass")
+							.font(.system(size: 48))
+							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
+						Text("No web searches yet")
+							.font(Font(settings.uiFont.withSize(15)))
+							.foregroundColor(settings.secondaryTextColorUI)
+						Text("Press ⌘N to add a web search or import defaults")
+							.font(Font(settings.uiFont.withSize(11)))
+							.foregroundColor(settings.secondaryTextColorUI.opacity(0.5))
+							.padding(.top, 4)
+					}
+					Spacer()
+				}
+				.background(settings.backgroundColorUI)
+			} else {
+				ActionsList(filterType: .quickLink)
+					.background(settings.backgroundColorUI)
+			}
+		}
+	}
+}
+
+struct ExtensionsSettingsTab: View {
+	@ObservedObject var settings = AppSettings.shared
+	@ObservedObject var actionManager = ActionManager.shared
+	@State private var selectedExtensionId: String? = nil
+	@State private var showingCreateExtension = false
+
+	var extensions: [Action] {
+		let exts = actionManager.actions.filter { action in
+			switch action.kind {
+			case .pattern, .scriptFilter, .nativeExtension:
+				true
+			case .quickLink:
+				false
+			}
+		}
+		print("Extensions count: \(exts.count)")
+		for ext in exts {
+			print("  - \(ext.name) (id: \(ext.id))")
+		}
+		return exts
+	}
+
+	var body: some View {
+		HStack(spacing: 0) {
+			// Left sidebar - Extensions list
+			VStack(spacing: 0) {
+				// Header
+				HStack {
+					Text("Extensions")
+						.font(Font(settings.uiFont.withSize(14)))
+						.foregroundColor(settings.textColorUI.opacity(0.7))
+					Spacer()
+
+					Button(action: {
+						let extensionsDir = StoragePathManager.shared.getExtensionsDir()
+						NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: extensionsDir)
+					}) {
+						Image(systemName: "folder")
+							.font(.system(size: 14))
+							.foregroundColor(settings.secondaryTextColorUI)
+					}
+					.buttonStyle(PlainButtonStyle())
+					.help("Open extensions folder")
+
+					Button(action: {
+						showingCreateExtension = true
+					}) {
+						Image(systemName: "plus")
+							.font(.system(size: 14))
+							.foregroundColor(settings.accentColorUI)
+					}
+					.buttonStyle(PlainButtonStyle())
+					.help("Create new extension")
+				}
+				.padding(.horizontal, 16)
+				.padding(.vertical, 12)
+				.background(settings.backgroundColorUI)
+
+				Divider().background(Color.white.opacity(0.1))
+
+				// Extensions list
+				if extensions.isEmpty {
+					VStack(spacing: 12) {
+						Spacer()
+						Image(systemName: "puzzlepiece.extension")
+							.font(.system(size: 32))
+							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
+						Text("No extensions yet")
+							.font(Font(settings.uiFont.withSize(12)))
+							.foregroundColor(settings.secondaryTextColorUI)
+						Button(action: {
+							showingCreateExtension = true
+						}) {
+							HStack(spacing: 6) {
+								Image(systemName: "plus.circle.fill")
+									.font(.system(size: 14))
+								Text("Create Extension")
+									.font(Font(settings.uiFont.withSize(12)))
+							}
+							.foregroundColor(settings.accentColorUI)
+							.padding(.horizontal, 16)
+							.padding(.vertical, 10)
+							.background(settings.searchBarColorUI)
+							.cornerRadius(6)
+						}
+						.buttonStyle(PlainButtonStyle())
+						Spacer()
+					}
+					.frame(maxWidth: .infinity)
+				} else {
+					ScrollView {
+						VStack(spacing: 4) {
+							ForEach(extensions) { ext in
+								ExtensionListItem(
+									action: ext,
+									isSelected: selectedExtensionId == ext.id,
+									onSelect: { selectedExtensionId = ext.id },
+									onDelete: {
+										actionManager.remove(ext)
+										if selectedExtensionId == ext.id {
+											selectedExtensionId = nil
+										}
+									}
+								)
+							}
+						}
+						.padding(8)
+					}
+				}
+			}
+			.frame(width: 280)
+			.background(settings.backgroundColorUI)
+
+			Divider().background(Color.white.opacity(0.1))
+
+			// Right side - Extension info or empty state
+			Group {
+				if let selectedId = selectedExtensionId,
+				   let selectedExtension = extensions.first(where: { $0.id == selectedId })
+				{
+					ExtensionInfoView(
+						action: selectedExtension,
+						onClose: { selectedExtensionId = nil }
+					)
+				} else {
+					// Empty state
+					VStack(spacing: 16) {
+						Image(systemName: "puzzlepiece.extension")
+							.font(.system(size: 64))
+							.foregroundColor(settings.secondaryTextColorUI.opacity(0.3))
+						Text("Select an extension to view details")
+							.font(Font(settings.uiFont.withSize(15)))
+							.foregroundColor(settings.secondaryTextColorUI)
+						Text("Extensions are managed via manifest.json files")
+							.font(Font(settings.uiFont.withSize(12)))
+							.foregroundColor(settings.secondaryTextColorUI.opacity(0.6))
+					}
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
+					.background(settings.backgroundColorUI)
+				}
+			}
+		}
+		.sheet(isPresented: $showingCreateExtension) {
+			SimpleExtensionCreator()
+		}
+	}
+}
+
+// MARK: - Extension List Item
+
+struct ExtensionListItem: View {
+	let action: Action
+	let isSelected: Bool
+	let onSelect: () -> Void
+	let onDelete: () -> Void
+	@ObservedObject var settings = AppSettings.shared
+	@State private var isHovered = false
+
+	var body: some View {
+		HStack(spacing: 10) {
+			// Icon
+			Image(systemName: action.icon.isEmpty ? "puzzlepiece.extension" : action.icon)
+				.font(.system(size: 14))
+				.foregroundColor(isSelected ? settings.accentColorUI : settings.textColorUI)
+				.frame(width: 20)
+
+			// Name and keyword - clickable area
+			Button(action: {
+				print("Extension selected: \(action.name) (id: \(action.id))")
+				onSelect()
+			}) {
+				VStack(alignment: .leading, spacing: 2) {
+					Text(action.name)
+						.font(Font(settings.uiFont.withSize(12)))
+						.foregroundColor(isSelected ? settings.accentColorUI : settings.textColorUI)
+						.lineLimit(1)
+				}
+			}
+			.buttonStyle(PlainButtonStyle())
+
+			Spacer()
+
+			// Delete button (shown on hover)
+			if isHovered {
+				Button(action: {
+					print("Delete extension clicked: \(action.name)")
+					onDelete()
+				}) {
+					Image(systemName: "trash")
+						.font(.system(size: 11))
+						.foregroundColor(.red.opacity(0.7))
+				}
+				.buttonStyle(PlainButtonStyle())
+			}
+		}
+		.padding(.horizontal, 12)
+		.padding(.vertical, 8)
+		.background(isSelected ? settings.accentColorUI
+			.opacity(0.15) : (isHovered ? settings.searchBarColorUI.opacity(0.5) : Color.clear))
+		.cornerRadius(6)
+		.onHover { hovering in
+			isHovered = hovering
+		}
 	}
 }

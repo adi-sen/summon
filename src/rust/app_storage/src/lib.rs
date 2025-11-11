@@ -1,11 +1,8 @@
-//! Application storage using rkyv for zero-copy deserialization.
-
 use std::{io, path::Path};
 
 use rkyv::{Archive, Deserialize, Serialize};
 use storage_utils::RkyvStorage;
 
-/// A single application entry
 #[derive(Archive, Deserialize, Serialize, Debug, Clone)]
 #[archive(compare(PartialEq))]
 #[archive_attr(derive(Debug))]
@@ -18,7 +15,6 @@ impl AppEntry {
 	pub fn new(name: String, path: String) -> Self { Self { name, path } }
 }
 
-/// Application cache storage
 pub struct AppStorage {
 	storage: RkyvStorage<AppEntry>,
 }

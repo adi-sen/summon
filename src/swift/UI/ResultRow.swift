@@ -9,7 +9,7 @@ struct ResultRow: View {
 	@ObservedObject var settings = AppSettings.shared
 
 	private var isSmallIcon: Bool {
-		result.category == "Clipboard" || result.category == "Action"
+		result.category == "Clipboard"
 	}
 
 	private func themeColor(_ color: (Double, Double, Double)) -> Color {
@@ -125,7 +125,7 @@ struct ResultRow: View {
 		case "Calculator": "equal.circle.fill"
 		case "Command":
 			["cmd_settings": "gearshape.fill", "cmd_clipboard": "doc.on.clipboard.fill"][result.id] ?? "command.circle.fill"
-		case "Action": "ellipsis.circle.fill"
+		case "Action": "globe"
 		case "Clipboard":
 			if let entry = result.clipboardEntry {
 				switch entry.type {

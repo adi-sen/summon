@@ -9,9 +9,8 @@ class SnippetExpander {
 	private var currentBuffer: String = ""
 	private let manager = SnippetManager.shared
 
-	private let maxBufferLength = 50 // Max trigger length to track
+	private let maxBufferLength = 50
 
-	// Static keycode map for O(1) lookup instead of O(n) switch statement
 	private static let keyCodeMap: [Character: Int] = [
 		"a": kVK_ANSI_A, "b": kVK_ANSI_B, "c": kVK_ANSI_C, "d": kVK_ANSI_D,
 		"e": kVK_ANSI_E, "f": kVK_ANSI_F, "g": kVK_ANSI_G, "h": kVK_ANSI_H,
@@ -82,7 +81,6 @@ class SnippetExpander {
 			return Unmanaged.passRetained(event)
 		}
 
-		// Don't expand snippets if we're in our own settings window
 		if let keyWindow = NSApp.keyWindow, keyWindow.title == "Settings" {
 			return Unmanaged.passRetained(event)
 		}
@@ -100,9 +98,9 @@ class SnippetExpander {
 				return Unmanaged.passRetained(event)
 			} else if keyCode == kVK_Space {
 				let result = checkAndExpandSnippet()
-				currentBuffer = "" // Clear buffer after space
+				currentBuffer = ""
 				if result {
-					return nil // Suppress the space if we expanded
+					return nil
 				}
 				return Unmanaged.passRetained(event)
 			}
@@ -158,7 +156,7 @@ class SnippetExpander {
 				let needsShift = char.isUppercase || "!@#$%^&*()_+{}|:\"<>?".contains(char)
 				let modifiers: CGEventFlags = needsShift ? .maskShift : []
 				sendKeyPress(keyCode: keyCode, modifiers: modifiers)
-				usleep(1000) // 1ms delay between characters (optimized from 5ms)
+				usleep(1000)
 			} else {
 				pasteText(String(char))
 			}

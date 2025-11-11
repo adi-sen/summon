@@ -1,6 +1,8 @@
 import Foundation
 
 struct StoragePathManager {
+	static let shared = StoragePathManager()
+
 	let appSupportDir: URL
 
 	init() {
@@ -43,5 +45,24 @@ struct StoragePathManager {
 		return
 			cacheDir?
 				.appendingPathComponent("summon-cache-v4.plist").path ?? "/tmp/summon-cache-v4.plist"
+	}
+
+	func getActionsPath() -> String {
+		appSupportDir.appendingPathComponent("actions.rkyv").path
+	}
+
+	func getExtensionsDir() -> String {
+		let extensionsDir = appSupportDir.appendingPathComponent("extensions")
+		try? FileManager.default.createDirectory(
+			at: extensionsDir,
+			withIntermediateDirectories: true,
+			attributes: nil
+		)
+		return extensionsDir.path
+	}
+
+	func getExtensionPath(forId id: String) -> String {
+		let extensionsDir = URL(fileURLWithPath: getExtensionsDir())
+		return extensionsDir.appendingPathComponent("\(id).lua").path
 	}
 }

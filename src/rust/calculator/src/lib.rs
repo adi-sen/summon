@@ -62,12 +62,6 @@ impl Calculator {
 		})
 	}
 
-	/// Convert currency
-	/// Format: "100 USD to EUR" or "100 USD EUR"
-	/// Returns (amount, from, to, result)
-	///
-	/// NOTE: Exchange rates are hardcoded and not updated from live sources.
-	/// For demonstration purposes only - rates may be significantly outdated.
 	pub fn convert_currency(&self, query: &str) -> Option<(f64, String, String, f64)> {
 		let parts: Vec<&str> = query.split_whitespace().collect();
 
@@ -97,9 +91,6 @@ impl Calculator {
 		Some((amount, from_currency, to_currency, result))
 	}
 
-	/// Convert timezone
-	/// Format: "3pm EST to PST" or "15:00 EST PST" or "now in PST"
-	/// Returns (`time_str`, `from_tz`, `to_tz`, result)
 	pub fn convert_timezone(&self, query: &str) -> Option<(String, String, String, String)> {
 		let parts: Vec<&str> = query.split_whitespace().collect();
 

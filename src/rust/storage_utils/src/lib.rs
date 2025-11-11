@@ -1,14 +1,8 @@
-//! Shared storage utilities for rkyv-based serialization.
-//!
-//! Provides generic functions and types for loading and saving data using rkyv
-//! zero-copy serialization.
-
 use std::{fs::{self, OpenOptions}, io::{self, BufWriter, Write}, path::{Path, PathBuf}, sync::Arc};
 
 use parking_lot::RwLock;
 use rkyv::{Archive, Deserialize, Serialize};
 
-/// Load items from disk using rkyv deserialization
 pub fn load_from_disk<T>(path: &Path) -> io::Result<Vec<T>>
 where
 	T: Archive,
@@ -28,7 +22,6 @@ where
 	Ok(items)
 }
 
-/// Save items to disk using rkyv serialization with atomic write
 pub fn save_to_disk<T>(path: &Path, items: &Vec<T>) -> io::Result<()>
 where
 	T: Serialize<rkyv::ser::serializers::AllocSerializer<4096>>,
@@ -48,7 +41,6 @@ where
 	Ok(())
 }
 
-/// Generic thread-safe rkyv-based storage for Vec<T>
 pub struct RkyvStorage<T>
 where
 	T: Archive + Serialize<rkyv::ser::serializers::AllocSerializer<4096>>,

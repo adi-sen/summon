@@ -485,6 +485,35 @@ struct ContentView: View {
 						)
 					})
 
+				let actionResults = ActionManager.shared.search(query: query)
+				print("[ContentView] Got \(actionResults.count) action results")
+				allResults.append(
+					contentsOf: actionResults.map { result in
+						print("[ContentView] Mapping result: '\(result.title)' with url: '\(result.url)'")
+						let icon = ActionIconGenerator.generateIcon(
+							for: result.title,
+							iconName: result.icon,
+							url: result.url
+						)
+
+						return CategoryResult(
+							id: result.id,
+							name: result.title,
+							category: "Action",
+							path: result.subtitle,
+							action: {
+								if let url = URL(string: result.url), url.scheme != nil {
+									NSWorkspace.shared.open(url)
+								}
+								NSApp.keyWindow?.orderOut(nil)
+							},
+							fullContent: nil,
+							clipboardEntry: nil,
+							icon: icon,
+							score: Int64(result.score * 100)
+						)
+					})
+
 				allResults.sort { $0.score > $1.score }
 				allResults = Array(allResults.prefix(maxResults))
 
@@ -506,7 +535,7 @@ struct ContentView: View {
 		}
 
 		searchTask = task
-		DispatchQueue.global(qos: .userInitiated).async(execute: task)
+		DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.15, execute: task)
 	}
 
 	private func evaluateCalculator(_ query: String) -> String? {

@@ -1,3 +1,4 @@
+// swiftlint:disable function_parameter_count
 import Foundation
 
 enum FFI {
@@ -91,17 +92,19 @@ enum FFI {
 			guard let contentPtr = cEntry.content else { continue }
 			let content = String(cString: contentPtr)
 
-			let imageFilePath: String? = if let pathPtr = cEntry.imageFilePath {
-				String(cString: pathPtr)
-			} else {
-				nil
-			}
+			let imageFilePath: String? =
+				if let pathPtr = cEntry.imageFilePath {
+					String(cString: pathPtr)
+				} else {
+					nil
+				}
 
-			let sourceApp: String? = if let appPtr = cEntry.sourceApp {
-				String(cString: appPtr)
-			} else {
-				nil
-			}
+			let sourceApp: String? =
+				if let appPtr = cEntry.sourceApp {
+					String(cString: appPtr)
+				} else {
+					nil
+				}
 
 			swiftEntries.append(
 				SwiftClipboardEntry(
@@ -349,10 +352,11 @@ enum FFI {
 			let cEntry = cEntries[i]
 			guard let namePtr = cEntry.name, let pathPtr = cEntry.path else { continue }
 
-			swiftEntries.append(SwiftAppEntry(
-				name: String(cString: namePtr),
-				path: String(cString: pathPtr)
-			))
+			swiftEntries.append(
+				SwiftAppEntry(
+					name: String(cString: namePtr),
+					path: String(cString: pathPtr)
+				))
 		}
 
 		app_entries_free(cEntries, outCount)
@@ -387,38 +391,43 @@ enum FFI {
 		let theme = cSettings.pointee.theme.map { String(cString: $0) } ?? "dark"
 		let customFontName = cSettings.pointee.customFontName.map { String(cString: $0) } ?? ""
 		let fontSize = cSettings.pointee.fontSize.map { String(cString: $0) } ?? "medium"
-		let quickSelectModifier = cSettings.pointee.quickSelectModifier.map { String(cString: $0) } ?? "option"
-		let launcherShortcutKey = cSettings.pointee.launcherShortcutKey.map { String(cString: $0) } ?? "space"
-		let clipboardShortcutKey = cSettings.pointee.clipboardShortcutKey.map { String(cString: $0) } ?? "v"
+		let quickSelectModifier =
+			cSettings.pointee.quickSelectModifier.map { String(cString: $0) } ?? "option"
+		let launcherShortcutKey =
+			cSettings.pointee.launcherShortcutKey.map { String(cString: $0) } ?? "space"
+		let clipboardShortcutKey =
+			cSettings.pointee.clipboardShortcutKey.map { String(cString: $0) } ?? "v"
 
-		let launcherShortcutMods: [String] = if let jsonStr = cSettings.pointee.launcherShortcutMods
-			.map({ String(cString: $0) }),
+		let launcherShortcutMods: [String] =
+			if let jsonStr = cSettings.pointee.launcherShortcutMods
+					.map({ String(cString: $0) }),
+					let data = jsonStr.data(using: .utf8),
+					let arr = try? JSONDecoder().decode([String].self, from: data)
+			{
+				arr
+			} else {
+				["command"]
+			}
+
+		let clipboardShortcutMods: [String] =
+			if let jsonStr = cSettings.pointee.clipboardShortcutMods
+					.map({ String(cString: $0) }),
+					let data = jsonStr.data(using: .utf8),
+					let arr = try? JSONDecoder().decode([String].self, from: data)
+			{
+				arr
+			} else {
+				["command", "shift"]
+			}
+
+		let searchFolders: [String] =
+			if let jsonStr = cSettings.pointee.searchFolders.map({ String(cString: $0) }),
 			let data = jsonStr.data(using: .utf8),
-			let arr = try? JSONDecoder().decode([String].self, from: data)
-		{
-			arr
-		} else {
-			["command"]
-		}
-
-		let clipboardShortcutMods: [String] = if let jsonStr = cSettings.pointee.clipboardShortcutMods
-			.map({ String(cString: $0) }),
-			let data = jsonStr.data(using: .utf8),
-			let arr = try? JSONDecoder().decode([String].self, from: data)
-		{
-			arr
-		} else {
-			["command", "shift"]
-		}
-
-		let searchFolders: [String] = if let jsonStr = cSettings.pointee.searchFolders.map({ String(cString: $0) }),
-		                                 let data = jsonStr.data(using: .utf8),
-		                                 let arr = try? JSONDecoder().decode([String].self, from: data)
-		{
-			arr
-		} else {
-			["/Applications", "/System/Applications", "/System/Applications/Utilities"]
-		}
+			let arr = try? JSONDecoder().decode([String].self, from: data) {
+				arr
+			} else {
+				["/Applications", "/System/Applications", "/System/Applications/Utilities"]
+			}
 
 		return SwiftAppSettings(
 			theme: theme,
@@ -612,7 +621,9 @@ enum FFI {
 		return dirPointers.withUnsafeMutableBufferPointer { dirBuffer in
 			excludePointers.withUnsafeMutableBufferPointer { excludeBuffer in
 				let dirCArray = CStringArray(data: dirBuffer.baseAddress, len: dirBuffer.count)
-				let excludeCArray = CStringArray(data: excludeBuffer.baseAddress, len: excludeBuffer.count)
+				let excludeCArray = CStringArray(
+					data: excludeBuffer.baseAddress, len: excludeBuffer.count
+				)
 				return search_engine_scan_apps(handle, dirCArray, excludeCArray)
 			}
 		}
@@ -895,7 +906,9 @@ func app_storage_new(_ path: UnsafePointer<CChar>?) -> OpaquePointer?
 func app_storage_free(_ handle: OpaquePointer?)
 
 @_silgen_name("app_storage_add")
-func app_storage_add(_ handle: OpaquePointer?, _ name: UnsafePointer<CChar>?, _ path: UnsafePointer<CChar>?) -> Bool
+func app_storage_add(
+	_ handle: OpaquePointer?, _ name: UnsafePointer<CChar>?, _ path: UnsafePointer<CChar>?
+) -> Bool
 
 @_silgen_name("app_storage_get_all")
 func app_storage_get_all(_ handle: OpaquePointer?, _ outCount: UnsafeMutablePointer<Int>?)
@@ -943,3 +956,210 @@ func settings_storage_save(
 
 @_silgen_name("settings_free")
 func settings_free(_ settings: UnsafeMutablePointer<FFI.CAppSettings>?)
+
+
+extension FFI {
+	typealias ActionManagerHandle = OpaquePointer
+
+	struct CActionResult {
+		let id: UnsafeMutablePointer<CChar>?
+		let title: UnsafeMutablePointer<CChar>?
+		let subtitle: UnsafeMutablePointer<CChar>?
+		let icon: UnsafeMutablePointer<CChar>?
+		let url: UnsafeMutablePointer<CChar>?
+		let score: Float
+	}
+
+	struct SwiftActionResult {
+		let id: String
+		let title: String
+		let subtitle: String
+		let icon: String
+		let url: String
+		let score: Float
+	}
+
+	static func actionManagerNew(path: String) -> ActionManagerHandle? {
+		path.withCString { action_manager_new($0) }
+	}
+
+	static func actionManagerFree(_ handle: ActionManagerHandle?) {
+		guard let handle else { return }
+		action_manager_free(handle)
+	}
+
+	static func actionManagerSearch(_ handle: ActionManagerHandle?, query: String)
+		-> [SwiftActionResult]
+	{
+		guard let handle else { return [] }
+
+		var count = 0
+		let results = query.withCString { queryPtr in
+			action_manager_search(handle, queryPtr, &count)
+		}
+
+		guard let results, count > 0 else { return [] }
+		defer { action_results_free(results, count) }
+
+		var output: [SwiftActionResult] = []
+		for i in 0 ..< count {
+			let result = results[i]
+			guard let idPtr = result.id,
+			      let titlePtr = result.title,
+			      let subtitlePtr = result.subtitle,
+			      let iconPtr = result.icon,
+			      let urlPtr = result.url
+			else { continue }
+
+			output.append(
+				SwiftActionResult(
+					id: String(cString: idPtr),
+					title: String(cString: titlePtr),
+					subtitle: String(cString: subtitlePtr),
+					icon: String(cString: iconPtr),
+					url: String(cString: urlPtr),
+					score: result.score
+				))
+		}
+		return output
+	}
+
+	static func actionManagerAddQuickLink(
+		_ handle: ActionManagerHandle?,
+		id: String,
+		name: String,
+		keyword: String,
+		url: String,
+		icon: String
+	) -> Bool {
+		guard let handle else { return false }
+		return id.withCString { idPtr in
+			name.withCString { namePtr in
+				keyword.withCString { keywordPtr in
+					url.withCString { urlPtr in
+						icon.withCString { iconPtr in
+							action_manager_add_quick_link(
+								handle, idPtr, namePtr, keywordPtr, urlPtr, iconPtr
+							)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	static func actionManagerAddPattern(
+		_ handle: ActionManagerHandle?,
+		id: String,
+		name: String,
+		pattern: String,
+		url: String,
+		icon: String
+	) -> Bool {
+		guard let handle else { return false }
+		return id.withCString { idPtr in
+			name.withCString { namePtr in
+				pattern.withCString { patternPtr in
+					url.withCString { urlPtr in
+						icon.withCString { iconPtr in
+							action_manager_add_pattern(
+								handle, idPtr, namePtr, patternPtr, urlPtr, iconPtr
+							)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	static func actionManagerAddJSON(_ handle: ActionManagerHandle?, json: String) -> Bool {
+		guard let handle else { return false }
+		return json.withCString { action_manager_add_json(handle, $0) }
+	}
+
+	static func actionManagerUpdateJSON(_ handle: ActionManagerHandle?, json: String) -> Bool {
+		guard let handle else { return false }
+		return json.withCString { action_manager_update_json(handle, $0) }
+	}
+
+	static func actionManagerRemove(_ handle: ActionManagerHandle?, id: String) -> Bool {
+		guard let handle else { return false }
+		return id.withCString { action_manager_remove(handle, $0) }
+	}
+
+	static func actionManagerToggle(_ handle: ActionManagerHandle?, id: String) -> Bool {
+		guard let handle else { return false }
+		return id.withCString { action_manager_toggle(handle, $0) }
+	}
+
+	static func actionManagerGetAllJSON(_ handle: ActionManagerHandle?) -> String? {
+		guard let handle else { return nil }
+		guard let json = action_manager_get_all_json(handle) else { return nil }
+		defer { string_free(json) }
+		return String(cString: json)
+	}
+
+	static func actionManagerImportDefaults(_ handle: ActionManagerHandle?) -> Bool {
+		guard let handle else { return false }
+		return action_manager_import_defaults(handle)
+	}
+
+}
+
+@_silgen_name("action_manager_new")
+func action_manager_new(_ path: UnsafePointer<CChar>?) -> OpaquePointer?
+
+@_silgen_name("action_manager_free")
+func action_manager_free(_ handle: OpaquePointer?)
+
+@_silgen_name("action_manager_search")
+func action_manager_search(
+	_ handle: OpaquePointer?,
+	_ query: UnsafePointer<CChar>?,
+	_ outCount: UnsafeMutablePointer<Int>?
+) -> UnsafeMutablePointer<FFI.CActionResult>?
+
+@_silgen_name("action_results_free")
+func action_results_free(_ results: UnsafeMutablePointer<FFI.CActionResult>?, _ count: Int)
+
+@_silgen_name("action_manager_add_json")
+func action_manager_add_json(_ handle: OpaquePointer?, _ json: UnsafePointer<CChar>?) -> Bool
+
+@_silgen_name("action_manager_add_quick_link")
+func action_manager_add_quick_link(
+	_ handle: OpaquePointer?,
+	_ id: UnsafePointer<CChar>?,
+	_ name: UnsafePointer<CChar>?,
+	_ keyword: UnsafePointer<CChar>?,
+	_ url: UnsafePointer<CChar>?,
+	_ icon: UnsafePointer<CChar>?
+) -> Bool
+
+@_silgen_name("action_manager_add_pattern")
+func action_manager_add_pattern(
+	_ handle: OpaquePointer?,
+	_ id: UnsafePointer<CChar>?,
+	_ name: UnsafePointer<CChar>?,
+	_ pattern: UnsafePointer<CChar>?,
+	_ url: UnsafePointer<CChar>?,
+	_ icon: UnsafePointer<CChar>?
+) -> Bool
+
+@_silgen_name("action_manager_update_json")
+func action_manager_update_json(_ handle: OpaquePointer?, _ json: UnsafePointer<CChar>?) -> Bool
+
+@_silgen_name("action_manager_remove")
+func action_manager_remove(_ handle: OpaquePointer?, _ id: UnsafePointer<CChar>?) -> Bool
+
+@_silgen_name("action_manager_toggle")
+func action_manager_toggle(_ handle: OpaquePointer?, _ id: UnsafePointer<CChar>?) -> Bool
+
+@_silgen_name("action_manager_get_all_json")
+func action_manager_get_all_json(_ handle: OpaquePointer?) -> UnsafeMutablePointer<CChar>?
+
+@_silgen_name("action_manager_import_defaults")
+func action_manager_import_defaults(_ handle: OpaquePointer?) -> Bool
+
+
+@_silgen_name("string_free")
+func string_free(_ s: UnsafeMutablePointer<CChar>?)

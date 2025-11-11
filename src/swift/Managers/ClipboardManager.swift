@@ -70,7 +70,7 @@ final class ClipboardManager {
 	}
 
 	private func addTextEntry(_ content: String, sourceApp: String?) {
-		let maxContentSize = 1_048_576 // 1MB
+		let maxContentSize = 1_048_576
 		let truncatedContent = content.count > maxContentSize
 			? String(content.prefix(maxContentSize))
 			: content
