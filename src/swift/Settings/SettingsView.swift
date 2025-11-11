@@ -1501,7 +1501,7 @@ struct WebSearchesSettingsTab: View {
 				}
 				.background(settings.backgroundColorUI)
 			} else {
-				ActionsList(filterType: .quickLink)
+				WebSearchesList()
 					.background(settings.backgroundColorUI)
 			}
 		}

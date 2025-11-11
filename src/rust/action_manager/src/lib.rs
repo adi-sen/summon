@@ -5,6 +5,7 @@ pub mod script_filter;
 
 use std::{path::Path, sync::Arc};
 
+use aho_corasick::AhoCorasick;
 use parking_lot::RwLock;
 use storage_utils::RkyvStorage;
 
@@ -18,6 +19,7 @@ pub struct ActionManager {
 	storage: Arc<RkyvStorage<Action>>,
 	actions: Arc<RwLock<Vec<Action>>>,
 	extensions: Arc<ExtensionRegistry>,
+	keyword_matcher: Arc<RwLock<Option<AhoCorasick>>>,
 }
 
 impl ActionManager {
@@ -25,13 +27,17 @@ impl ActionManager {
 		let storage = Arc::new(RkyvStorage::new(storage_path)?);
 		let actions = Arc::new(RwLock::new(storage.get_all()));
 		let extensions = Arc::new(ExtensionRegistry::new());
+		let keyword_matcher = Arc::new(RwLock::new(None));
 
-		Ok(Self { storage, actions, extensions })
+		let manager = Self { storage, actions, extensions, keyword_matcher };
+		manager.rebuild_keyword_matcher();
+		Ok(manager)
 	}
 
 	pub fn add(&self, action: Action) -> std::io::Result<()> {
 		self.storage.add(action.clone())?;
 		self.actions.write().push(action);
+		self.rebuild_keyword_matcher();
 		Ok(())
 	}
 
@@ -50,6 +56,8 @@ impl ActionManager {
 			if let Some(pos) = actions.iter().position(|a| a.id == action.id) {
 				actions[pos] = action;
 			}
+			drop(actions);
+			self.rebuild_keyword_matcher();
 		}
 
 		Ok(modified)
@@ -64,6 +72,7 @@ impl ActionManager {
 
 		if modified {
 			self.actions.write().retain(|a| a.id != id);
+			self.rebuild_keyword_matcher();
 		}
 
 		Ok(modified)
@@ -83,6 +92,7 @@ impl ActionManager {
 			action.enabled = !action.enabled;
 		}
 
+		self.rebuild_keyword_matcher();
 		Ok(modified)
 	}
 
@@ -172,17 +182,17 @@ impl ActionManager {
 
 	pub fn import_defaults(&self) -> std::io::Result<()> {
 		let defaults = vec![
-			Action::quick_link("google", "Google Search", "g", "https://www.google.com/search?q={query}", "magnifyingglass"),
+			Action::quick_link("google", "Google", "g", "https://www.google.com/search?q={query}", "globe.americas.fill"),
 			Action::quick_link(
 				"duckduckgo",
 				"DuckDuckGo",
 				"ddg",
 				"https://duckduckgo.com/?q={query}",
-				"magnifyingglass.circle",
+				"shield.fill",
 			),
 			Action::quick_link(
 				"github",
-				"GitHub Search",
+				"GitHub",
 				"gh",
 				"https://github.com/search?q={query}",
 				"chevron.left.forwardslash.chevron.right",
@@ -192,21 +202,21 @@ impl ActionManager {
 				"Stack Overflow",
 				"so",
 				"https://stackoverflow.com/search?q={query}",
-				"questionmark.circle",
+				"bubble.left.and.bubble.right.fill",
 			),
 			Action::quick_link(
 				"wikipedia",
 				"Wikipedia",
 				"wiki",
 				"https://en.wikipedia.org/wiki/Special:Search?search={query}",
-				"book",
+				"book.closed.fill",
 			),
 			Action::quick_link(
 				"youtube",
 				"YouTube",
 				"yt",
 				"https://www.youtube.com/results?search_query={query}",
-				"play.rectangle",
+				"play.rectangle.fill",
 			),
 		];
 
@@ -221,6 +231,36 @@ impl ActionManager {
 
 	pub fn storage_path(&self) -> &Path {
 		self.storage.path()
+	}
+
+	fn rebuild_keyword_matcher(&self) {
+		let actions = self.actions.read();
+		let mut keywords = Vec::new();
+
+		for action in actions.iter().filter(|a| a.enabled) {
+			let keyword = match &action.kind {
+				ActionKind::QuickLink { keyword, .. }
+				| ActionKind::ScriptFilter { keyword, .. }
+				| ActionKind::NativeExtension { keyword, .. } => keyword.as_str(),
+				ActionKind::Pattern { .. } => continue,
+			};
+			keywords.push(keyword);
+		}
+
+		if keywords.is_empty() {
+			*self.keyword_matcher.write() = None;
+			return;
+		}
+
+		match AhoCorasick::new(&keywords) {
+			Ok(ac) => {
+				*self.keyword_matcher.write() = Some(ac);
+			}
+			Err(e) => {
+				eprintln!("[ActionManager] Failed to build keyword matcher: {}", e);
+				*self.keyword_matcher.write() = None;
+			}
+		}
 	}
 }
 

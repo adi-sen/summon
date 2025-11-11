@@ -6,6 +6,7 @@ version = 4
 name = "action_manager"
 version = "0.0.1"
 dependencies = [
+ "aho-corasick",
  "lru",
  "parking_lot",
  "regex",

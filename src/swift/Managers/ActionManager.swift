@@ -157,6 +157,7 @@ final class ActionManager: ObservableObject {
 		}
 
 		importOrphanedExtensions()
+		importNativeExtensions()
 	}
 
 	private func importOrphanedExtensions() {
@@ -219,6 +220,27 @@ final class ActionManager: ObservableObject {
 			)
 
 			print("Auto-importing extension: \(manifest.name) (keyword: \(manifest.keyword))")
+			add(action)
+		}
+	}
+
+	private func importNativeExtensions() {
+		let nativeExtensions: [(id: String, name: String, keyword: String, icon: String)] = [
+			("obsidian-workspaces", "Obsidian Workspaces", "obs", "doc.text.image")
+		]
+
+		for ext in nativeExtensions {
+			if actions.contains(where: { $0.id == ext.id }) {
+				continue
+			}
+
+			let action = Action(
+				id: ext.id,
+				name: ext.name,
+				icon: ext.icon,
+				enabled: false, // Disabled by default so users can opt-in
+				kind: .nativeExtension(keyword: ext.keyword, extensionId: ext.id)
+			)
 			add(action)
 		}
 	}
