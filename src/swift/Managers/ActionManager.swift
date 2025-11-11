@@ -11,13 +11,11 @@ struct Action: Codable, Identifiable {
 		case quickLink(keyword: String, url: String)
 		case pattern(pattern: String, url: String)
 		case scriptFilter(keyword: String, scriptPath: String, extensionDir: String)
-		case nativeExtension(keyword: String, extensionId: String)
 
 		enum CodingKeys: String, CodingKey {
 			case quickLink = "QuickLink"
 			case pattern = "Pattern"
 			case scriptFilter = "ScriptFilter"
-			case nativeExtension = "NativeExtension"
 		}
 
 		private enum QuickLinkKeys: String, CodingKey {
@@ -36,11 +34,6 @@ struct Action: Codable, Identifiable {
 			case keyword
 			case scriptPath = "script_path"
 			case extensionDir = "extension_dir"
-		}
-
-		private enum NativeExtensionKeys: String, CodingKey {
-			case keyword
-			case extensionId = "extension_id"
 		}
 
 		init(from decoder: Decoder) throws {
@@ -71,13 +64,6 @@ struct Action: Codable, Identifiable {
 				let scriptPath = try scriptFilterContainer.decode(String.self, forKey: .scriptPath)
 				let extensionDir = try scriptFilterContainer.decode(String.self, forKey: .extensionDir)
 				self = .scriptFilter(keyword: keyword, scriptPath: scriptPath, extensionDir: extensionDir)
-			} else if let nativeExtContainer = try? container.nestedContainer(
-				keyedBy: NativeExtensionKeys.self,
-				forKey: .nativeExtension
-			) {
-				let keyword = try nativeExtContainer.decode(String.self, forKey: .keyword)
-				let extensionId = try nativeExtContainer.decode(String.self, forKey: .extensionId)
-				self = .nativeExtension(keyword: keyword, extensionId: extensionId)
 			} else {
 				throw DecodingError.dataCorrupted(
 					DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Unknown action kind")
@@ -108,14 +94,6 @@ struct Action: Codable, Identifiable {
 				try scriptFilterContainer.encode(keyword, forKey: .keyword)
 				try scriptFilterContainer.encode(scriptPath, forKey: .scriptPath)
 				try scriptFilterContainer.encode(extensionDir, forKey: .extensionDir)
-
-			case let .nativeExtension(keyword, extensionId):
-				var nativeExtContainer = container.nestedContainer(
-					keyedBy: NativeExtensionKeys.self,
-					forKey: .nativeExtension
-				)
-				try nativeExtContainer.encode(keyword, forKey: .keyword)
-				try nativeExtContainer.encode(extensionId, forKey: .extensionId)
 			}
 		}
 	}
@@ -157,7 +135,6 @@ final class ActionManager: ObservableObject {
 		}
 
 		importOrphanedExtensions()
-		importNativeExtensions()
 	}
 
 	private func importOrphanedExtensions() {
@@ -173,29 +150,18 @@ final class ActionManager: ObservableObject {
 				continue
 			}
 
-			let manifestPath = dirURL.appendingPathComponent("manifest.json").path
-
-			guard FileManager.default.fileExists(atPath: manifestPath) else {
-				continue
-			}
-
-			guard let manifestData = try? Data(contentsOf: URL(fileURLWithPath: manifestPath)),
-			      let manifest = try? JSONDecoder().decode(ExtensionManifest.self, from: manifestData)
-			else {
-				print("Failed to parse manifest at: \(manifestPath)")
-				continue
-			}
-
 			let extensionId = dirURL.lastPathComponent
 
 			if actions.contains(where: { $0.id == extensionId }) {
 				continue
 			}
 
-			let scriptPath = dirURL.appendingPathComponent(manifest.script).path
+			guard let manifest = ExtensionManifest.load(from: dirURL.path) else {
+				continue
+			}
 
-			guard FileManager.default.fileExists(atPath: scriptPath) else {
-				print("Script not found: \(scriptPath)")
+			let fullScriptPath = dirURL.appendingPathComponent(manifest.script).path
+			guard FileManager.default.fileExists(atPath: fullScriptPath) else {
 				continue
 			}
 
@@ -214,23 +180,13 @@ final class ActionManager: ObservableObject {
 				enabled: true,
 				kind: .scriptFilter(
 					keyword: manifest.keyword,
-					scriptPath: scriptPath,
+					scriptPath: manifest.script,
 					extensionDir: dirURL.path
 				)
 			)
 
-			print("Auto-importing extension: \(manifest.name) (keyword: \(manifest.keyword))")
 			add(action)
 		}
-	}
-
-	private func importNativeExtensions() {
-		// Native extensions can be registered here if needed
-		// Example:
-		// let nativeExtensions: [(id: String, name: String, keyword: String, icon: String)] = [
-		//     ("my-native-extension", "My Extension", "mye", "star.fill")
-		// ]
-		// Currently empty - native extensions should be rare and only for performance-critical features
 	}
 
 	func importDefaults() {
@@ -272,6 +228,12 @@ final class ActionManager: ObservableObject {
 
 	func remove(_ action: Action) {
 		if FFI.actionManagerRemove(handle.handle, id: action.id) {
+			if action.icon.hasPrefix("web:") {
+				let iconName = String(action.icon.dropFirst(4))
+				let webIconsDir = "\(NSHomeDirectory())/Library/Application Support/Summon/WebIcons"
+				let iconPath = "\(webIconsDir)/\(iconName).png"
+				try? FileManager.default.removeItem(atPath: iconPath)
+			}
 			load()
 		}
 	}

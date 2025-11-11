@@ -31,7 +31,7 @@ struct ActionsList: View {
 		case .extensions:
 			actionManager.actions.filter { action in
 				switch action.kind {
-				case .pattern, .scriptFilter, .nativeExtension:
+				case .pattern, .scriptFilter:
 					true
 				case .quickLink:
 					false
@@ -125,7 +125,7 @@ struct ActionsList: View {
 		}
 		.sheet(isPresented: $showingAddAction) {
 			if filterType == .extensions {
-				SimpleExtensionCreator()
+				ExtensionCreator()
 			} else {
 				AddActionView()
 			}
@@ -282,27 +282,6 @@ struct InlineEditableActionCard: View {
 						.foregroundColor(settings.secondaryTextColorUI)
 						.lineLimit(1)
 						.truncationMode(.middle)
-				}
-				.padding(.leading, 44)
-
-			case let .nativeExtension(keyword, extensionId):
-				HStack(spacing: 6) {
-					Text(keyword)
-						.font(Font(settings.uiFont.withSize(11)))
-						.foregroundColor(settings.accentColorUI)
-						.padding(.horizontal, 6)
-						.padding(.vertical, 3)
-						.background(settings.searchBarColorUI)
-						.cornerRadius(3)
-
-					Image(systemName: "arrow.right")
-						.font(.system(size: 8))
-						.foregroundColor(settings.secondaryTextColorUI)
-
-					Text(extensionId)
-						.font(Font(settings.uiFont.withSize(11)))
-						.foregroundColor(settings.secondaryTextColorUI)
-						.lineLimit(1)
 				}
 				.padding(.leading, 44)
 			}
@@ -616,7 +595,6 @@ struct AddActionView: View {
 	}
 
 	private func resizeImage(_ image: NSImage, targetSize: NSSize) -> NSImage {
-		// Create bitmap representation
 		guard
 			let imageData = image.tiffRepresentation,
 			let bitmap = NSBitmapImageRep(data: imageData)
@@ -637,18 +615,14 @@ struct AddActionView: View {
 		let resized = NSImage(size: targetSize)
 		resized.lockFocus()
 
-		// Fill with transparent background
 		NSColor.clear.setFill()
 		NSRect(origin: .zero, size: targetSize).fill()
 
-		// Set high quality interpolation
 		NSGraphicsContext.current?.imageInterpolation = .high
 
-		// Center the image
 		let xOffset = (targetSize.width - scaledSize.width) / 2
 		let yOffset = (targetSize.height - scaledSize.height) / 2
 
-		// Draw the original image
 		image.draw(
 			in: NSRect(x: xOffset, y: yOffset, width: scaledSize.width, height: scaledSize.height),
 			from: NSRect(origin: .zero, size: image.size),

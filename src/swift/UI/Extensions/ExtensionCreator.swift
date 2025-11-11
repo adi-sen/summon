@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SimpleExtensionCreator: View {
+struct ExtensionCreator: View {
 	@Environment(\.presentationMode) var presentationMode
 	@ObservedObject var settings = AppSettings.shared
 	@ObservedObject var actionManager = ActionManager.shared
@@ -41,7 +41,7 @@ struct SimpleExtensionCreator: View {
 
 	enum ScriptTemplate: String, CaseIterable {
 		case search = "Search/Filter"
-		case action = "Simple Action"
+		case action = "Action"
 		case calculator = "Calculator/Converter"
 
 		var description: String {
@@ -74,15 +74,35 @@ struct SimpleExtensionCreator: View {
 
 			ScrollView {
 				VStack(alignment: .leading, spacing: 20) {
+					HStack(spacing: 12) {
+						Image(systemName: "info.circle.fill")
+							.font(.system(size: 14))
+							.foregroundColor(settings.accentColorUI)
+						VStack(alignment: .leading, spacing: 4) {
+							Text("Script Filter Extensions")
+								.font(Font(settings.uiFont.withSize(12)))
+								.foregroundColor(settings.textColorUI)
+							Text(
+								"Creates a script-based extension. For high-performance native (Rust) extensions, see documentation."
+							)
+							.font(Font(settings.uiFont.withSize(11)))
+							.foregroundColor(settings.secondaryTextColorUI)
+							.fixedSize(horizontal: false, vertical: true)
+						}
+					}
+					.padding(12)
+					.background(settings.searchBarColorUI.opacity(0.3))
+					.cornerRadius(8)
+
 					VStack(alignment: .leading, spacing: 16) {
-						FormField(
+						FormFieldText(
 							label: "Extension Name",
 							placeholder: "e.g., Obsidian Workspace Switcher",
 							text: $name,
 							settings: settings
 						)
 
-						FormField(
+						FormFieldText(
 							label: "Trigger Keyword",
 							placeholder: "e.g., ow",
 							text: $keyword,
@@ -90,14 +110,14 @@ struct SimpleExtensionCreator: View {
 							hint: "Type this keyword to activate your extension"
 						)
 
-						FormField(
+						FormFieldText(
 							label: "Description",
 							placeholder: "What does this extension do?",
 							text: $description,
 							settings: settings
 						)
 
-						FormField(
+						FormFieldText(
 							label: "Icon (SF Symbol)",
 							placeholder: "e.g., puzzlepiece.extension",
 							text: $icon,
@@ -177,27 +197,22 @@ struct SimpleExtensionCreator: View {
 			Divider().background(Color.white.opacity(0.1))
 
 			HStack(spacing: 12) {
-				Button("Cancel") {
+				StyledButton("Cancel", style: .secondary) {
 					presentationMode.wrappedValue.dismiss()
 				}
-				.buttonStyle(PlainButtonStyle())
-				.foregroundColor(settings.textColorUI)
-				.padding(.horizontal, 16)
-				.padding(.vertical, 8)
-				.background(settings.searchBarColorUI)
-				.cornerRadius(6)
 
 				Spacer()
 
-				Button("Create Extension") {
-					createExtension()
+				Button(action: createExtension) {
+					Text("Create Extension")
+						.font(Font(settings.uiFont.withSize(13)))
+						.foregroundColor(Color.white)
+						.padding(.horizontal, 16)
+						.padding(.vertical, 8)
+						.background(isFormValid ? settings.accentColorUI : settings.searchBarColorUI)
+						.cornerRadius(6)
 				}
 				.buttonStyle(PlainButtonStyle())
-				.foregroundColor(Color.white)
-				.padding(.horizontal, 16)
-				.padding(.vertical, 8)
-				.background(isFormValid ? settings.accentColorUI : settings.searchBarColorUI)
-				.cornerRadius(6)
 				.disabled(!isFormValid)
 			}
 			.padding(16)
@@ -556,38 +571,8 @@ struct SimpleExtensionCreator: View {
 	}
 }
 
-struct FormField: View {
-	let label: String
-	let placeholder: String
-	@Binding var text: String
-	let settings: AppSettings
-	var hint: String?
-
-	var body: some View {
-		VStack(alignment: .leading, spacing: 6) {
-			Text(label)
-				.font(Font(settings.uiFont.withSize(12)))
-				.foregroundColor(settings.textColorUI)
-
-			TextField(placeholder, text: $text)
-				.textFieldStyle(PlainTextFieldStyle())
-				.font(Font(settings.uiFont.withSize(13)))
-				.foregroundColor(settings.textColorUI)
-				.padding(10)
-				.background(settings.searchBarColorUI)
-				.cornerRadius(6)
-
-			if let hint {
-				Text(hint)
-					.font(Font(settings.uiFont.withSize(10)))
-					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
-			}
-		}
-	}
-}
-
 struct TemplateButton: View {
-	let template: SimpleExtensionCreator.ScriptTemplate
+	let template: ExtensionCreator.ScriptTemplate
 	let isSelected: Bool
 	let settings: AppSettings
 	let onSelect: () -> Void

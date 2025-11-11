@@ -17,7 +17,6 @@ pub enum ActionKind {
 	QuickLink { keyword: String, url: String },
 	Pattern { pattern: String, action: PatternActionType },
 	ScriptFilter { keyword: String, script_path: String, extension_dir: String },
-	NativeExtension { keyword: String, extension_id: String },
 }
 
 #[derive(Archive, Deserialize, Serialize, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
@@ -108,7 +107,6 @@ impl Action {
 				vec![pattern.split_whitespace().next().unwrap_or(pattern)]
 			}
 			ActionKind::ScriptFilter { keyword, .. } => vec![keyword.as_str()],
-			ActionKind::NativeExtension { keyword, .. } => vec![keyword.as_str()],
 		}
 	}
 }

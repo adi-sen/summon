@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 rkyv = { version = "0.7", features = ["validation"] }
 serde = { version = "1.0", features = ["derive", "serde_derive"] }
-serde_json = "1.0"
+sonic-rs = "0.3"
 parking_lot = "0.12"
 thiserror = "2.0"
 urlencoding = "2.1"
@@ -14,8 +14,8 @@ lru = { workspace = true }
 rustc-hash = { workspace = true }
 regex = "1.11"
 aho-corasick = "1.1"
+wait-timeout = "0.2"
+walkdir = "2.5"
+fuzzy-matcher = { workspace = true }
 
 storage_utils = { path = "../storage_utils" }
-
-[dev-dependencies]
-tempfile = "3.15"

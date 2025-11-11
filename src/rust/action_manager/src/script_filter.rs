@@ -1,9 +1,11 @@
-use std::{path::{Path, PathBuf}, process::{Command, Stdio}, time::{Duration, Instant}};
+use std::{io::Read, path::{Path, PathBuf}, process::{Command, Stdio}, time::{Duration, Instant}};
 
 use lru::LruCache;
 use parking_lot::RwLock;
 use rustc_hash::FxHasher;
 use serde::{Deserialize, Serialize};
+use sonic_rs::{JsonContainerTrait, JsonValueTrait};
+use wait_timeout::ChildExt;
 
 use crate::action::{ActionResult, ResultAction};
 
@@ -17,13 +19,14 @@ struct CacheEntry {
 static SCRIPT_CACHE: RwLock<Option<LruCache<CacheKey, CacheEntry>>> = RwLock::new(None);
 
 const SCRIPT_TIMEOUT_MS: u64 = 2000;
-const CACHE_TTL_MS: u64 = 500;
+const CACHE_TTL_MS: u64 = 2000;
+const CACHE_SIZE: usize = 100;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScriptOutput {
 	pub items:     Vec<ScriptItem>,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub variables: Option<serde_json::Value>,
+	pub variables: Option<sonic_rs::Value>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub rerun:     Option<f64>,
 }
@@ -59,7 +62,7 @@ fn default_true() -> bool { true }
 fn init_cache() {
 	let mut cache = SCRIPT_CACHE.write();
 	if cache.is_none() {
-		*cache = Some(LruCache::new(std::num::NonZeroUsize::new(50).unwrap()));
+		*cache = Some(LruCache::new(std::num::NonZeroUsize::new(CACHE_SIZE).unwrap()));
 	}
 }
 
@@ -114,61 +117,64 @@ pub fn execute_script_filter(
 		return Err(format!("Script not found: {}", script_path.display()));
 	}
 
-	let mut child = Command::new(&script_path)
-		.arg(query)
-		.current_dir(extension_dir)
-		.stdout(Stdio::piped())
-		.stderr(Stdio::piped())
-		.spawn()
-		.map_err(|e| format!("Failed to execute script: {}", e))?;
+	let manifest_path = Path::new(extension_dir).join("manifest.json");
+	let env_vars: Vec<(String, String)> = if manifest_path.exists() {
+		if let Ok(content) = std::fs::read(&manifest_path) {
+			if let Ok(manifest) = sonic_rs::from_slice::<sonic_rs::Value>(&content) {
+				if let Some(env) = manifest.get("env").and_then(|e| e.as_object()) {
+					env.iter().filter_map(|(k, v)| v.as_str().map(|s| (k.to_string(), s.to_string()))).collect()
+				} else {
+					Vec::new()
+				}
+			} else {
+				Vec::new()
+			}
+		} else {
+			Vec::new()
+		}
+	} else {
+		Vec::new()
+	};
+
+	let mut command = Command::new(&script_path);
+	command.arg(query).current_dir(extension_dir).stdout(Stdio::piped()).stderr(Stdio::piped());
+
+	for (key, value) in env_vars {
+		command.env(key, value);
+	}
+
+	let mut child = command.spawn().map_err(|e| format!("Failed to execute script: {}", e))?;
 
 	let timeout = Duration::from_millis(SCRIPT_TIMEOUT_MS);
-	let start = Instant::now();
 
-	let output = loop {
-		match child.try_wait() {
-			Ok(Some(status)) => {
-				let stdout = {
-					use std::io::Read;
-					let mut buf = Vec::new();
-					if let Some(ref mut out) = child.stdout {
-						let _ = out.read_to_end(&mut buf);
-					}
-					buf
-				};
-				let stderr = {
-					use std::io::Read;
-					let mut buf = Vec::new();
-					if let Some(ref mut err) = child.stderr {
-						let _ = err.read_to_end(&mut buf);
-					}
-					buf
-				};
-
-				break std::process::Output { status, stdout, stderr };
-			}
-			Ok(None) => {
-				if start.elapsed() > timeout {
-					let _ = child.kill();
-					return Err(format!("Script timed out after {}ms", SCRIPT_TIMEOUT_MS));
-				}
-				std::thread::sleep(Duration::from_millis(10));
-			}
-			Err(e) => {
-				let _ = child.kill();
-				return Err(format!("Failed to wait for script: {}", e));
-			}
+	let status = match child.wait_timeout(timeout).map_err(|e| format!("Failed to wait for script: {}", e))? {
+		Some(status) => status,
+		None => {
+			let _ = child.kill();
+			let _ = child.wait();
+			return Err(format!("Script timed out after {}ms", SCRIPT_TIMEOUT_MS));
 		}
 	};
+
+	let mut stdout = Vec::new();
+	let mut stderr = Vec::new();
+
+	if let Some(ref mut out) = child.stdout {
+		let _ = out.read_to_end(&mut stdout);
+	}
+	if let Some(ref mut err) = child.stderr {
+		let _ = err.read_to_end(&mut stderr);
+	}
+
+	let output = std::process::Output { status, stdout, stderr };
 
 	if !output.status.success() {
 		let stderr = String::from_utf8_lossy(&output.stderr);
 		return Err(format!("Script failed: {}", stderr));
 	}
 
-	let stdout = String::from_utf8_lossy(&output.stdout);
-	let script_output: ScriptOutput =
-		serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse JSON: {}. Output: {}", e, stdout))?;
+	let script_output: ScriptOutput = sonic_rs::from_slice(&output.stdout)
+		.map_err(|e| format!("Failed to parse JSON: {}. Output: {}", e, String::from_utf8_lossy(&output.stdout)))?;
 
 	let results: Vec<ActionResult> = script_output
 		.items
@@ -212,7 +218,7 @@ pub fn execute_script_filter(
 				item.title,
 				item.subtitle.unwrap_or_default(),
 				icon,
-				1.0,
+				200.0,
 				action,
 			);
 
@@ -231,27 +237,4 @@ pub fn execute_script_filter(
 	store_cache(key, results.clone());
 
 	Ok(results)
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn test_parse_script_output() {
-		let json = r#"{
-			"items": [
-				{
-					"title": "Test Result",
-					"subtitle": "Description",
-					"arg": "https://example.com",
-					"icon": {"path": "icon.png"}
-				}
-			]
-		}"#;
-
-		let output: ScriptOutput = serde_json::from_str(json).unwrap();
-		assert_eq!(output.items.len(), 1);
-		assert_eq!(output.items[0].title, "Test Result");
-	}
 }

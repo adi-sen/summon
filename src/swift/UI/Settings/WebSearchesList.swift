@@ -218,55 +218,20 @@ struct InlineEditableWebSearchCard: View {
 	}
 
 	private func loadBrandIcon(url: String) {
-		// Check if it's a file path (absolute path or starts with ~)
-		if action.icon.hasPrefix("/") || action.icon.hasPrefix("~") {
-			let expandedPath = NSString(string: action.icon).expandingTildeInPath
-			if FileManager.default.fileExists(atPath: expandedPath),
-			   let image = NSImage(contentsOfFile: expandedPath)
-			{
-				// Resize to 20x20
-				let size = NSSize(width: 20, height: 20)
-				let resized = NSImage(size: size)
-				resized.lockFocus()
-				NSGraphicsContext.current?.imageInterpolation = .high
-				image.draw(
-					in: NSRect(origin: .zero, size: size),
-					from: NSRect(origin: .zero, size: image.size),
-					operation: .copy,
-					fraction: 1.0
-				)
-				resized.unlockFocus()
-				brandIcon = resized
-				return
-			}
-		}
-
-		// Check if it's a web icon (e.g., "web:google")
 		if action.icon.hasPrefix("web:") {
-			let iconName = String(action.icon.dropFirst(4)) // Remove "web:" prefix
-			let actionName = action.name
-			let actionIcon = action.icon
-
-			// Use on-demand downloader
+			let iconName = String(action.icon.dropFirst(4))
 			WebIconDownloader.getIcon(for: iconName, size: NSSize(width: 20, height: 20)) { image in
 				DispatchQueue.main.async {
-					if let image {
-						self.brandIcon = image
-					} else {
-						// Fallback to generated icon
-						self.brandIcon = ActionIconGenerator.generateIcon(
-							for: actionName,
-							iconName: actionIcon,
-							url: url
-						)
-					}
+					self.brandIcon = image ?? ActionIconGenerator.loadIcon(
+						iconName: self.action.icon,
+						title: self.action.name,
+						url: url
+					)
 				}
 			}
-			return
+		} else {
+			brandIcon = ActionIconGenerator.loadIcon(iconName: action.icon, title: action.name, url: url)
 		}
-
-		// Fallback to generated icon
-		brandIcon = ActionIconGenerator.generateIcon(for: action.name, iconName: action.icon, url: url)
 	}
 
 	private func startEditingKeyword(_ keyword: String) {
@@ -312,8 +277,6 @@ extension Action.ActionKind {
 		case .quickLink(let keyword, _):
 			keyword
 		case .scriptFilter(let keyword, _, _):
-			keyword
-		case .nativeExtension(let keyword, _):
 			keyword
 		default:
 			nil

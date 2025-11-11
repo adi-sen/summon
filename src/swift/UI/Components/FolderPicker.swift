@@ -40,12 +40,9 @@ struct FolderPicker: View {
 					.font(Font(settings.uiFont.withSize(16)))
 					.foregroundColor(settings.textColorUI)
 				Spacer()
-				Button(action: { isPresented = false }) {
-					Image(systemName: "xmark.circle.fill")
-						.font(.system(size: 18))
-						.foregroundColor(settings.secondaryTextColorUI)
+				IconButton(icon: "xmark.circle.fill") {
+					isPresented = false
 				}
-				.buttonStyle(PlainButtonStyle())
 			}
 			.padding(16)
 			.background(settings.backgroundColorUI)
@@ -101,26 +98,14 @@ struct FolderPicker: View {
 			HStack(spacing: 12) {
 				Spacer()
 
-				Button("Cancel") {
+				StyledButton("Cancel", style: .plain) {
 					isPresented = false
 				}
-				.buttonStyle(PlainButtonStyle())
-				.foregroundColor(settings.textColorUI)
-				.padding(.horizontal, 16)
-				.padding(.vertical, 8)
-				.background(settings.metadataColorUI)
-				.cornerRadius(6)
 
-				Button("Select Current Folder") {
+				StyledButton("Select Current Folder", style: .primary) {
 					onSelect(currentPath)
 					isPresented = false
 				}
-				.buttonStyle(PlainButtonStyle())
-				.foregroundColor(Color.white)
-				.padding(.horizontal, 16)
-				.padding(.vertical, 8)
-				.background(settings.accentColorUI)
-				.cornerRadius(6)
 			}
 			.padding(16)
 			.background(settings.backgroundColorUI)
@@ -137,40 +122,15 @@ struct FolderRow: View {
 	let isSelected: Bool
 	let onSelect: () -> Void
 	let onOpen: () -> Void
-	@ObservedObject var settings = AppSettings.shared
-	@State private var isHovered = false
 
 	var body: some View {
-		Button(action: onSelect) {
-			HStack(spacing: 12) {
-				Image(systemName: "folder.fill")
-					.font(.system(size: 16))
-					.foregroundColor(Color.blue.opacity(0.8))
-
-				Text(name)
-					.font(Font(settings.uiFont.withSize(13)))
-					.foregroundColor(settings.textColorUI)
-
-				Spacer()
-
-				Button(action: onOpen) {
-					Image(systemName: "chevron.right")
-						.font(.system(size: 12))
-						.foregroundColor(settings.secondaryTextColorUI)
-				}
-				.buttonStyle(PlainButtonStyle())
-			}
-			.padding(.horizontal, 12)
-			.padding(.vertical, 8)
-			.background(
-				RoundedRectangle(cornerRadius: 6)
-					.fill(isSelected ? settings.accentColorUI.opacity(0.2) : isHovered ? settings
-						.searchBarColorUI : Color.clear)
-			)
-		}
-		.buttonStyle(PlainButtonStyle())
-		.onHover { hovering in
-			isHovered = hovering
-		}
+		CompactListItem(
+			icon: "folder.fill",
+			iconColor: .blue,
+			title: name,
+			isSelected: isSelected,
+			onSelect: onSelect,
+			onSecondaryAction: onOpen
+		)
 	}
 }

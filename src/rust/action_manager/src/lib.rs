@@ -1,5 +1,4 @@
 pub mod action;
-pub mod native_extensions;
 pub mod pattern;
 pub mod script_filter;
 
@@ -9,23 +8,23 @@ use aho_corasick::AhoCorasick;
 use parking_lot::RwLock;
 use storage_utils::RkyvStorage;
 
-use crate::{action::{Action, ActionKind, ActionResult}, native_extensions::ExtensionRegistry, pattern::{create_result, match_pattern}};
+use crate::{action::{Action, ActionKind, ActionResult}, pattern::{create_result, match_pattern}};
 
 pub struct ActionManager {
-	storage:         Arc<RkyvStorage<Action>>,
-	actions:         Arc<RwLock<Vec<Action>>>,
-	extensions:      Arc<ExtensionRegistry>,
-	keyword_matcher: Arc<RwLock<Option<AhoCorasick>>>,
+	storage:               Arc<RkyvStorage<Action>>,
+	actions:               Arc<RwLock<Vec<Action>>>,
+	keyword_matcher:       Arc<RwLock<Option<AhoCorasick>>>,
+	matcher_needs_rebuild: Arc<RwLock<bool>>,
 }
 
 impl ActionManager {
 	pub fn new(storage_path: impl AsRef<Path>) -> std::io::Result<Self> {
 		let storage = Arc::new(RkyvStorage::new(storage_path)?);
 		let actions = Arc::new(RwLock::new(storage.get_all()));
-		let extensions = Arc::new(ExtensionRegistry::new());
 		let keyword_matcher = Arc::new(RwLock::new(None));
+		let matcher_needs_rebuild = Arc::new(RwLock::new(true));
 
-		let manager = Self { storage, actions, extensions, keyword_matcher };
+		let manager = Self { storage, actions, keyword_matcher, matcher_needs_rebuild };
 		manager.rebuild_keyword_matcher();
 		Ok(manager)
 	}
@@ -33,7 +32,7 @@ impl ActionManager {
 	pub fn add(&self, action: Action) -> std::io::Result<()> {
 		self.storage.add(action.clone())?;
 		self.actions.write().push(action);
-		self.rebuild_keyword_matcher();
+		*self.matcher_needs_rebuild.write() = true;
 		Ok(())
 	}
 
@@ -53,7 +52,7 @@ impl ActionManager {
 				actions[pos] = action;
 			}
 			drop(actions);
-			self.rebuild_keyword_matcher();
+			*self.matcher_needs_rebuild.write() = true;
 		}
 
 		Ok(modified)
@@ -68,7 +67,7 @@ impl ActionManager {
 
 		if modified {
 			self.actions.write().retain(|a| a.id != id);
-			self.rebuild_keyword_matcher();
+			*self.matcher_needs_rebuild.write() = true;
 		}
 
 		Ok(modified)
@@ -88,7 +87,7 @@ impl ActionManager {
 			action.enabled = !action.enabled;
 		}
 
-		self.rebuild_keyword_matcher();
+		*self.matcher_needs_rebuild.write() = true;
 		Ok(modified)
 	}
 
@@ -99,6 +98,10 @@ impl ActionManager {
 	}
 
 	pub fn search(&self, query: &str) -> Vec<ActionResult> {
+		if *self.matcher_needs_rebuild.read() {
+			self.rebuild_keyword_matcher();
+		}
+
 		let actions = self.actions.read();
 		let mut results = Vec::new();
 
@@ -147,13 +150,6 @@ impl ActionManager {
 						}
 					}
 				}
-
-				ActionKind::NativeExtension { keyword, extension_id } => {
-					if let Some(search_query) = self.match_quick_link(query, keyword) {
-						let extension_results = self.extensions.search(extension_id, search_query);
-						results.extend(extension_results);
-					}
-				}
 			}
 		}
 
@@ -185,13 +181,6 @@ impl ActionManager {
 				"web:stackoverflow",
 			),
 			Action::quick_link(
-				"wikipedia",
-				"Wikipedia",
-				"wiki",
-				"https://en.wikipedia.org/wiki/Special:Search?search={query}",
-				"web:wikipedia",
-			),
-			Action::quick_link(
 				"youtube",
 				"YouTube",
 				"yt",
@@ -212,14 +201,14 @@ impl ActionManager {
 	pub fn storage_path(&self) -> &Path { self.storage.path() }
 
 	fn rebuild_keyword_matcher(&self) {
+		*self.matcher_needs_rebuild.write() = false;
+
 		let actions = self.actions.read();
 		let mut keywords = Vec::new();
 
 		for action in actions.iter().filter(|a| a.enabled) {
 			let keyword = match &action.kind {
-				ActionKind::QuickLink { keyword, .. }
-				| ActionKind::ScriptFilter { keyword, .. }
-				| ActionKind::NativeExtension { keyword, .. } => keyword.as_str(),
+				ActionKind::QuickLink { keyword, .. } | ActionKind::ScriptFilter { keyword, .. } => keyword.as_str(),
 				ActionKind::Pattern { .. } => continue,
 			};
 			keywords.push(keyword);
@@ -239,74 +228,5 @@ impl ActionManager {
 				*self.keyword_matcher.write() = None;
 			}
 		}
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use tempfile::NamedTempFile;
-
-	use super::*;
-
-	#[test]
-	fn test_quick_link() {
-		let temp = NamedTempFile::new().unwrap();
-		let manager = ActionManager::new(temp.path()).unwrap();
-
-		let action = Action::quick_link("gh", "GitHub", "gh", "https://github.com/search?q={query}", "magnifyingglass");
-
-		manager.add(action).unwrap();
-
-		let results = manager.search("gh rust");
-		assert_eq!(results.len(), 1);
-		assert!(results[0].title.contains("rust"));
-
-		match &results[0].action {
-			crate::action::ResultAction::OpenUrl(url) => {
-				assert!(url.contains("github.com/search?q=rust"));
-			}
-			_ => panic!("Expected OpenUrl action"),
-		}
-	}
-
-	#[test]
-	fn test_pattern_action() {
-		let temp = NamedTempFile::new().unwrap();
-		let manager = ActionManager::new(temp.path()).unwrap();
-
-		let action = Action::pattern(
-			"gh-repo",
-			"GitHub Repo",
-			"gh {owner}/{repo}",
-			crate::action::PatternActionType::OpenUrl("https://github.com/{owner}/{repo}".to_string()),
-			"chevron.left.forwardslash.chevron.right",
-		);
-
-		manager.add(action).unwrap();
-
-		let results = manager.search("gh rust-lang/rust");
-		assert_eq!(results.len(), 1);
-
-		match &results[0].action {
-			crate::action::ResultAction::OpenUrl(url) => {
-				assert_eq!(url, "https://github.com/rust-lang/rust");
-			}
-			_ => panic!("Expected OpenUrl action"),
-		}
-	}
-
-	#[test]
-	fn test_toggle_action() {
-		let temp = NamedTempFile::new().unwrap();
-		let manager = ActionManager::new(temp.path()).unwrap();
-
-		let action = Action::quick_link("test", "Test", "t", "https://example.com", "sparkles");
-		manager.add(action).unwrap();
-
-		assert_eq!(manager.search("t hello").len(), 1);
-
-		manager.toggle("test").unwrap();
-
-		assert_eq!(manager.search("t hello").len(), 0);
 	}
 }

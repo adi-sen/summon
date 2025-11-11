@@ -309,104 +309,116 @@ struct ContentView: View {
 		let currentGeneration = searchGeneration
 
 		if isClipboardMode {
-			let filteredHistory = clipboardHistory
-
-			if query.isEmpty {
-				let startIndex = clipboardPage * clipboardPageSize
-				let endIndex = min(startIndex + clipboardPageSize, filteredHistory.count)
-
-				guard startIndex < filteredHistory.count else {
-					results = []
-					return
-				}
-
-				let pageItems = Array(filteredHistory[startIndex ..< endIndex])
-				var clipResults = pageItems.enumerated().map { index, entry in
-					createClipboardResult(entry: entry, index: startIndex + index)
-				}
-
-				if endIndex < filteredHistory.count {
-					clipResults.append(createLoadMoreResult(
-						currentPage: clipboardPage,
-						totalCount: filteredHistory.count
-					))
-				}
-
-				results = clipResults
-			} else {
-				let lowercaseQuery = query.lowercased()
-				let filtered = filteredHistory.enumerated().filter { _, entry in
-					entry.content.lowercased().contains(lowercaseQuery)
-						|| entry.displayName.lowercased().contains(lowercaseQuery)
-				}
-
-				results = Array(filtered.prefix(settings.maxClipboardItems).map { originalIndex, entry in
-					createClipboardResult(entry: entry, index: originalIndex)
-				})
-			}
-			selectedIndex = min(selectedIndex, max(0, results.count - 1))
+			performClipboardSearch(query: query)
 			return
 		}
 
 		if query.isEmpty {
-			settings.cleanInvalidApps()
-
-			var landingResults: [CategoryResult] = []
-
-			let pinnedResults = settings.pinnedApps.map { app in
-				CategoryResult(
-					id: app.path,
-					name: app.name,
-					category: "Pinned",
-					path: app.path,
-					action: nil,
-					fullContent: nil,
-					clipboardEntry: nil,
-					icon: nil,
-					score: 0
-				)
-			}
-			landingResults.append(contentsOf: pinnedResults)
-
-			let recentResults = settings.recentApps.map { app in
-				CategoryResult(
-					id: app.path,
-					name: app.name,
-					category: "Recent",
-					path: app.path,
-					action: nil,
-					fullContent: nil,
-					clipboardEntry: nil,
-					icon: nil,
-					score: 0
-				)
-			}
-			landingResults.append(contentsOf: recentResults)
-
-			if landingResults.isEmpty {
-				landingResults.append(
-					CategoryResult(
-						id: "empty-state",
-						name: "No pinned or recently used apps",
-						category: "Info",
-						path: "Start typing to search for applications",
-						action: nil,
-						fullContent: nil,
-						clipboardEntry: nil,
-						icon: nil,
-						score: 0
-					))
-			}
-
-			results = landingResults
-			selectedIndex = 0
+			performLandingPageSearch()
 			return
 		}
 
+		performActiveSearch(query: query, generation: currentGeneration)
+	}
+
+	private func performClipboardSearch(query: String) {
+		let filteredHistory = clipboardHistory
+
+		if query.isEmpty {
+			let startIndex = clipboardPage * clipboardPageSize
+			let endIndex = min(startIndex + clipboardPageSize, filteredHistory.count)
+
+			guard startIndex < filteredHistory.count else {
+				results = []
+				return
+			}
+
+			let pageItems = Array(filteredHistory[startIndex ..< endIndex])
+			var clipResults = pageItems.enumerated().map { index, entry in
+				createClipboardResult(entry: entry, index: startIndex + index)
+			}
+
+			if endIndex < filteredHistory.count {
+				clipResults.append(createLoadMoreResult(
+					currentPage: clipboardPage,
+					totalCount: filteredHistory.count
+				))
+			}
+
+			results = clipResults
+		} else {
+			let lowercaseQuery = query.lowercased()
+			let filtered = filteredHistory.enumerated().filter { _, entry in
+				entry.content.lowercased().contains(lowercaseQuery)
+					|| entry.displayName.lowercased().contains(lowercaseQuery)
+			}
+
+			results = Array(filtered.prefix(settings.maxClipboardItems).map { originalIndex, entry in
+				createClipboardResult(entry: entry, index: originalIndex)
+			})
+		}
+		selectedIndex = min(selectedIndex, max(0, results.count - 1))
+	}
+
+	private func performLandingPageSearch() {
+		settings.cleanInvalidApps()
+
+		var landingResults: [CategoryResult] = []
+
+		let pinnedResults = settings.pinnedApps.map { app in
+			CategoryResult(
+				id: app.path,
+				name: app.name,
+				category: "Pinned",
+				path: app.path,
+				action: nil,
+				fullContent: nil,
+				clipboardEntry: nil,
+				icon: nil,
+				score: 0
+			)
+		}
+		landingResults.append(contentsOf: pinnedResults)
+
+		let recentResults = settings.recentApps.map { app in
+			CategoryResult(
+				id: app.path,
+				name: app.name,
+				category: "Recent",
+				path: app.path,
+				action: nil,
+				fullContent: nil,
+				clipboardEntry: nil,
+				icon: nil,
+				score: 0
+			)
+		}
+		landingResults.append(contentsOf: recentResults)
+
+		if landingResults.isEmpty {
+			landingResults.append(
+				CategoryResult(
+					id: "empty-state",
+					name: "No pinned or recently used apps",
+					category: "Info",
+					path: "Start typing to search for applications",
+					action: nil,
+					fullContent: nil,
+					clipboardEntry: nil,
+					icon: nil,
+					score: 0
+				))
+		}
+
+		results = landingResults
+		selectedIndex = 0
+	}
+
+	private func performActiveSearch(query: String, generation: Int) {
 		let task = DispatchWorkItem { [weak searchEngine] in
 			guard let searchEngine else { return }
 
-			guard currentGeneration == searchGeneration else {
+			guard generation == searchGeneration else {
 				return
 			}
 
@@ -488,7 +500,7 @@ struct ContentView: View {
 				let actionResults = ActionManager.shared.search(query: query)
 				allResults.append(
 					contentsOf: actionResults.map { result in
-						let icon = loadActionIcon(
+						let icon = ActionIconGenerator.loadIcon(
 							iconName: result.icon,
 							title: result.title,
 							url: result.url
@@ -516,7 +528,7 @@ struct ContentView: View {
 				allResults = Array(allResults.prefix(maxResults))
 
 				DispatchQueue.main.async {
-					guard currentGeneration == searchGeneration else {
+					guard generation == searchGeneration else {
 						return
 					}
 
@@ -534,23 +546,6 @@ struct ContentView: View {
 
 		searchTask = task
 		DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.15, execute: task)
-	}
-
-	private func loadActionIcon(iconName: String, title: String, url: String) -> NSImage? {
-		if iconName.hasPrefix("/") || iconName.hasPrefix("~"),
-		   let image = NSImage(contentsOfFile: NSString(string: iconName).expandingTildeInPath as String)
-		{
-			return image
-		}
-
-		if iconName.hasPrefix("web:") {
-			let path = "\(NSHomeDirectory())/Library/Application Support/Summon/WebIcons/\(String(iconName.dropFirst(4))).png"
-			if let image = NSImage(contentsOfFile: path) {
-				return image
-			}
-		}
-
-		return ActionIconGenerator.generateIcon(for: title, iconName: iconName, url: url)
 	}
 
 	private func evaluateCalculator(_ query: String) -> String? {

@@ -2,6 +2,23 @@ import AppKit
 import SwiftUI
 
 enum ActionIconGenerator {
+	static func loadIcon(iconName: String, title: String, url: String?) -> NSImage? {
+		if iconName.hasPrefix("/") || iconName.hasPrefix("~"),
+		   let image = NSImage(contentsOfFile: NSString(string: iconName).expandingTildeInPath as String)
+		{
+			return image
+		}
+
+		if iconName.hasPrefix("web:") {
+			let path = "\(NSHomeDirectory())/Library/Application Support/Summon/WebIcons/\(String(iconName.dropFirst(4))).png"
+			if let image = NSImage(contentsOfFile: path) {
+				return image
+			}
+		}
+
+		return generateIcon(for: title, iconName: iconName, url: url)
+	}
+
 	static func generateIcon(for actionName: String, iconName: String, url: String?) -> NSImage {
 		if let url, let icon = iconForDomain(url: url, actionName: actionName) {
 			return icon

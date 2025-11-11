@@ -15,14 +15,12 @@ enum WebIconDownloader {
 	]
 
 	static func getIcon(for name: String, size: NSSize, completion: @escaping (NSImage?) -> Void) {
-		// Check memory cache first
 		let cacheKey = "\(name)-\(Int(size.width))x\(Int(size.height))" as NSString
 		if let cached = iconCache.object(forKey: cacheKey) {
 			completion(cached)
 			return
 		}
 
-		// Check disk cache
 		let iconPath = "\(webIconsDir)/\(name).png"
 		if FileManager.default.fileExists(atPath: iconPath),
 		   let image = NSImage(contentsOfFile: iconPath)
@@ -33,7 +31,6 @@ enum WebIconDownloader {
 			return
 		}
 
-		// Download asynchronously
 		guard let urlString = iconURLs[name],
 		      let url = URL(string: urlString)
 		else {
@@ -66,14 +63,12 @@ enum WebIconDownloader {
 			return
 		}
 
-		// Create cache directory
 		try? FileManager.default.createDirectory(
 			atPath: webIconsDir,
 			withIntermediateDirectories: true,
 			attributes: nil
 		)
 
-		// Save original to disk
 		let iconPath = "\(webIconsDir)/\(name).png"
 		if let tiffData = image.tiffRepresentation,
 		   let bitmap = NSBitmapImageRep(data: tiffData),
@@ -82,7 +77,6 @@ enum WebIconDownloader {
 			try? pngData.write(to: URL(fileURLWithPath: iconPath))
 		}
 
-		// Return resized version
 		let resized = resizeIcon(image, targetSize: size)
 		completion(resized)
 	}
