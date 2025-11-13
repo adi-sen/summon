@@ -90,6 +90,11 @@ struct ContentView: View {
 											selectedIndex = index
 											launchSelected()
 										}
+										.onHover { isHovering in
+											if isHovering {
+												selectedIndex = index
+											}
+										}
 									}
 									.padding(.top, 4)
 								}
