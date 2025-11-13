@@ -39,7 +39,7 @@ struct ContentView: View {
 	var body: some View {
 		ZStack {
 			VStack(spacing: 0) {
-				HStack(spacing: 10) {
+				HStack(spacing: DesignTokens.Spacing.md + 2) {
 					SearchField(
 						text: $searchText,
 						placeholder: placeholderText,
@@ -63,8 +63,8 @@ struct ContentView: View {
 					)
 					.frame(height: 36)
 				}
-				.padding(.horizontal, 12)
-				.padding(.vertical, 8)
+				.padding(.horizontal, DesignTokens.Spacing.lg)
+				.padding(.vertical, DesignTokens.Spacing.md)
 				.background(settings.backgroundColorUI)
 				.zIndex(1000)
 
@@ -111,7 +111,7 @@ struct ContentView: View {
 									VStack(alignment: .leading, spacing: 8) {
 										ClipboardPreview(entry: entry)
 									}
-									.padding(10)
+									.padding(DesignTokens.Spacing.md + 2)
 								}
 								.background(settings.backgroundColorUI)
 
@@ -126,7 +126,7 @@ struct ContentView: View {
 									MetadataRow(label: "Size", value: entry.formattedSize)
 									MetadataRow(label: "Copied at", value: entry.formattedDate)
 								}
-								.padding(10)
+								.padding(DesignTokens.Spacing.md + 2)
 								.background(settings.backgroundColorUI)
 							}
 							.frame(width: 375)
@@ -136,7 +136,7 @@ struct ContentView: View {
 				} else if !searchText.isEmpty, !isClipboardMode {
 					VStack {
 						Spacer()
-						VStack(spacing: 8) {
+						VStack(spacing: DesignTokens.Spacing.md) {
 							Image(systemName: "magnifyingglass")
 								.font(.system(size: 48))
 								.foregroundColor(.secondary.opacity(0.5))
@@ -152,7 +152,7 @@ struct ContentView: View {
 				} else if isClipboardMode, results.isEmpty {
 					VStack {
 						Spacer()
-						VStack(spacing: 8) {
+						VStack(spacing: DesignTokens.Spacing.md) {
 							Image(systemName: "doc.on.clipboard")
 								.font(.system(size: 48))
 								.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
@@ -167,7 +167,7 @@ struct ContentView: View {
 			}
 			.frame(width: 600, height: windowHeight)
 			.background(settings.backgroundColorUI)
-			.cornerRadius(8)
+			.cornerRadius(DesignTokens.CornerRadius.lg)
 			.shadow(color: Color.black.opacity(0.3), radius: 12, x: 0, y: 6)
 		}
 		.onChange(of: searchText) { newValue in
@@ -198,20 +198,7 @@ struct ContentView: View {
 			ThumbnailCache.shared.clear()
 		}
 		.onReceive(NotificationCenter.default.publisher(for: .windowHidden)) { _ in
-			autoreleasepool {
-				searchTask?.cancel()
-				searchTask = nil
-				searchText = ""
-				results.removeAll()
-				results = []
-				clipboardHistory.removeAll()
-				clipboardHistory = []
-				isClipboardMode = false
-				selectedIndex = 0
-				clipboardPage = 0
-				IconCache.shared.clear()
-				ThumbnailCache.shared.clear()
-			}
+			resetState()
 		}
 	}
 
@@ -348,14 +335,23 @@ struct ContentView: View {
 			results = clipResults
 		} else {
 			let lowercaseQuery = query.lowercased()
-			let filtered = filteredHistory.enumerated().filter { _, entry in
-				entry.content.lowercased().contains(lowercaseQuery)
+			let maxItems = settings.maxClipboardItems
+			var matchCount = 0
+			var filtered: [(Int, ClipboardEntry)] = []
+			filtered.reserveCapacity(maxItems)
+
+			for (index, entry) in filteredHistory.enumerated() where matchCount < maxItems {
+				if entry.content.lowercased().contains(lowercaseQuery)
 					|| entry.displayName.lowercased().contains(lowercaseQuery)
+				{
+					filtered.append((index, entry))
+					matchCount += 1
+				}
 			}
 
-			results = Array(filtered.prefix(settings.maxClipboardItems).map { originalIndex, entry in
+			results = filtered.map { originalIndex, entry in
 				createClipboardResult(entry: entry, index: originalIndex)
-			})
+			}
 		}
 		selectedIndex = min(selectedIndex, max(0, results.count - 1))
 	}
@@ -479,9 +475,19 @@ struct ContentView: View {
 					return true
 				}
 
+				let recentAppsMap = Dictionary(uniqueKeysWithValues: settings.recentApps.enumerated().map {
+					($1.path, $0)
+				})
+
 				allResults.append(
 					contentsOf: validAppResults.map { result in
 						let isCommand = result.id.hasPrefix("cmd_")
+						var score = result.score
+
+						if let path = result.path, let recentIndex = recentAppsMap[path] {
+							score += Int64(10000 - (recentIndex * 100))
+						}
+
 						return CategoryResult(
 							id: result.id,
 							name: result.name,
@@ -493,7 +499,7 @@ struct ContentView: View {
 							fullContent: nil,
 							clipboardEntry: nil,
 							icon: nil,
-							score: result.score
+							score: score
 						)
 					})
 
@@ -545,7 +551,7 @@ struct ContentView: View {
 		}
 
 		searchTask = task
-		DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.15, execute: task)
+		DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.05, execute: task)
 	}
 
 	private func evaluateCalculator(_ query: String) -> String? {
@@ -578,14 +584,7 @@ struct ContentView: View {
 		pasteboard.clearContents()
 		pasteboard.setString(text, forType: .string)
 
-		NSApp.keyWindow?.orderOut(nil)
-		searchTask?.cancel()
-		searchTask = nil
-		searchText = ""
-		results = []
-		clipboardHistory = []
-		isClipboardMode = false
-		selectedIndex = 0
+		closeAndReset()
 	}
 
 	private func copyImageToClipboard(_ image: NSImage) {
@@ -595,14 +594,7 @@ struct ContentView: View {
 		pasteboard.clearContents()
 		pasteboard.writeObjects([image])
 
-		NSApp.keyWindow?.orderOut(nil)
-		searchTask?.cancel()
-		searchTask = nil
-		searchText = ""
-		results = []
-		clipboardHistory = []
-		isClipboardMode = false
-		selectedIndex = 0
+		closeAndReset()
 	}
 
 	private func launchSelected() {
@@ -645,20 +637,27 @@ struct ContentView: View {
 				}
 			}
 
-			NSApp.keyWindow?.orderOut(nil)
-			searchTask?.cancel()
-			searchTask = nil
-			searchText = ""
-			results = []
-			clipboardHistory = []
-			isClipboardMode = false
-			selectedIndex = 0
+			closeAndReset()
 		}
 	}
 
 	private func handleEscape() {
 		NSApp.keyWindow?.orderOut(nil)
+		resetState()
+	}
 
+	private func closeAndReset() {
+		NSApp.keyWindow?.orderOut(nil)
+		searchTask?.cancel()
+		searchTask = nil
+		searchText = ""
+		results = []
+		clipboardHistory = []
+		isClipboardMode = false
+		selectedIndex = 0
+	}
+
+	private func resetState() {
 		autoreleasepool {
 			searchTask?.cancel()
 			searchTask = nil

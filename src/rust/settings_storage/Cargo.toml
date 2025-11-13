@@ -5,7 +5,11 @@ edition.workspace = true
 
 [dependencies]
 rkyv.workspace = true
+bytecheck = "0.8"
 storage_utils = { path = "../storage_utils" }
 
 [dev-dependencies]
 tempfile = "3.0"
+
+[lints]
+workspace = true

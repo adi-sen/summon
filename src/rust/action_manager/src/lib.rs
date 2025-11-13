@@ -91,12 +91,15 @@ impl ActionManager {
 		Ok(modified)
 	}
 
+	#[must_use]
 	pub fn get_all(&self) -> Vec<Action> { self.actions.read().clone() }
 
+	#[must_use]
 	pub fn get_by_type(&self, filter: impl Fn(&ActionKind) -> bool) -> Vec<Action> {
 		self.actions.read().iter().filter(|a| filter(&a.kind)).cloned().collect()
 	}
 
+	#[must_use]
 	pub fn search(&self, query: &str) -> Vec<ActionResult> {
 		if *self.matcher_needs_rebuild.read() {
 			self.rebuild_keyword_matcher();
@@ -108,11 +111,11 @@ impl ActionManager {
 		for action in actions.iter().filter(|a| a.enabled) {
 			match &action.kind {
 				ActionKind::QuickLink { keyword, url } => {
-					if let Some(search_query) = self.match_quick_link(query, keyword) {
+					if let Some(search_query) = Self::match_quick_link(query, keyword) {
 						let expanded_url = url.replace("{query}", &urlencoding::encode(search_query));
 						results.push(ActionResult::new(
-							format!("{}:{}", action.id, search_query),
-							format!("{}: {}", action.name, search_query),
+							format!("{}:{search_query}", action.id),
+							format!("{}: {search_query}", action.name),
 							expanded_url.clone(),
 							&action.icon,
 							100.0,
@@ -129,19 +132,16 @@ impl ActionManager {
 				}
 
 				ActionKind::ScriptFilter { keyword, script_path, extension_dir } => {
-					if let Some(search_query) = self.match_quick_link(query, keyword) {
-						println!("[ActionManager] Executing script filter '{}' with query: '{}'", action.name, search_query);
+					if let Some(search_query) = Self::match_quick_link(query, keyword) {
 						match script_filter::execute_script_filter(script_path, extension_dir, search_query, &action.id) {
 							Ok(script_results) => {
-								println!("[ActionManager] Script filter returned {} results", script_results.len());
 								results.extend(script_results);
 							}
 							Err(e) => {
-								println!("[ActionManager] Script filter execution failed: {}", e);
 								results.push(ActionResult::new(
 									format!("{}:error", action.id),
 									"Script Error",
-									format!("Failed to execute: {}", e),
+									format!("Failed to execute: {e}"),
 									"exclamationmark.triangle",
 									0.0,
 									crate::action::ResultAction::CopyText(e),
@@ -156,7 +156,7 @@ impl ActionManager {
 		results
 	}
 
-	fn match_quick_link<'a>(&self, query: &'a str, keyword: &str) -> Option<&'a str> {
+	fn match_quick_link<'a>(query: &'a str, keyword: &str) -> Option<&'a str> {
 		let trimmed = query.trim();
 
 		if let Some(after_keyword) = trimmed.strip_prefix(keyword)
@@ -198,6 +198,7 @@ impl ActionManager {
 		Ok(())
 	}
 
+	#[must_use]
 	pub fn storage_path(&self) -> &Path { self.storage.path() }
 
 	fn rebuild_keyword_matcher(&self) {
@@ -219,14 +220,10 @@ impl ActionManager {
 			return;
 		}
 
-		match AhoCorasick::new(&keywords) {
-			Ok(ac) => {
-				*self.keyword_matcher.write() = Some(ac);
-			}
-			Err(e) => {
-				eprintln!("[ActionManager] Failed to build keyword matcher: {}", e);
-				*self.keyword_matcher.write() = None;
-			}
+		if let Ok(ac) = AhoCorasick::new(&keywords) {
+			*self.keyword_matcher.write() = Some(ac);
+		} else {
+			*self.keyword_matcher.write() = None;
 		}
 	}
 }

@@ -1,11 +1,12 @@
 use std::{io, path::Path};
 
+use bytecheck::CheckBytes;
 use rkyv::{Archive, Deserialize, Serialize};
 use storage_utils::RkyvStorage;
 
-#[derive(Archive, Deserialize, Serialize, Debug, Clone, PartialEq)]
-#[archive(compare(PartialEq))]
-#[archive_attr(derive(Debug))]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, Debug, Clone, PartialEq)]
+#[rkyv(derive(Debug))]
+#[repr(u8)]
 pub enum ClipboardItemType {
 	Text,
 	Image,
@@ -13,6 +14,7 @@ pub enum ClipboardItemType {
 }
 
 impl ClipboardItemType {
+	#[must_use]
 	pub fn as_u8(self) -> u8 {
 		match self {
 			ClipboardItemType::Text => 0,
@@ -21,6 +23,7 @@ impl ClipboardItemType {
 		}
 	}
 
+	#[must_use]
 	pub fn from_u8(value: u8) -> Self {
 		match value {
 			0 => ClipboardItemType::Text,
@@ -30,17 +33,15 @@ impl ClipboardItemType {
 	}
 }
 
-#[derive(Archive, Deserialize, Serialize, Debug, Clone, Copy, PartialEq)]
-#[archive(compare(PartialEq))]
-#[archive_attr(derive(Debug))]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, Debug, Clone, Copy, PartialEq)]
+#[rkyv(derive(Debug))]
 pub struct ImageSize {
 	pub width:  f64,
 	pub height: f64,
 }
 
-#[derive(Archive, Deserialize, Serialize, Debug, Clone, PartialEq)]
-#[archive(compare(PartialEq))]
-#[archive_attr(derive(Debug))]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, Debug, Clone, PartialEq)]
+#[rkyv(derive(Debug))]
 pub struct ClipboardEntry {
 	pub content:         String,
 	pub timestamp:       f64,
@@ -52,6 +53,7 @@ pub struct ClipboardEntry {
 }
 
 impl ClipboardEntry {
+	#[must_use]
 	pub fn new_text(content: String, timestamp: f64, size: i32, source_app: Option<String>) -> Self {
 		Self {
 			content,
@@ -64,6 +66,7 @@ impl ClipboardEntry {
 		}
 	}
 
+	#[must_use]
 	pub fn new_image(
 		content: String,
 		timestamp: f64,
@@ -94,14 +97,18 @@ impl ClipboardStorage {
 
 	pub fn add_entry(&self, entry: ClipboardEntry) -> io::Result<()> { self.storage.insert_at_front(entry) }
 
+	#[must_use]
 	pub fn get_entries(&self) -> Vec<ClipboardEntry> { self.storage.get_all() }
 
+	#[must_use]
 	pub fn get_entries_range(&self, start: usize, count: usize) -> Vec<ClipboardEntry> {
 		self.storage.get_range(start, count)
 	}
 
+	#[must_use]
 	pub fn len(&self) -> usize { self.storage.len() }
 
+	#[must_use]
 	pub fn is_empty(&self) -> bool { self.storage.is_empty() }
 
 	pub fn trim_to(&self, max_entries: usize) -> io::Result<Vec<ClipboardEntry>> { self.storage.trim_to(max_entries) }
@@ -139,7 +146,7 @@ mod tests {
 		let temp = NamedTempFile::new().unwrap();
 		let storage = ClipboardStorage::new(temp.path()).unwrap();
 
-		let entry = ClipboardEntry::new_text("Hello, World!".to_string(), 1234567890.0, 13, Some("TestApp".to_string()));
+		let entry = ClipboardEntry::new_text("Hello, World!".to_owned(), 1_234_567_890.0, 13, Some("TestApp".to_owned()));
 
 		storage.add_entry(entry.clone()).unwrap();
 		assert_eq!(storage.len(), 1);
@@ -156,7 +163,7 @@ mod tests {
 
 		{
 			let storage = ClipboardStorage::new(&path).unwrap();
-			let entry = ClipboardEntry::new_text("Persistent data".to_string(), 1_234_567_890.0, 15, None);
+			let entry = ClipboardEntry::new_text("Persistent data".to_owned(), 1_234_567_890.0, 15, None);
 			storage.add_entry(entry).unwrap();
 		}
 
@@ -172,7 +179,7 @@ mod tests {
 		let storage = ClipboardStorage::new(temp.path()).unwrap();
 
 		for i in 0..10 {
-			let entry = ClipboardEntry::new_text(format!("Entry {i}"), 1_234_567_890.0 + i as f64, 10, None);
+			let entry = ClipboardEntry::new_text(format!("Entry {i}"), 1_234_567_890.0 + f64::from(i), 10, None);
 			storage.add_entry(entry).unwrap();
 		}
 

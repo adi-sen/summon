@@ -17,21 +17,21 @@ struct ExtensionTester: View {
 			HStack {
 				VStack(alignment: .leading, spacing: 4) {
 					Text("Test Extension: \(manifest.name)")
-						.font(Font(settings.uiFont.withSize(16)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 						.foregroundColor(settings.textColorUI)
 					Text("Keyword: \(manifest.keyword)")
-						.font(Font(settings.uiFont.withSize(12)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.secondaryTextColorUI)
 				}
 				Spacer()
 				Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
-						.font(.system(size: 18))
+						.font(.system(size: DesignTokens.Typography.large + 2))
 						.foregroundColor(settings.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 			.background(settings.backgroundColorUI)
 
 			Divider().background(Color.white.opacity(0.1))
@@ -39,36 +39,36 @@ struct ExtensionTester: View {
 			VStack(alignment: .leading, spacing: 16) {
 				VStack(alignment: .leading, spacing: 8) {
 					Text("Test Query")
-						.font(Font(settings.uiFont.withSize(12)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.textColorUI)
 
 					HStack {
 						TextField("Enter test query...", text: $testQuery)
 							.textFieldStyle(PlainTextFieldStyle())
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.textColorUI)
-							.padding(10)
+							.padding(DesignTokens.Spacing.md + 2)
 							.background(settings.searchBarColorUI)
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 
 						Button(action: runTest) {
-							HStack(spacing: 6) {
+							HStack(spacing: DesignTokens.Spacing.sm) {
 								if isRunning {
 									ProgressView()
 										.scaleEffect(0.7)
 										.frame(width: 12, height: 12)
 								} else {
 									Image(systemName: "play.fill")
-										.font(.system(size: 12))
+										.font(.system(size: DesignTokens.Typography.small))
 								}
 								Text(isRunning ? "Running..." : "Run Test")
-									.font(Font(settings.uiFont.withSize(12)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							}
 							.foregroundColor(Color.white)
-							.padding(.horizontal, 16)
-							.padding(.vertical, 10)
+							.padding(.horizontal, DesignTokens.Spacing.xl)
+							.padding(.vertical, DesignTokens.Spacing.md + 2)
 							.background(isRunning ? settings.secondaryTextColorUI : settings.accentColorUI)
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 						}
 						.buttonStyle(PlainButtonStyle())
 						.disabled(isRunning)
@@ -76,37 +76,37 @@ struct ExtensionTester: View {
 				}
 
 				if let error {
-					HStack(spacing: 8) {
+					HStack(spacing: DesignTokens.Spacing.md) {
 						Image(systemName: "exclamationmark.triangle.fill")
 							.foregroundColor(Color.red)
 						Text(error)
-							.font(Font(settings.uiFont.withSize(11)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(Color.red)
 					}
-					.padding(12)
+					.padding(DesignTokens.Spacing.lg)
 					.frame(maxWidth: .infinity, alignment: .leading)
 					.background(Color.red.opacity(0.1))
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 				}
 
 				if !results.isEmpty {
 					VStack(alignment: .leading, spacing: 8) {
 						HStack {
 							Text("Results")
-								.font(Font(settings.uiFont.withSize(12)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.textColorUI)
 							Spacer()
 							if executionTime > 0 {
 								Text(String(format: "%.0fms", executionTime * 1000))
-									.font(Font(settings.uiFont.withSize(11)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 									.foregroundColor(
 										executionTime < 0.5 ? Color
 											.green : (executionTime < 1.0 ? Color.orange : Color.red)
 									)
-									.padding(.horizontal, 8)
-									.padding(.vertical, 4)
+									.padding(.horizontal, DesignTokens.Spacing.md)
+									.padding(.vertical, DesignTokens.Spacing.xs)
 									.background(settings.searchBarColorUI)
-									.cornerRadius(4)
+									.cornerRadius(DesignTokens.CornerRadius.sm)
 							}
 						}
 
@@ -118,13 +118,13 @@ struct ExtensionTester: View {
 								.textSelection(.enabled)
 						}
 						.frame(height: 300)
-						.padding(12)
+						.padding(DesignTokens.Spacing.lg)
 						.background(settings.searchBarColorUI.opacity(0.5))
-						.cornerRadius(6)
+						.cornerRadius(DesignTokens.CornerRadius.md)
 					}
 				}
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 
 			Spacer()
 		}

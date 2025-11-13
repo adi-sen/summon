@@ -1,11 +1,11 @@
 use std::{io, path::Path};
 
+use bytecheck::CheckBytes;
 use rkyv::{Archive, Deserialize, Serialize};
 use storage_utils::RkyvStorage;
 
-#[derive(Archive, Deserialize, Serialize, Debug, Clone, PartialEq)]
-#[archive(compare(PartialEq))]
-#[archive_attr(derive(Debug))]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, Debug, Clone, PartialEq)]
+#[rkyv(derive(Debug))]
 pub struct Snippet {
 	pub id:       String,
 	pub trigger:  String,
@@ -15,14 +15,17 @@ pub struct Snippet {
 }
 
 impl Snippet {
+	#[must_use]
 	pub fn new(trigger: String, content: String) -> Self {
-		Self { id: uuid::Uuid::new_v4().to_string(), trigger, content, enabled: true, category: "General".to_string() }
+		Self { id: uuid::Uuid::new_v4().to_string(), trigger, content, enabled: true, category: "General".to_owned() }
 	}
 
+	#[must_use]
 	pub fn with_category(trigger: String, content: String, category: String) -> Self {
 		Self { id: uuid::Uuid::new_v4().to_string(), trigger, content, enabled: true, category }
 	}
 
+	#[must_use]
 	pub fn with_all(id: String, trigger: String, content: String, enabled: bool, category: String) -> Self {
 		Self { id, trigger, content, enabled, category }
 	}
@@ -35,8 +38,10 @@ pub struct SnippetStorage {
 impl SnippetStorage {
 	pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> { Ok(Self { storage: RkyvStorage::new(path)? }) }
 
+	#[must_use]
 	pub fn get_all(&self) -> Vec<Snippet> { self.storage.get_all() }
 
+	#[must_use]
 	pub fn get_enabled(&self) -> Vec<Snippet> { self.storage.get_all().into_iter().filter(|s| s.enabled).collect() }
 
 	pub fn add(&self, snippet: Snippet) -> io::Result<()> { self.storage.add(snippet) }
@@ -60,8 +65,10 @@ impl SnippetStorage {
 		})
 	}
 
+	#[must_use]
 	pub fn len(&self) -> usize { self.storage.len() }
 
+	#[must_use]
 	pub fn is_empty(&self) -> bool { self.storage.is_empty() }
 }
 
@@ -84,7 +91,7 @@ mod tests {
 		let temp = NamedTempFile::new().unwrap();
 		let storage = SnippetStorage::new(temp.path()).unwrap();
 
-		let snippet = Snippet::new("\\email".to_string(), "test@example.com".to_string());
+		let snippet = Snippet::new("\\email".to_owned(), "test@example.com".to_owned());
 		storage.add(snippet.clone()).unwrap();
 
 		assert_eq!(storage.len(), 1);
@@ -102,7 +109,7 @@ mod tests {
 
 		{
 			let storage = SnippetStorage::new(&path).unwrap();
-			let snippet = Snippet::new("\\test".to_string(), "Test content".to_string());
+			let snippet = Snippet::new("\\test".to_owned(), "Test content".to_owned());
 			storage.add(snippet).unwrap();
 		}
 
@@ -117,11 +124,11 @@ mod tests {
 		let temp = NamedTempFile::new().unwrap();
 		let storage = SnippetStorage::new(temp.path()).unwrap();
 
-		let snippet = Snippet::new("\\test".to_string(), "Original".to_string());
+		let snippet = Snippet::new("\\test".to_owned(), "Original".to_owned());
 		storage.add(snippet.clone()).unwrap();
 
 		let mut updated = snippet.clone();
-		updated.content = "Updated".to_string();
+		updated.content = "Updated".to_owned();
 		let result = storage.update(updated).unwrap();
 		assert!(result);
 
@@ -134,7 +141,7 @@ mod tests {
 		let temp = NamedTempFile::new().unwrap();
 		let storage = SnippetStorage::new(temp.path()).unwrap();
 
-		let snippet = Snippet::new("\\test".to_string(), "Content".to_string());
+		let snippet = Snippet::new("\\test".to_owned(), "Content".to_owned());
 		let id = snippet.id.clone();
 		storage.add(snippet).unwrap();
 

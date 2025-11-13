@@ -1,17 +1,18 @@
 use std::{io, path::Path};
 
+use bytecheck::CheckBytes;
 use rkyv::{Archive, Deserialize, Serialize};
 use storage_utils::RkyvStorage;
 
-#[derive(Archive, Deserialize, Serialize, Debug, Clone)]
-#[archive(compare(PartialEq))]
-#[archive_attr(derive(Debug))]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, Debug, Clone)]
+#[rkyv(derive(Debug))]
 pub struct AppEntry {
 	pub name: String,
 	pub path: String,
 }
 
 impl AppEntry {
+	#[must_use]
 	pub fn new(name: String, path: String) -> Self { Self { name, path } }
 }
 
@@ -24,10 +25,13 @@ impl AppStorage {
 
 	pub fn add_entry(&self, entry: AppEntry) -> io::Result<()> { self.storage.add(entry) }
 
+	#[must_use]
 	pub fn get_entries(&self) -> Vec<AppEntry> { self.storage.get_all() }
 
+	#[must_use]
 	pub fn len(&self) -> usize { self.storage.len() }
 
+	#[must_use]
 	pub fn is_empty(&self) -> bool { self.storage.is_empty() }
 
 	pub fn clear(&self) -> io::Result<()> { self.storage.clear() }
@@ -52,7 +56,7 @@ mod tests {
 		let temp = NamedTempFile::new().unwrap();
 		let storage = AppStorage::new(temp.path()).unwrap();
 
-		let entry = AppEntry::new("Safari".to_string(), "/Applications/Safari.app".to_string());
+		let entry = AppEntry::new("Safari".to_owned(), "/Applications/Safari.app".to_owned());
 
 		storage.add_entry(entry.clone()).unwrap();
 		assert_eq!(storage.len(), 1);
@@ -69,7 +73,7 @@ mod tests {
 
 		{
 			let storage = AppStorage::new(&path).unwrap();
-			let entry = AppEntry::new("Xcode".to_string(), "/Applications/Xcode.app".to_string());
+			let entry = AppEntry::new("Xcode".to_owned(), "/Applications/Xcode.app".to_owned());
 			storage.add_entry(entry).unwrap();
 		}
 

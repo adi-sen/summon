@@ -16,22 +16,25 @@ pub struct SnippetMatcher {
 }
 
 impl SnippetMatcher {
+	#[must_use]
 	pub fn new() -> Self { Self { snippets: RwLock::new(Vec::new()), automaton: RwLock::new(None) } }
 
+	/// # Panics
+	/// Panics if pattern building fails (should not happen with valid inputs)
 	pub fn update_snippets(&self, snippets: Vec<Snippet>) {
 		let enabled_snippets: Vec<Snippet> = snippets.into_iter().filter(|s| s.enabled).collect();
 
 		let patterns: Vec<&str> = enabled_snippets.iter().map(|s| s.trigger.as_str()).collect();
 
-		let automaton = if !patterns.is_empty() {
+		let automaton = if patterns.is_empty() {
+			None
+		} else {
 			Some(
 				AhoCorasickBuilder::new()
 					.match_kind(aho_corasick::MatchKind::LeftmostLongest)
 					.build(&patterns)
 					.expect("Failed to build Aho-Corasick automaton"),
 			)
-		} else {
-			None
 		};
 
 		*self.snippets.write() = enabled_snippets;
@@ -42,7 +45,6 @@ impl SnippetMatcher {
 		let automaton_guard = self.automaton.read();
 		let automaton = automaton_guard.as_ref()?;
 
-		// Find rightmost match without allocating Vec
 		let last_match = automaton.find_iter(text).last()?;
 		let pattern_idx = last_match.pattern().as_usize();
 
@@ -74,15 +76,15 @@ mod tests {
 
 		let snippets = vec![
 			Snippet {
-				id:      "1".to_string(),
-				trigger: "\\email".to_string(),
-				content: "test@example.com".to_string(),
+				id:      "1".to_owned(),
+				trigger: "\\email".to_owned(),
+				content: "test@example.com".to_owned(),
 				enabled: true,
 			},
 			Snippet {
-				id:      "2".to_string(),
-				trigger: "\\phone".to_string(),
-				content: "123-456-7890".to_string(),
+				id:      "2".to_owned(),
+				trigger: "\\phone".to_owned(),
+				content: "123-456-7890".to_owned(),
 				enabled: true,
 			},
 		];
@@ -101,9 +103,9 @@ mod tests {
 		let matcher = SnippetMatcher::new();
 
 		let snippets = vec![Snippet {
-			id:      "1".to_string(),
-			trigger: "\\test".to_string(),
-			content: "replacement".to_string(),
+			id:      "1".to_owned(),
+			trigger: "\\test".to_owned(),
+			content: "replacement".to_owned(),
 			enabled: true,
 		}];
 
@@ -119,13 +121,8 @@ mod tests {
 		let matcher = SnippetMatcher::new();
 
 		let snippets = vec![
-			Snippet { id: "1".to_string(), trigger: "\\enabled".to_string(), content: "yes".to_string(), enabled: true },
-			Snippet {
-				id:      "2".to_string(),
-				trigger: "\\disabled".to_string(),
-				content: "no".to_string(),
-				enabled: false,
-			},
+			Snippet { id: "1".to_owned(), trigger: "\\enabled".to_owned(), content: "yes".to_owned(), enabled: true },
+			Snippet { id: "2".to_owned(), trigger: "\\disabled".to_owned(), content: "no".to_owned(), enabled: false },
 		];
 
 		matcher.update_snippets(snippets);

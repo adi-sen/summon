@@ -1,4 +1,11 @@
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::ptr_as_ptr)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::option_if_let_else)]
+#![allow(clippy::single_match_else)]
+#![allow(clippy::map_unwrap_or)]
+#![allow(clippy::manual_let_else)]
 
 use std::{ffi::{CStr, CString}, ptr, sync::Arc};
 
@@ -14,6 +21,7 @@ use search_engine::{SearchEngine, indexer::{IndexedItem, ItemType}};
 use settings_storage::{AppSettings, SettingsStorage};
 use snippet_matcher::{Snippet, SnippetMatcher};
 use snippet_storage::SnippetStorage;
+use sonic_rs::{JsonContainerTrait, JsonValueTrait};
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
@@ -30,6 +38,42 @@ macro_rules! opt_string {
 		#[allow(unused_unsafe)]
 		if $ptr.is_null() { None } else { unsafe { CStr::from_ptr($ptr).to_str().ok().map(|s| s.to_string()) } }
 	}};
+}
+
+macro_rules! require_handle {
+	($handle:expr) => {
+		if $handle.is_null() {
+			return false;
+		}
+	};
+	($handle:expr, $($ptr:expr),+) => {
+		if $handle.is_null() $(|| $ptr.is_null())+ {
+			return false;
+		}
+	};
+}
+
+macro_rules! require_handle_ptr {
+	($handle:expr) => {
+		if $handle.is_null() {
+			return ptr::null_mut();
+		}
+	};
+	($handle:expr, $($ptr:expr),+) => {
+		if $handle.is_null() $(|| $ptr.is_null())+ {
+			return ptr::null_mut();
+		}
+	};
+}
+
+#[allow(dead_code)]
+fn to_cstring_ptr(s: impl Into<Vec<u8>>) -> *mut c_char {
+	CString::new(s).ok().map(CString::into_raw).unwrap_or(ptr::null_mut())
+}
+
+#[allow(dead_code)]
+fn optional_cstring(s: Option<String>) -> *mut c_char {
+	s.and_then(|s| CString::new(s).ok()).map(CString::into_raw).unwrap_or(ptr::null_mut())
 }
 
 macro_rules! storage_handle {
@@ -95,7 +139,7 @@ pub unsafe extern "C" fn search_engine_add_item(
 	let item_type = match item_type {
 		0 => ItemType::Application,
 		1 => ItemType::File,
-		4 => ItemType::Custom("Command".to_string()),
+		4 => ItemType::Custom("Command".to_owned()),
 		_ => return false,
 	};
 	let item = IndexedItem {
@@ -392,8 +436,8 @@ pub unsafe extern "C" fn calculator_get_history_json(handle: *mut CalculatorHand
 	}
 	let history_vec: Vec<_> = unsafe { (*handle).calc.borrow().get_history().iter().cloned().collect() };
 	let json_entries: Vec<_> =
-		history_vec.iter().map(|e| serde_json::json!({"query": e.query, "result": e.result})).collect();
-	match serde_json::to_string(&json_entries) {
+		history_vec.iter().map(|e| sonic_rs::json!({"query": e.query, "result": e.result})).collect();
+	match sonic_rs::to_string(&json_entries) {
 		Ok(json) => CString::new(json).unwrap().into_raw(),
 		Err(_) => ptr::null_mut(),
 	}
@@ -435,9 +479,7 @@ pub unsafe extern "C" fn clipboard_storage_add_text(
 	size: i32,
 	source_app: *const c_char,
 ) -> bool {
-	if handle.is_null() || content.is_null() {
-		return false;
-	}
+	require_handle!(handle, content);
 	let entry = ClipboardEntry::new_text(cstr!(content).to_string(), timestamp, size, opt_string!(source_app));
 	unsafe { (*handle).inner.add_entry(entry).is_ok() }
 }
@@ -453,9 +495,7 @@ pub unsafe extern "C" fn clipboard_storage_add_image(
 	size: i32,
 	source_app: *const c_char,
 ) -> bool {
-	if handle.is_null() || content.is_null() || image_file_path.is_null() {
-		return false;
-	}
+	require_handle!(handle, content, image_file_path);
 	let entry = ClipboardEntry::new_image(
 		cstr!(content).to_string(),
 		timestamp,
@@ -475,9 +515,7 @@ pub unsafe extern "C" fn clipboard_storage_get_entries(
 	count: size_t,
 	out_count: *mut size_t,
 ) -> *mut CClipboardEntry {
-	if handle.is_null() || out_count.is_null() {
-		return ptr::null_mut();
-	}
+	require_handle_ptr!(handle, out_count);
 
 	let entries = unsafe { (*handle).inner.get_entries_range(start, count) };
 
@@ -596,7 +634,7 @@ pub unsafe extern "C" fn snippet_matcher_update(handle: *mut SnippetMatcherHandl
 	if handle.is_null() || json.is_null() {
 		return false;
 	}
-	match serde_json::from_str::<Vec<Snippet>>(cstr!(json)) {
+	match sonic_rs::from_str::<Vec<Snippet>>(cstr!(json)) {
 		Ok(snippets) => {
 			unsafe { (*handle).matcher.update_snippets(snippets) };
 			true
@@ -925,31 +963,31 @@ pub unsafe extern "C" fn settings_storage_save(
 	let search_folders: Vec<String> = if search_folders_json.is_null() {
 		vec![]
 	} else {
-		serde_json::from_str(cstr!(search_folders_json)).unwrap_or_default()
+		sonic_rs::from_str(cstr!(search_folders_json)).unwrap_or_default()
 	};
 
-	let launcher_shortcut: serde_json::Value = if launcher_shortcut_json.is_null() {
-		serde_json::json!({"key": "space", "modifiers": ["command"]})
+	let launcher_shortcut: sonic_rs::Value = if launcher_shortcut_json.is_null() {
+		sonic_rs::json!({"key": "space", "modifiers": ["command"]})
 	} else {
-		serde_json::from_str(cstr!(launcher_shortcut_json)).unwrap_or(serde_json::json!({}))
+		sonic_rs::from_str(cstr!(launcher_shortcut_json)).unwrap_or(sonic_rs::json!({}))
 	};
 
-	let clipboard_shortcut: serde_json::Value = if clipboard_shortcut_json.is_null() {
-		serde_json::json!({"key": "v", "modifiers": ["command", "shift"]})
+	let clipboard_shortcut: sonic_rs::Value = if clipboard_shortcut_json.is_null() {
+		sonic_rs::json!({"key": "v", "modifiers": ["command", "shift"]})
 	} else {
-		serde_json::from_str(cstr!(clipboard_shortcut_json)).unwrap_or(serde_json::json!({}))
+		sonic_rs::from_str(cstr!(clipboard_shortcut_json)).unwrap_or(sonic_rs::json!({}))
 	};
 
-	let launcher_key = launcher_shortcut["key"].as_str().unwrap_or("space").to_string();
+	let launcher_key = launcher_shortcut["key"].as_str().unwrap_or("space").to_owned();
 	let launcher_mods: Vec<String> = launcher_shortcut["modifiers"]
 		.as_array()
-		.map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+		.map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_owned())).collect())
 		.unwrap_or_default();
 
-	let clipboard_key = clipboard_shortcut["key"].as_str().unwrap_or("v").to_string();
+	let clipboard_key = clipboard_shortcut["key"].as_str().unwrap_or("v").to_owned();
 	let clipboard_mods: Vec<String> = clipboard_shortcut["modifiers"]
 		.as_array()
-		.map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+		.map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_owned())).collect())
 		.unwrap_or_default();
 
 	let settings = AppSettings {
@@ -1002,7 +1040,7 @@ pub unsafe extern "C" fn settings_storage_get_search_folders(handle: *mut Settin
 		return ptr::null_mut();
 	}
 	let settings = unsafe { (*handle).inner.get() };
-	let json = serde_json::to_string(&settings.search_folders).unwrap_or_else(|_| "[]".to_string());
+	let json = sonic_rs::to_string(&settings.search_folders).unwrap_or_else(|_| "[]".to_owned());
 	CString::new(json).unwrap().into_raw()
 }
 
@@ -1012,11 +1050,12 @@ pub unsafe extern "C" fn settings_storage_get_launcher_shortcut(handle: *mut Set
 		return ptr::null_mut();
 	}
 	let settings = unsafe { (*handle).inner.get() };
-	let json = serde_json::json!({
+	let json = sonic_rs::to_string(&sonic_rs::json!({
 		"key": settings.launcher_shortcut_key,
 		"modifiers": settings.launcher_shortcut_mods
-	});
-	CString::new(json.to_string()).unwrap().into_raw()
+	}))
+	.unwrap();
+	CString::new(json).unwrap().into_raw()
 }
 
 #[unsafe(no_mangle)]
@@ -1025,11 +1064,12 @@ pub unsafe extern "C" fn settings_storage_get_clipboard_shortcut(handle: *mut Se
 		return ptr::null_mut();
 	}
 	let settings = unsafe { (*handle).inner.get() };
-	let json = serde_json::json!({
+	let json = sonic_rs::to_string(&sonic_rs::json!({
 		"key": settings.clipboard_shortcut_key,
 		"modifiers": settings.clipboard_shortcut_mods
-	});
-	CString::new(json.to_string()).unwrap().into_raw()
+	}))
+	.unwrap();
+	CString::new(json).unwrap().into_raw()
 }
 
 pub struct ActionManagerHandle {
@@ -1141,7 +1181,7 @@ pub unsafe extern "C" fn action_manager_add_json(handle: *mut ActionManagerHandl
 		return false;
 	}
 
-	let action: Action = match serde_json::from_str(cstr!(json)) {
+	let action: Action = match sonic_rs::from_str(cstr!(json)) {
 		Ok(a) => a,
 		Err(_) => return false,
 	};
@@ -1197,7 +1237,7 @@ pub unsafe extern "C" fn action_manager_update_json(handle: *mut ActionManagerHa
 		return false;
 	}
 
-	let action: Action = match serde_json::from_str(cstr!(json)) {
+	let action: Action = match sonic_rs::from_str(cstr!(json)) {
 		Ok(a) => a,
 		Err(_) => return false,
 	};
@@ -1230,7 +1270,7 @@ pub unsafe extern "C" fn action_manager_get_all_json(handle: *mut ActionManagerH
 	}
 
 	let actions = unsafe { (*handle).manager.get_all() };
-	let json = serde_json::to_string(&actions).unwrap_or_default();
+	let json = sonic_rs::to_string(&actions).unwrap_or_default();
 
 	CString::new(json).unwrap().into_raw()
 }

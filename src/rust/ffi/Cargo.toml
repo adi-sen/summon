@@ -13,7 +13,7 @@ app_storage = { path = "../app_storage" }
 settings_storage = { path = "../settings_storage" }
 action_manager = { path = "../action_manager" }
 serde.workspace = true
-serde_json.workspace = true
+sonic-rs.workspace = true
 libc.workspace = true
 parking_lot.workspace = true
 mimalloc.workspace = true
@@ -24,3 +24,6 @@ paste.workspace = true
 [lib]
 name = "ffi"
 crate-type = ["staticlib", "cdylib"]
+
+[lints]
+workspace = true

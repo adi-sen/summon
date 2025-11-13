@@ -215,7 +215,7 @@ class DropdownController<T: Hashable>: NSViewController {
 		-> NSButton
 	{
 		let theme = settings.theme
-		let font = settings.uiFont.withSize(13)
+		let font = settings.uiFont.withSize(DesignTokens.Typography.body)
 		let isSelected = item == selection.wrappedValue
 
 		let button = HoverableMenuButton()
@@ -227,12 +227,12 @@ class DropdownController<T: Hashable>: NSViewController {
 		button.action = #selector(selectItem(_:))
 		button.tag = index
 		button.wantsLayer = true
-		button.layer?.cornerRadius = 6
+		button.layer?.cornerRadius = DesignTokens.CornerRadius.md
 		button.translatesAutoresizingMaskIntoConstraints = false
 
 		let paragraphStyle = NSMutableParagraphStyle()
 		paragraphStyle.alignment = .left
-		paragraphStyle.firstLineHeadIndent = 12
+		paragraphStyle.firstLineHeadIndent = DesignTokens.Spacing.lg
 
 		button.attributedTitle = NSAttributedString(
 			string: label(item),
@@ -261,8 +261,8 @@ class DropdownController<T: Hashable>: NSViewController {
 	override func loadView() {
 		let theme = settings.theme
 		let itemHeight: CGFloat = 36
-		let spacing: CGFloat = 4
-		let padding: CGFloat = 8
+		let spacing: CGFloat = DesignTokens.Spacing.xs
+		let padding: CGFloat = DesignTokens.Spacing.md
 		let contentHeight = min(CGFloat(items.count) * (itemHeight + spacing) + padding * 2, 400)
 		let contentView = NSView(frame: NSRect(x: 0, y: 0, width: width, height: contentHeight))
 
@@ -306,7 +306,7 @@ class DropdownController<T: Hashable>: NSViewController {
 
 		contentView.wantsLayer = true
 		contentView.layer?.backgroundColor = UIUtils.makeCGColor(theme.backgroundColor)
-		contentView.layer?.cornerRadius = 10
+		contentView.layer?.cornerRadius = DesignTokens.CornerRadius.md + DesignTokens.Spacing.xs
 		contentView.layer?.borderWidth = 1
 		contentView.layer?.borderColor = UIUtils.makeCGColor(theme.accentColor, alpha: 0.15)
 
@@ -464,7 +464,7 @@ class DropdownButtonView: NSView {
 		super.draw(dirtyRect)
 
 		let theme = settings.theme
-		let font = settings.uiFont.withSize(13)
+		let font = settings.uiFont.withSize(DesignTokens.Typography.body)
 
 		let labelString = NSAttributedString(
 			string: label,
@@ -472,7 +472,7 @@ class DropdownButtonView: NSView {
 		)
 		labelString.draw(at: NSPoint(x: 0, y: (bounds.height - labelString.size().height) / 2))
 
-		let chevronX = labelString.size().width + 4
+		let chevronX = labelString.size().width + DesignTokens.Spacing.xs
 		let chevronY = bounds.height / 2
 		let chevronSize: CGFloat = 9
 
@@ -490,10 +490,10 @@ class DropdownButtonView: NSView {
 
 	override var intrinsicContentSize: NSSize {
 		let labelAttributes: [NSAttributedString.Key: Any] = [
-			.font: settings.uiFont.withSize(13)
+			.font: settings.uiFont.withSize(DesignTokens.Typography.body)
 		]
 		let labelString = NSAttributedString(string: label, attributes: labelAttributes)
-		let width = labelString.size().width + 4 + 9 + 20
+		let width = labelString.size().width + DesignTokens.Spacing.xs + 9 + 20
 		return NSSize(width: width, height: 20)
 	}
 }

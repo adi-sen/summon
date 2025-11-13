@@ -6,11 +6,14 @@ authors.workspace = true
 
 [dependencies]
 rkyv.workspace = true
+bytecheck = "0.8"
 serde.workspace = true
-serde_json.workspace = true
 parking_lot.workspace = true
 uuid = { version = "1.0", features = ["v4"] }
 storage_utils = { path = "../storage_utils" }
 
 [dev-dependencies]
 tempfile = "3.8"
+
+[lints]
+workspace = true

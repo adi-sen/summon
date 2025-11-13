@@ -46,16 +46,16 @@ struct WebSearchesList: View {
 				Button(action: { showingAddSearch = true }) {
 					HStack(spacing: 8) {
 						Image(systemName: "plus.circle.fill")
-							.font(.system(size: 14))
+							.font(.system(size: DesignTokens.Typography.title))
 						Text("Add Web Search")
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					}
 					.foregroundColor(settings.accentColorUI)
 					.padding(.horizontal, 12)
 					.padding(.vertical, 10)
 					.frame(maxWidth: .infinity)
 					.background(settings.searchBarColorUI.opacity(0.3))
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 					.overlay(
 						RoundedRectangle(cornerRadius: 6)
 							.strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -63,25 +63,25 @@ struct WebSearchesList: View {
 					)
 				}
 				.buttonStyle(PlainButtonStyle())
-				.keyboardShortcut("n", modifiers: .command)
+				.newItemShortcut()
 
 				Button(action: { actionManager.importDefaults() }) {
 					HStack(spacing: 6) {
 						Image(systemName: "arrow.counterclockwise")
-							.font(.system(size: 12))
+							.font(.system(size: DesignTokens.Typography.small))
 						Text("Reset to Defaults")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 					}
 					.foregroundColor(settings.secondaryTextColorUI)
 					.padding(.horizontal, 10)
 					.padding(.vertical, 10)
 					.frame(maxWidth: .infinity)
 					.background(settings.searchBarColorUI.opacity(0.3))
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.sheet(isPresented: $showingAddSearch) {
 			AddActionView()
@@ -127,7 +127,7 @@ struct InlineEditableWebSearchCard: View {
 						.opacity(action.enabled ? 1.0 : 0.5)
 				} else {
 					Image(systemName: action.icon.isEmpty ? "globe" : action.icon)
-						.font(.system(size: 14))
+						.font(.system(size: DesignTokens.Typography.title))
 						.foregroundColor(
 							action.enabled
 								? settings.accentColorUI : settings.secondaryTextColorUI.opacity(0.5)
@@ -139,7 +139,7 @@ struct InlineEditableWebSearchCard: View {
 					if isEditingKeyword {
 						TextField("Keyword", text: $editingKeyword, onEditingChanged: { _ in })
 							.textFieldStyle(PlainTextFieldStyle())
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.accentColorUI)
 							.focused($keywordFocused)
 							.onSubmit {
@@ -148,7 +148,7 @@ struct InlineEditableWebSearchCard: View {
 							.frame(width: 80)
 					} else {
 						Text(keyword)
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.accentColorUI)
 							.frame(width: 80, alignment: .leading)
 							.onTapGesture {
@@ -159,15 +159,15 @@ struct InlineEditableWebSearchCard: View {
 				.padding(.horizontal, 10)
 				.padding(.vertical, 6)
 				.background(settings.searchBarColorUI)
-				.cornerRadius(6)
+				.cornerRadius(DesignTokens.CornerRadius.md)
 
 				Image(systemName: "arrow.right")
-					.font(.system(size: 10))
+					.font(.system(size: DesignTokens.Spacing.md + 2))
 					.foregroundColor(settings.secondaryTextColorUI)
 
 				if hasConflict, action.enabled {
 					Image(systemName: "exclamationmark.triangle.fill")
-						.font(.system(size: 12))
+						.font(.system(size: DesignTokens.Typography.small))
 						.foregroundColor(Color.orange)
 						.help("Duplicate keyword detected")
 				}
@@ -176,7 +176,7 @@ struct InlineEditableWebSearchCard: View {
 					if isEditingURL {
 						TextField("URL", text: $editingURL, onEditingChanged: { _ in })
 							.textFieldStyle(PlainTextFieldStyle())
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.textColorUI)
 							.focused($urlFocused)
 							.onSubmit {
@@ -184,7 +184,7 @@ struct InlineEditableWebSearchCard: View {
 							}
 					} else {
 						Text(url)
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.textColorUI)
 							.lineLimit(1)
 							.truncationMode(.middle)
@@ -198,7 +198,7 @@ struct InlineEditableWebSearchCard: View {
 
 				Button(action: onDelete) {
 					Image(systemName: "trash")
-						.font(.system(size: 12))
+						.font(.system(size: DesignTokens.Typography.small))
 						.foregroundColor(Color.red.opacity(isHovered ? 0.8 : 0.4))
 						.frame(width: 24, height: 24)
 				}
@@ -207,7 +207,7 @@ struct InlineEditableWebSearchCard: View {
 			.padding(.horizontal, 12)
 			.padding(.vertical, 8)
 			.background(settings.searchBarColorUI.opacity(isHovered ? 0.8 : 0.3))
-			.cornerRadius(6)
+			.cornerRadius(DesignTokens.CornerRadius.md)
 			.onHover { hovering in
 				isHovered = hovering
 			}

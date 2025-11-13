@@ -1,8 +1,11 @@
+#![allow(clippy::used_underscore_binding)]
+
+use bytecheck::CheckBytes;
 use rkyv::{Archive, Deserialize, Serialize};
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
-#[derive(Archive, Deserialize, Serialize, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
-#[archive(compare(PartialEq))]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
+#[rkyv(derive(Debug))]
 pub struct Action {
 	pub id:      String,
 	pub name:    String,
@@ -11,16 +14,18 @@ pub struct Action {
 	pub kind:    ActionKind,
 }
 
-#[derive(Archive, Deserialize, Serialize, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
-#[archive(compare(PartialEq))]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
+#[rkyv(derive(Debug))]
+#[repr(u8)]
 pub enum ActionKind {
 	QuickLink { keyword: String, url: String },
 	Pattern { pattern: String, action: PatternActionType },
 	ScriptFilter { keyword: String, script_path: String, extension_dir: String },
 }
 
-#[derive(Archive, Deserialize, Serialize, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
-#[archive(compare(PartialEq))]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
+#[rkyv(derive(Debug))]
+#[repr(u8)]
 pub enum PatternActionType {
 	OpenUrl(String),
 	CopyText(String),
@@ -100,13 +105,13 @@ impl Action {
 		}
 	}
 
+	#[must_use]
 	pub fn triggers(&self) -> Vec<&str> {
 		match &self.kind {
-			ActionKind::QuickLink { keyword, .. } => vec![keyword.as_str()],
+			ActionKind::QuickLink { keyword, .. } | ActionKind::ScriptFilter { keyword, .. } => vec![keyword.as_str()],
 			ActionKind::Pattern { pattern, .. } => {
 				vec![pattern.split_whitespace().next().unwrap_or(pattern)]
 			}
-			ActionKind::ScriptFilter { keyword, .. } => vec![keyword.as_str()],
 		}
 	}
 }
@@ -132,11 +137,13 @@ impl ActionResult {
 		}
 	}
 
+	#[must_use]
 	pub fn with_icon_path(mut self, path: impl Into<String>) -> Self {
 		self.icon_path = Some(path.into());
 		self
 	}
 
+	#[must_use]
 	pub fn with_quicklook(mut self, url: impl Into<String>) -> Self {
 		self.quicklook = Some(url.into());
 		self

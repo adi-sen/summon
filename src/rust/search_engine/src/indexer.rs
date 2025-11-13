@@ -1,5 +1,5 @@
 use compact_str::CompactString;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxBuildHasher, FxHashMap};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -35,8 +35,9 @@ struct IndexStats {
 
 impl Indexer {
 	#[inline]
+	#[must_use]
 	pub fn new() -> Self {
-		Self { items: FxHashMap::with_capacity_and_hasher(100, Default::default()), stats: IndexStats::default() }
+		Self { items: FxHashMap::with_capacity_and_hasher(100, FxBuildHasher), stats: IndexStats::default() }
 	}
 
 	#[inline]
@@ -48,7 +49,6 @@ impl Indexer {
 		self.items.insert(item.id.clone(), item);
 	}
 
-	/// Batch add multiple items
 	pub fn add_items(&mut self, items: Vec<IndexedItem>) {
 		self.items.reserve(items.len());
 
@@ -66,7 +66,8 @@ impl Indexer {
 		self.items.remove(id).inspect(|item| self.update_stats(&item.item_type, -1))
 	}
 
-	#[inline(always)]
+	#[inline]
+	#[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
 	fn update_stats(&mut self, item_type: &ItemType, delta: i32) {
 		self.stats.total_items = (self.stats.total_items as i32 + delta) as usize;
 		match item_type {
@@ -81,9 +82,11 @@ impl Indexer {
 	pub fn items_iter(&self) -> impl Iterator<Item = &IndexedItem> { self.items.values() }
 
 	#[inline]
+	#[must_use]
 	pub fn get_item(&self, id: &str) -> Option<&IndexedItem> { self.items.get(id) }
 
 	#[inline]
+	#[must_use]
 	pub fn get_items_by_type(&self, item_type: &ItemType) -> Vec<&IndexedItem> {
 		self.items.values().filter(|item| &item.item_type == item_type).collect()
 	}
@@ -95,6 +98,7 @@ impl Indexer {
 	}
 
 	#[inline]
+	#[must_use]
 	pub const fn stats(&self) -> (usize, usize, usize, usize) {
 		(self.stats.total_items, self.stats.apps, self.stats.files, self.stats.snippets)
 	}

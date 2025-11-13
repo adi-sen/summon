@@ -38,6 +38,9 @@ pub struct SearchEngine {
 }
 
 impl SearchEngine {
+	/// # Panics
+	/// Panics if cache size is zero (never happens with constant 100)
+	#[must_use]
 	pub fn new() -> Self {
 		Self {
 			indexer: Arc::new(RwLock::new(indexer::Indexer::new())),
@@ -51,9 +54,9 @@ impl SearchEngine {
 			return Err(SearchError::QueryTooShort);
 		}
 
-		let cache_key = format!("{query}:{limit}");
+		let cache_key = query.to_string();
 		if let Some(cached) = self.cache.lock().get(&cache_key) {
-			return Ok(cached.clone());
+			return Ok(cached.iter().take(limit).cloned().collect());
 		}
 
 		let indexer = self.indexer.read();
@@ -61,37 +64,20 @@ impl SearchEngine {
 		let mut matches: Vec<_> = indexer
 			.items_iter()
 			.filter_map(|item| {
-				let score = self.matcher.fuzzy_match(&item.name, query)?;
-				let indices = self.matcher.match_indices(&item.name, query).unwrap_or_default();
+				let (score, indices) = self.matcher.match_with_indices(&item.name, query)?;
 				Some((item.clone(), score, indices))
 			})
 			.collect();
 
-		matches.sort_by(|a, b| {
-			let score_cmp = b.1.cmp(&a.1);
-			if score_cmp != std::cmp::Ordering::Equal {
-				return score_cmp;
-			}
-			// Prefer shorter names
-			let len_cmp = a.0.name.len().cmp(&b.0.name.len());
-			if len_cmp != std::cmp::Ordering::Equal {
-				return len_cmp;
-			}
-			a.0.name.cmp(&b.0.name)
-		});
+		matches.sort_unstable_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.name.cmp(&b.0.name)));
 
-		let results: Vec<_> = matches
-			.into_iter()
-			.take(limit)
-			.map(|(item, score, match_indices)| SearchResult { item, score, match_indices })
-			.collect();
+		let results: Vec<_> =
+			matches.into_iter().map(|(item, score, match_indices)| SearchResult { item, score, match_indices }).collect();
 
 		self.cache.lock().put(cache_key, results.clone());
-
-		Ok(results)
+		Ok(results.into_iter().take(limit).collect())
 	}
 
-	/// Clear the search cache (call when index is updated)
 	pub fn clear_cache(&self) { self.cache.lock().clear(); }
 
 	pub fn indexer(&self) -> Arc<RwLock<indexer::Indexer>> { Arc::clone(&self.indexer) }
@@ -110,6 +96,8 @@ pub struct SearchResult {
 
 #[cfg(test)]
 mod tests {
+	use rustc_hash::FxHashMap as HashMap;
+
 	use super::*;
 
 	#[test]
@@ -123,14 +111,14 @@ mod tests {
 				name:      "Visual Studio Code".into(),
 				item_type: indexer::ItemType::Application,
 				path:      Some("/Applications/Visual Studio Code.app".into()),
-				metadata:  Default::default(),
+				metadata:  HashMap::default(),
 			});
 			indexer.add_item(indexer::IndexedItem {
 				id:        "2".into(),
 				name:      "Safari".into(),
 				item_type: indexer::ItemType::Application,
 				path:      Some("/Applications/Safari.app".into()),
-				metadata:  Default::default(),
+				metadata:  HashMap::default(),
 			});
 		}
 

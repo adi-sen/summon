@@ -37,23 +37,23 @@ struct FolderPicker: View {
 		VStack(spacing: 0) {
 			HStack {
 				Text("Select Folder")
-					.font(Font(settings.uiFont.withSize(16)))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(settings.textColorUI)
 				Spacer()
 				IconButton(icon: "xmark.circle.fill") {
 					isPresented = false
 				}
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 			.background(settings.backgroundColorUI)
 
 			Divider()
 				.background(Color.white.opacity(0.1))
 
-			HStack(spacing: 8) {
+			HStack(spacing: DesignTokens.Spacing.md) {
 				Button(action: navigateUp) {
 					Image(systemName: "chevron.left")
-						.font(.system(size: 12))
+						.font(.system(size: DesignTokens.Typography.small))
 						.foregroundColor(settings.accentColorUI)
 						.frame(width: 24, height: 24)
 				}
@@ -61,19 +61,19 @@ struct FolderPicker: View {
 				.disabled(currentPath == "/" || currentPath.isEmpty)
 
 				Text(currentPath)
-					.font(Font(settings.uiFont.withSize(12)))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 					.foregroundColor(settings.secondaryTextColorUI)
 					.lineLimit(1)
 					.truncationMode(.middle)
 
 				Spacer()
 			}
-			.padding(.horizontal, 16)
-			.padding(.vertical, 8)
+			.padding(.horizontal, DesignTokens.Spacing.xl)
+			.padding(.vertical, DesignTokens.Spacing.md)
 			.background(settings.searchBarColorUI.opacity(0.5))
 
 			ScrollView {
-				VStack(alignment: .leading, spacing: 2) {
+				VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
 					ForEach(contentsOfDirectory(currentPath), id: \.self) { folder in
 						FolderRow(
 							name: folder,
@@ -89,13 +89,13 @@ struct FolderPicker: View {
 						)
 					}
 				}
-				.padding(8)
+				.padding(DesignTokens.Spacing.md)
 			}
 
 			Divider()
 				.background(Color.white.opacity(0.1))
 
-			HStack(spacing: 12) {
+			HStack(spacing: DesignTokens.Spacing.lg) {
 				Spacer()
 
 				StyledButton("Cancel", style: .plain) {
@@ -107,12 +107,12 @@ struct FolderPicker: View {
 					isPresented = false
 				}
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 			.background(settings.backgroundColorUI)
 		}
 		.frame(width: 600, height: 500)
 		.background(settings.backgroundColorUI)
-		.cornerRadius(12)
+		.cornerRadius(DesignTokens.Spacing.lg)
 		.shadow(color: Color.black.opacity(0.5), radius: 20, x: 0, y: 10)
 	}
 }

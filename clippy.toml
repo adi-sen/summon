@@ -1,0 +1,15 @@
+disallowed-names = ["foo", "bar", "baz"]
+type-complexity-threshold = 200
+cognitive-complexity-threshold = 30
+max-suggested-slice-pattern-length = 3
+max-fn-params-bools = 3
+missing-docs-in-crate-items = false
+max-include-file-size = 1048576
+enum-variant-name-threshold = 4
+vec-box-size-threshold = 4096
+max-struct-bools = 5
+max-trait-bounds = 5
+suppress-restriction-lint-in-const = true
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+arithmetic-side-effects-allowed = ["size_of", "align_of"]

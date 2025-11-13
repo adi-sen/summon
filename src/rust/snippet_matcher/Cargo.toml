@@ -10,3 +10,6 @@ serde.workspace = true
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[lints]
+workspace = true

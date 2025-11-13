@@ -93,8 +93,8 @@ struct SettingsView: View {
 			}
 			Spacer()
 		}
-		.padding(.horizontal, 20)
-		.padding(.vertical, 8)
+		.padding(.horizontal, DesignTokens.Spacing.xxl)
+		.padding(.vertical, DesignTokens.Spacing.md)
 		.background(backgroundColor)
 	}
 
@@ -198,12 +198,12 @@ struct TabButton: View {
 	var body: some View {
 		Button(action: action) {
 			Text(title)
-				.font(Font(settings.uiFont.withSize(13)))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 				.foregroundColor(isSelected ? settings.accentColorUI : settings.secondaryTextColorUI)
-				.padding(.horizontal, 12)
-				.padding(.vertical, 6)
+				.padding(.horizontal, DesignTokens.Spacing.lg)
+				.padding(.vertical, DesignTokens.Spacing.sm)
 				.background(isSelected ? settings.accentColorUI.opacity(0.15) : Color.clear)
-				.cornerRadius(6)
+				.cornerRadius(DesignTokens.CornerRadius.md)
 		}
 		.buttonStyle(PlainButtonStyle())
 	}
@@ -231,7 +231,7 @@ struct GeneralSettingsTab: View {
 					}
 				}
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.background(settings.backgroundColorUI)
 	}
@@ -258,7 +258,7 @@ struct AppearanceSettingsTab: View {
 					FontPickerMenu(selectedFont: $settings.customFontName)
 				}
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.background(settings.backgroundColorUI)
 	}
@@ -292,7 +292,7 @@ struct SearchSettingsTab: View {
 						Text(
 							"At least one folder must be configured. Add or remove folders to customize your search."
 						)
-						.font(Font(settings.uiFont.withSize(11)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.secondaryTextColorUI)
 						.padding(.bottom, 8)
 
@@ -301,7 +301,7 @@ struct SearchSettingsTab: View {
 								Image(systemName: "folder.fill")
 									.foregroundColor(.blue)
 								Text(folder)
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 									.foregroundColor(settings.textColorUI)
 									.lineLimit(1)
 								Spacer()
@@ -318,10 +318,10 @@ struct SearchSettingsTab: View {
 								.buttonStyle(PlainButtonStyle())
 								.disabled(settings.searchFolders.count == 1)
 							}
-							.padding(.vertical, 6)
-							.padding(.horizontal, 12)
+							.padding(.vertical, DesignTokens.Spacing.sm)
+							.padding(.horizontal, DesignTokens.Spacing.lg)
 							.background(settings.searchBarColorUI)
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 						}
 
 						Button(action: {
@@ -331,14 +331,14 @@ struct SearchSettingsTab: View {
 								Image(systemName: "plus.circle.fill")
 								Text("Add Folder")
 							}
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.accentColorUI)
 						}
 						.buttonStyle(PlainButtonStyle())
 					}
 				}
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.background(settings.backgroundColorUI)
 		.overlay {
@@ -397,7 +397,7 @@ struct ClipboardSettingsTab: View {
 					}
 				}
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.background(settings.backgroundColorUI)
 	}
@@ -414,11 +414,11 @@ struct CommandsSettingsTab: View {
 						HStack {
 							VStack(alignment: .leading, spacing: 4) {
 								Text("Enable Commands")
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 									.foregroundColor(settings.textColorUI)
 
 								Text("Enable commands like 'settings', 'quit', 'clipboard'")
-									.font(Font(settings.uiFont.withSize(11)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 									.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
 							}
 
@@ -436,7 +436,7 @@ struct CommandsSettingsTab: View {
 					}
 				}
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.background(settings.backgroundColorUI)
 	}
@@ -453,7 +453,7 @@ struct SnippetsSettingsTab: View {
 			if snippetManager.snippets.isEmpty {
 				VStack {
 					Spacer()
-					VStack(spacing: 8) {
+					VStack(spacing: DesignTokens.Spacing.md) {
 						Image(systemName: "text.quote")
 							.font(.system(size: 48))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
@@ -462,11 +462,11 @@ struct SnippetsSettingsTab: View {
 							.foregroundColor(settings.secondaryTextColorUI)
 
 						Button(action: { showingAddSnippet = true }) {
-							HStack(spacing: 8) {
+							HStack(spacing: DesignTokens.Spacing.md) {
 								Image(systemName: "plus.circle.fill")
-									.font(.system(size: 13))
+									.font(.system(size: DesignTokens.Typography.body))
 								Text("Add Snippet")
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							}
 							.foregroundColor(
 								Color(
@@ -475,10 +475,10 @@ struct SnippetsSettingsTab: View {
 									blue: settings.theme.accentColor.2
 								)
 							)
-							.padding(.horizontal, 16)
-							.padding(.vertical, 8)
+							.padding(.horizontal, DesignTokens.Spacing.xl)
+							.padding(.vertical, DesignTokens.Spacing.md)
 							.background(settings.searchBarColorUI)
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 							.overlay(
 								RoundedRectangle(cornerRadius: 6)
 									.stroke(
@@ -494,7 +494,7 @@ struct SnippetsSettingsTab: View {
 						.padding(.top, 8)
 
 						Text("Or press ⌘N")
-							.font(Font(settings.uiFont.withSize(11)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(
 								Color(
 									red: settings.theme.secondaryTextColor.0,
@@ -984,7 +984,7 @@ struct ShortcutsSettingsTab: View {
 					}
 				}
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.background(settings.backgroundColorUI)
 		.onChange(of: settings.launcherShortcut) { _ in
@@ -1006,7 +1006,7 @@ struct ShortcutInfoRow: View {
 	var body: some View {
 		HStack {
 			Text(keys)
-				.font(Font(settings.uiFont.withSize(12)))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 				.foregroundColor(
 					Color(
 						red: settings.theme.accentColor.0,
@@ -1014,8 +1014,8 @@ struct ShortcutInfoRow: View {
 						blue: settings.theme.accentColor.2
 					)
 				)
-				.padding(.horizontal, 8)
-				.padding(.vertical, 4)
+				.padding(.horizontal, DesignTokens.Spacing.md)
+				.padding(.vertical, DesignTokens.Spacing.xs)
 				.background(
 					Color(
 						red: settings.theme.metadataColor.0,
@@ -1023,10 +1023,10 @@ struct ShortcutInfoRow: View {
 						blue: settings.theme.metadataColor.2
 					)
 				)
-				.cornerRadius(4)
+				.cornerRadius(DesignTokens.CornerRadius.sm)
 
 			Text(description)
-				.font(Font(settings.uiFont.withSize(12)))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 				.foregroundColor(
 					Color(
 						red: settings.theme.secondaryTextColor.0,
@@ -1034,7 +1034,7 @@ struct ShortcutInfoRow: View {
 						blue: settings.theme.secondaryTextColor.2
 					))
 		}
-		.padding(.vertical, 2)
+		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
 }
 
@@ -1051,7 +1051,7 @@ struct SettingSection<Content: View>: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 10) {
 			Text(title)
-				.font(Font(settings.uiFont.withSize(11)))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 				.foregroundColor(
 					Color(
 						red: settings.theme.secondaryTextColor.0,
@@ -1079,7 +1079,7 @@ struct SettingRow<Content: View>: View {
 	var body: some View {
 		HStack {
 			Text(label)
-				.font(Font(settings.uiFont.withSize(13)))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 				.foregroundColor(
 					Color(
 						red: settings.theme.textColor.0,
@@ -1091,7 +1091,7 @@ struct SettingRow<Content: View>: View {
 
 			content
 		}
-		.padding(.vertical, 2)
+		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
 }
 
@@ -1107,7 +1107,7 @@ struct AddSnippetView: View {
 		VStack(spacing: 0) {
 			HStack {
 				Text("Add Snippet")
-					.font(Font(settings.uiFont.withSize(16)))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(
 						Color(
 							red: settings.theme.textColor.0,
@@ -1117,7 +1117,7 @@ struct AddSnippetView: View {
 				Spacer()
 				Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
-						.font(.system(size: 18))
+						.font(.system(size: DesignTokens.Typography.large + 2))
 						.foregroundColor(
 							Color(
 								red: settings.theme.secondaryTextColor.0,
@@ -1127,7 +1127,7 @@ struct AddSnippetView: View {
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 			.background(
 				Color(
 					red: settings.theme.backgroundColor.0,
@@ -1141,7 +1141,7 @@ struct AddSnippetView: View {
 			VStack(alignment: .leading, spacing: 16) {
 				VStack(alignment: .leading, spacing: 6) {
 					Text("Trigger")
-						.font(Font(settings.uiFont.withSize(12)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
 							Color(
 								red: settings.theme.textColor.0,
@@ -1150,7 +1150,7 @@ struct AddSnippetView: View {
 							))
 					TextField("e.g., \\email", text: $trigger)
 						.textFieldStyle(PlainTextFieldStyle())
-						.font(Font(settings.uiFont.withSize(13)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(
 							Color(
 								red: settings.theme.textColor.0,
@@ -1158,14 +1158,14 @@ struct AddSnippetView: View {
 								blue: settings.theme.textColor.2
 							)
 						)
-						.padding(10)
+						.padding(DesignTokens.Spacing.md + 2)
 						.background(settings.searchBarColorUI)
-						.cornerRadius(6)
+						.cornerRadius(DesignTokens.CornerRadius.md)
 				}
 
 				VStack(alignment: .leading, spacing: 6) {
 					Text("Content")
-						.font(Font(settings.uiFont.withSize(12)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
 							Color(
 								red: settings.theme.textColor.0,
@@ -1186,10 +1186,10 @@ struct AddSnippetView: View {
 						)
 					)
 					.frame(height: 120)
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 				}
 
-				HStack(spacing: 10) {
+				HStack(spacing: DesignTokens.Spacing.md + 2) {
 					Spacer()
 					Button("Cancel") {
 						presentationMode.wrappedValue.dismiss()
@@ -1202,8 +1202,8 @@ struct AddSnippetView: View {
 							blue: settings.theme.textColor.2
 						)
 					)
-					.padding(.horizontal, 16)
-					.padding(.vertical, 8)
+					.padding(.horizontal, DesignTokens.Spacing.xl)
+					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
 						Color(
 							red: settings.theme.metadataColor.0,
@@ -1211,7 +1211,7 @@ struct AddSnippetView: View {
 							blue: settings.theme.metadataColor.2
 						)
 					)
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 
 					Button("Add") {
 						let snippet = Snippet(trigger: trigger, content: content)
@@ -1220,8 +1220,8 @@ struct AddSnippetView: View {
 					}
 					.buttonStyle(PlainButtonStyle())
 					.foregroundColor(Color.white)
-					.padding(.horizontal, 16)
-					.padding(.vertical, 8)
+					.padding(.horizontal, DesignTokens.Spacing.xl)
+					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
 						Color(
 							red: settings.theme.accentColor.0,
@@ -1229,13 +1229,13 @@ struct AddSnippetView: View {
 							blue: settings.theme.accentColor.2
 						)
 					)
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 					.disabled(trigger.isEmpty || content.isEmpty)
 					.opacity(trigger.isEmpty || content.isEmpty ? 0.5 : 1.0)
 				}
 				.padding(.top, 4)
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.frame(width: 480, height: 360)
 		.background(
@@ -1320,7 +1320,7 @@ struct EditSnippetView: View {
 		VStack(spacing: 0) {
 			HStack {
 				Text("Edit Snippet")
-					.font(Font(settings.uiFont.withSize(16)))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(
 						Color(
 							red: settings.theme.textColor.0,
@@ -1330,7 +1330,7 @@ struct EditSnippetView: View {
 				Spacer()
 				Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
-						.font(.system(size: 18))
+						.font(.system(size: DesignTokens.Typography.large + 2))
 						.foregroundColor(
 							Color(
 								red: settings.theme.secondaryTextColor.0,
@@ -1340,7 +1340,7 @@ struct EditSnippetView: View {
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 			.background(
 				Color(
 					red: settings.theme.backgroundColor.0,
@@ -1354,7 +1354,7 @@ struct EditSnippetView: View {
 			VStack(alignment: .leading, spacing: 16) {
 				VStack(alignment: .leading, spacing: 6) {
 					Text("Trigger")
-						.font(Font(settings.uiFont.withSize(12)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
 							Color(
 								red: settings.theme.textColor.0,
@@ -1363,7 +1363,7 @@ struct EditSnippetView: View {
 							))
 					TextField("e.g., \\email", text: $trigger)
 						.textFieldStyle(PlainTextFieldStyle())
-						.font(Font(settings.uiFont.withSize(13)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(
 							Color(
 								red: settings.theme.textColor.0,
@@ -1371,14 +1371,14 @@ struct EditSnippetView: View {
 								blue: settings.theme.textColor.2
 							)
 						)
-						.padding(10)
+						.padding(DesignTokens.Spacing.md + 2)
 						.background(settings.searchBarColorUI)
-						.cornerRadius(6)
+						.cornerRadius(DesignTokens.CornerRadius.md)
 				}
 
 				VStack(alignment: .leading, spacing: 6) {
 					Text("Content")
-						.font(Font(settings.uiFont.withSize(12)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
 							Color(
 								red: settings.theme.textColor.0,
@@ -1399,10 +1399,10 @@ struct EditSnippetView: View {
 						)
 					)
 					.frame(height: 120)
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 				}
 
-				HStack(spacing: 10) {
+				HStack(spacing: DesignTokens.Spacing.md + 2) {
 					Spacer()
 					Button("Cancel") {
 						presentationMode.wrappedValue.dismiss()
@@ -1415,8 +1415,8 @@ struct EditSnippetView: View {
 							blue: settings.theme.textColor.2
 						)
 					)
-					.padding(.horizontal, 16)
-					.padding(.vertical, 8)
+					.padding(.horizontal, DesignTokens.Spacing.xl)
+					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
 						Color(
 							red: settings.theme.metadataColor.0,
@@ -1424,7 +1424,7 @@ struct EditSnippetView: View {
 							blue: settings.theme.metadataColor.2
 						)
 					)
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 
 					Button("Save") {
 						var updated = snippet
@@ -1435,8 +1435,8 @@ struct EditSnippetView: View {
 					}
 					.buttonStyle(PlainButtonStyle())
 					.foregroundColor(Color.white)
-					.padding(.horizontal, 16)
-					.padding(.vertical, 8)
+					.padding(.horizontal, DesignTokens.Spacing.xl)
+					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
 						Color(
 							red: settings.theme.accentColor.0,
@@ -1444,13 +1444,13 @@ struct EditSnippetView: View {
 							blue: settings.theme.accentColor.2
 						)
 					)
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 					.disabled(trigger.isEmpty || content.isEmpty)
 					.opacity(trigger.isEmpty || content.isEmpty ? 0.5 : 1.0)
 				}
 				.padding(.top, 4)
 			}
-			.padding(20)
+			.padding(DesignTokens.Spacing.xxl)
 		}
 		.frame(width: 440, height: 320)
 		.background(
@@ -1480,7 +1480,7 @@ struct WebSearchesSettingsTab: View {
 			if quickLinks.isEmpty {
 				VStack {
 					Spacer()
-					VStack(spacing: 16) {
+					VStack(spacing: DesignTokens.Spacing.xl) {
 						Image(systemName: "magnifyingglass")
 							.font(.system(size: 48))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
@@ -1488,26 +1488,26 @@ struct WebSearchesSettingsTab: View {
 							.font(Font(settings.uiFont.withSize(15)))
 							.foregroundColor(settings.secondaryTextColorUI)
 
-						HStack(spacing: 12) {
+						HStack(spacing: DesignTokens.Spacing.lg) {
 							Button(action: { actionManager.importDefaults() }) {
-								HStack(spacing: 6) {
+								HStack(spacing: DesignTokens.Spacing.sm) {
 									Image(systemName: "arrow.counterclockwise")
-										.font(.system(size: 12))
+										.font(.system(size: DesignTokens.Typography.small))
 									Text("Import Defaults")
-										.font(Font(settings.uiFont.withSize(12)))
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								}
 								.foregroundColor(Color.white)
-								.padding(.horizontal, 16)
-								.padding(.vertical, 10)
+								.padding(.horizontal, DesignTokens.Spacing.xl)
+								.padding(.vertical, DesignTokens.Spacing.md + 2)
 								.background(settings.accentColorUI)
-								.cornerRadius(6)
+								.cornerRadius(DesignTokens.CornerRadius.md)
 							}
 							.buttonStyle(PlainButtonStyle())
 						}
 						.padding(.top, 8)
 
 						Text("Or press ⌘N to add a web search")
-							.font(Font(settings.uiFont.withSize(11)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.5))
 					}
 					Spacer()
@@ -1520,5 +1520,3 @@ struct WebSearchesSettingsTab: View {
 		}
 	}
 }
-
-

@@ -8,25 +8,62 @@ pub struct FuzzyMatcher {
 
 impl FuzzyMatcher {
 	#[inline]
+	#[must_use]
 	pub fn new() -> Self { Self { matcher: RefCell::new(Matcher::new(Config::DEFAULT)) } }
 
 	#[inline]
-	pub fn fuzzy_match(&self, candidate: &str, query: &str) -> Option<i64> {
-		let pattern = Pattern::parse(query, CaseMatching::Smart, Normalization::Smart);
-		let haystack = nucleo_matcher::Utf32String::from(candidate);
-
-		pattern.score(haystack.slice(..), &mut self.matcher.borrow_mut()).map(|score| score as i64)
-	}
-
-	#[inline]
-	pub fn match_indices(&self, candidate: &str, query: &str) -> Option<Vec<usize>> {
+	pub fn match_with_indices(&self, candidate: &str, query: &str) -> Option<(i64, Vec<usize>)> {
 		let pattern = Pattern::parse(query, CaseMatching::Smart, Normalization::Smart);
 		let haystack = nucleo_matcher::Utf32String::from(candidate);
 		let mut indices = Vec::new();
 
-		pattern
-			.indices(haystack.slice(..), &mut self.matcher.borrow_mut(), &mut indices)
-			.map(|_| indices.iter().map(|&i| i as usize).collect())
+		let score = pattern.indices(haystack.slice(..), &mut self.matcher.borrow_mut(), &mut indices)?;
+
+		let bonus_score = Self::calculate_bonus(candidate, query, i64::from(score), &indices);
+
+		Some((bonus_score, indices.iter().map(|&i| i as usize).collect()))
+	}
+
+	#[inline]
+	#[allow(clippy::cast_possible_wrap)]
+	fn calculate_bonus(candidate: &str, query: &str, base_score: i64, indices: &[u32]) -> i64 {
+		let mut bonus = 0i64;
+
+		if candidate.eq_ignore_ascii_case(query) {
+			bonus += 10000;
+		}
+
+		if candidate.to_lowercase().starts_with(&query.to_lowercase()) {
+			bonus += 5000;
+		}
+
+		if let Some(&first_idx) = indices.first()
+			&& first_idx == 0
+		{
+			bonus += 2000;
+		}
+
+		let mut consecutive = 0;
+		for window in indices.windows(2) {
+			if window[1] == window[0] + 1 {
+				consecutive += 1;
+			}
+		}
+		bonus += consecutive * 100;
+
+		let length_penalty = (candidate.len() as i64).saturating_sub(query.len() as i64) * 10;
+
+		base_score + bonus - length_penalty
+	}
+
+	#[inline]
+	pub fn fuzzy_match(&self, candidate: &str, query: &str) -> Option<i64> {
+		self.match_with_indices(candidate, query).map(|(score, _)| score)
+	}
+
+	#[inline]
+	pub fn match_indices(&self, candidate: &str, query: &str) -> Option<Vec<usize>> {
+		self.match_with_indices(candidate, query).map(|(_, indices)| indices)
 	}
 }
 

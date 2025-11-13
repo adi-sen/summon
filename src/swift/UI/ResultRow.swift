@@ -26,7 +26,7 @@ struct ResultRow: View {
 
 	private var calculatorRow: some View {
 		let accentColor = themeColor(settings.theme.accentColor)
-		let font = Font(settings.uiFont.withSize(24))
+		let font = Font(settings.uiFont.withSize(DesignTokens.Typography.xlarge))
 
 		return HStack(spacing: 0) {
 			if let subtitle = resultSubtitle {
@@ -50,23 +50,23 @@ struct ResultRow: View {
 				.frame(maxWidth: .infinity)
 				.multilineTextAlignment(.center)
 		}
-		.padding(.horizontal, 16)
-		.padding(.vertical, 12)
+		.padding(.horizontal, DesignTokens.Spacing.xl)
+		.padding(.vertical, DesignTokens.Spacing.lg)
 		.frame(maxWidth: .infinity)
 		.background(
-			RoundedRectangle(cornerRadius: 8)
+			RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg)
 				.fill(isSelected ? accentColor.opacity(0.15) : themeColor(settings.theme.searchBarColor))
 		)
 		.overlay(
-			RoundedRectangle(cornerRadius: 8)
+			RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg)
 				.stroke(isSelected ? accentColor.opacity(0.4) : Color.clear, lineWidth: 2)
 		)
-		.padding(.horizontal, 6)
-		.padding(.vertical, 2)
+		.padding(.horizontal, DesignTokens.Spacing.sm)
+		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
 
 	private var standardRow: some View {
-		HStack(spacing: 10) {
+		HStack(spacing: DesignTokens.Spacing.md + 2) {
 			if let icon {
 				Image(nsImage: icon)
 					.resizable()
@@ -78,7 +78,7 @@ struct ResultRow: View {
 					.foregroundColor(iconColor)
 			}
 
-			VStack(alignment: .leading, spacing: 2) {
+			VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
 				Text(result.name)
 					.font(settings.resultNameFont)
 					.foregroundColor(.primary)
@@ -96,7 +96,7 @@ struct ResultRow: View {
 
 			if let number = quickSelectNumber {
 				Text(settings.quickSelectModifier.displaySymbol + String(number))
-					.font(.system(size: 11, design: .monospaced))
+					.font(.system(size: DesignTokens.Typography.small, design: .monospaced))
 					.foregroundColor(.secondary.opacity(0.5))
 			}
 
@@ -106,19 +106,19 @@ struct ResultRow: View {
 					.foregroundColor(.secondary.opacity(0.7))
 			}
 		}
-		.padding(.horizontal, 10)
-		.padding(.vertical, 6)
+		.padding(.horizontal, DesignTokens.Spacing.md + 2)
+		.padding(.vertical, DesignTokens.Spacing.sm)
 		.background(isSelected ? themeColor(settings.theme.accentColor).opacity(0.5) : Color.clear)
-		.cornerRadius(6)
-		.padding(.horizontal, 4)
+		.cornerRadius(DesignTokens.CornerRadius.md)
+		.padding(.horizontal, DesignTokens.Spacing.xs)
 		.padding(.vertical, 0)
 		.onAppear {
 			loadIcon()
 		}
 	}
 
-	private var iconSize: CGFloat { isSmallIcon ? 16 : 28 }
-	private var symbolFontSize: CGFloat { isSmallIcon ? 13 : 20 }
+	private var iconSize: CGFloat { isSmallIcon ? 16 : DesignTokens.Layout.iconSize }
+	private var symbolFontSize: CGFloat { isSmallIcon ? DesignTokens.Typography.body : 20 }
 
 	private var iconName: String {
 		switch result.category {
@@ -173,7 +173,7 @@ struct ResultRow: View {
 			autoreleasepool {
 				let loadedIcon = NSWorkspace.shared.icon(forFile: path)
 
-				let size = NSSize(width: 28, height: 28)
+				let size = NSSize(width: DesignTokens.Layout.iconSize, height: DesignTokens.Layout.iconSize)
 				let resized = NSImage(size: size)
 				resized.lockFocus()
 				loadedIcon.draw(

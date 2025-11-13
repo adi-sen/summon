@@ -34,27 +34,33 @@ pub struct Calculator {
 }
 
 impl Calculator {
+	#[must_use]
 	pub fn new() -> Self {
-		let mut rates = HashMap::new();
-		rates.insert("USD".to_string(), 1.0);
-		rates.insert("EUR".to_string(), 0.92);
-		rates.insert("GBP".to_string(), 0.79);
-		rates.insert("JPY".to_string(), 149.5);
-		rates.insert("CNY".to_string(), 7.24);
-		rates.insert("AUD".to_string(), 1.53);
-		rates.insert("CAD".to_string(), 1.38);
-		rates.insert("CHF".to_string(), 0.88);
-		rates.insert("INR".to_string(), 83.2);
-		rates.insert("KRW".to_string(), 1320.0);
-
-		Self { exchange_rates: rates, history: VecDeque::with_capacity(MAX_HISTORY) }
+		Self {
+			exchange_rates: HashMap::from([
+				("USD".to_owned(), 1.0),
+				("EUR".to_owned(), 0.92),
+				("GBP".to_owned(), 0.79),
+				("JPY".to_owned(), 149.5),
+				("CNY".to_owned(), 7.24),
+				("AUD".to_owned(), 1.53),
+				("CAD".to_owned(), 1.38),
+				("CHF".to_owned(), 0.88),
+				("INR".to_owned(), 83.2),
+				("KRW".to_owned(), 1320.0),
+			]),
+			history:        VecDeque::with_capacity(MAX_HISTORY),
+		}
 	}
 
+	#[must_use]
+	#[allow(clippy::cast_precision_loss)]
 	pub fn eval_math(&self, expr: &str) -> Option<f64> {
 		evalexpr::eval(expr).ok().and_then(|v| {
 			if let Ok(f) = v.as_float() {
 				Some(f)
 			} else if let Ok(i) = v.as_int() {
+				#[allow(clippy::cast_precision_loss)]
 				Some(i as f64)
 			} else {
 				None
@@ -62,6 +68,7 @@ impl Calculator {
 		})
 	}
 
+	#[must_use]
 	pub fn convert_currency(&self, query: &str) -> Option<(f64, String, String, f64)> {
 		let parts: Vec<&str> = query.split_whitespace().collect();
 
@@ -91,6 +98,7 @@ impl Calculator {
 		Some((amount, from_currency, to_currency, result))
 	}
 
+	#[must_use]
 	pub fn convert_timezone(&self, query: &str) -> Option<(String, String, String, String)> {
 		let parts: Vec<&str> = query.split_whitespace().collect();
 
@@ -106,8 +114,8 @@ impl Calculator {
 			let target_time = now.with_timezone(&target_tz);
 
 			return Some((
-				"now".to_string(),
-				"UTC".to_string(),
+				"now".to_owned(),
+				"UTC".to_owned(),
 				parts[2].to_uppercase(),
 				target_time.format("%I:%M %p").to_string(),
 			));
@@ -128,7 +136,7 @@ impl Calculator {
 		let from_tz: Tz = normalize_timezone(from_tz_str).parse().ok()?;
 		let to_tz: Tz = normalize_timezone(to_tz_str).parse().ok()?;
 
-		let time = self.parse_time(time_str, from_tz)?;
+		let time = Self::parse_time(time_str, from_tz)?;
 
 		let target_time = time.with_timezone(&to_tz);
 
@@ -140,7 +148,7 @@ impl Calculator {
 		))
 	}
 
-	fn parse_time(&self, time_str: &str, tz: Tz) -> Option<DateTime<Tz>> {
+	fn parse_time(time_str: &str, tz: Tz) -> Option<DateTime<Tz>> {
 		let today = Local::now().date_naive();
 
 		if let Some((hours, minutes)) = time_str.split_once(':') {
@@ -183,6 +191,7 @@ impl Calculator {
 		}
 
 		if let Some(result) = self.eval_math(trimmed) {
+			#[allow(clippy::cast_possible_truncation)]
 			let result_str = if result.fract() == 0.0 && result.abs() < 1e10 {
 				format!("{}", result as i64)
 			} else {
@@ -202,6 +211,7 @@ impl Calculator {
 		self.history.push_back(CalculationEntry { query, result });
 	}
 
+	#[must_use]
 	pub fn get_history(&self) -> &VecDeque<CalculationEntry> { &self.history }
 
 	pub fn clear_history(&mut self) { self.history.clear(); }
@@ -226,12 +236,13 @@ mod tests {
 	#[test]
 	fn test_evaluate() {
 		let mut calc = Calculator::new();
-		assert_eq!(calc.evaluate("2 + 2"), Some("4".to_string()));
-		assert_eq!(calc.evaluate("16 ^ 0.5"), Some("4".to_string()));
-		assert_eq!(calc.evaluate("100 USD to EUR"), Some("92.00 EUR".to_string()));
+		assert_eq!(calc.evaluate("2 + 2"), Some("4".to_owned()));
+		assert_eq!(calc.evaluate("16 ^ 0.5"), Some("4".to_owned()));
+		assert_eq!(calc.evaluate("100 USD to EUR"), Some("92.00 EUR".to_owned()));
 	}
 
 	#[test]
+	#[allow(clippy::float_cmp)]
 	fn test_currency_conversion() {
 		let calc = Calculator::new();
 		let result = calc.convert_currency("100 USD to EUR");

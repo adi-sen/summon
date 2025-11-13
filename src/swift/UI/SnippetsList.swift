@@ -11,7 +11,7 @@ struct SnippetsList: View {
 
 	var body: some View {
 		ScrollView {
-			VStack(spacing: 8) {
+			VStack(spacing: DesignTokens.Spacing.md) {
 				ForEach(snippetManager.snippets) { snippet in
 					InlineEditableSnippetCard(
 						snippet: snippet,
@@ -31,18 +31,18 @@ struct SnippetsList: View {
 				}
 
 				Button(action: { showingAddSnippet = true }) {
-					HStack(spacing: 8) {
+					HStack(spacing: DesignTokens.Spacing.md) {
 						Image(systemName: "plus.circle.fill")
-							.font(.system(size: 14))
+							.font(.system(size: DesignTokens.Typography.title))
 						Text("Add Snippet")
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					}
 					.foregroundColor(settings.accentColorUI)
-					.padding(.horizontal, 12)
-					.padding(.vertical, 10)
+					.padding(.horizontal, DesignTokens.Spacing.lg)
+					.padding(.vertical, DesignTokens.Spacing.md + 2)
 					.frame(maxWidth: .infinity)
 					.background(settings.searchBarColorUI.opacity(0.3))
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 					.overlay(
 						RoundedRectangle(cornerRadius: 6)
 							.strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -50,9 +50,9 @@ struct SnippetsList: View {
 					)
 				}
 				.buttonStyle(PlainButtonStyle())
-				.keyboardShortcut("n", modifiers: .command)
+				.newItemShortcut()
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.sheet(isPresented: $showingAddSnippet) {
 			AddSnippetView()
@@ -76,7 +76,7 @@ struct InlineEditableSnippetCard: View {
 	@FocusState private var contentFocused: Bool
 
 	var body: some View {
-		HStack(spacing: 12) {
+		HStack(spacing: DesignTokens.Spacing.lg) {
 			Switch(isOn: Binding(
 				get: { snippet.enabled },
 				set: { _ in onToggle() }
@@ -87,7 +87,7 @@ struct InlineEditableSnippetCard: View {
 				if isEditingTrigger {
 					TextField("Trigger", text: $editingTrigger)
 						.textFieldStyle(PlainTextFieldStyle())
-						.font(Font(settings.uiFont.withSize(13)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(settings.accentColorUI)
 						.focused($triggerFocused)
 						.onSubmit {
@@ -96,7 +96,7 @@ struct InlineEditableSnippetCard: View {
 						.frame(width: 120)
 				} else {
 					Text(snippet.trigger)
-						.font(Font(settings.uiFont.withSize(13)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(settings.accentColorUI)
 						.frame(width: 120, alignment: .leading)
 						.onTapGesture {
@@ -104,18 +104,18 @@ struct InlineEditableSnippetCard: View {
 						}
 				}
 			}
-			.padding(.horizontal, 10)
-			.padding(.vertical, 6)
+			.padding(.horizontal, DesignTokens.Spacing.md + 2)
+			.padding(.vertical, DesignTokens.Spacing.sm)
 			.background(settings.searchBarColorUI)
-			.cornerRadius(6)
+			.cornerRadius(DesignTokens.CornerRadius.md)
 
 			Image(systemName: "arrow.right")
-				.font(.system(size: 10))
+				.font(.system(size: DesignTokens.Spacing.md + 2))
 				.foregroundColor(settings.secondaryTextColorUI)
 
 			if hasConflict, snippet.enabled {
 				Image(systemName: "exclamationmark.triangle.fill")
-					.font(.system(size: 12))
+					.font(.system(size: DesignTokens.Typography.small))
 					.foregroundColor(Color.orange)
 					.help("Duplicate trigger detected")
 			}
@@ -124,7 +124,7 @@ struct InlineEditableSnippetCard: View {
 				if isEditingContent {
 					TextField("Content", text: $editingContent)
 						.textFieldStyle(PlainTextFieldStyle())
-						.font(Font(settings.uiFont.withSize(13)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(settings.textColorUI)
 						.focused($contentFocused)
 						.onSubmit {
@@ -132,7 +132,7 @@ struct InlineEditableSnippetCard: View {
 						}
 				} else {
 					Text(snippet.content)
-						.font(Font(settings.uiFont.withSize(13)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(settings.textColorUI)
 						.lineLimit(1)
 						.onTapGesture {
@@ -145,16 +145,16 @@ struct InlineEditableSnippetCard: View {
 
 			Button(action: onDelete) {
 				Image(systemName: "trash")
-					.font(.system(size: 12))
+					.font(.system(size: DesignTokens.Typography.small))
 					.foregroundColor(Color.red.opacity(isHovered ? 0.8 : 0.4))
 					.frame(width: 24, height: 24)
 			}
 			.buttonStyle(PlainButtonStyle())
 		}
-		.padding(.horizontal, 12)
-		.padding(.vertical, 8)
+		.padding(.horizontal, DesignTokens.Spacing.lg)
+		.padding(.vertical, DesignTokens.Spacing.md)
 		.background(settings.searchBarColorUI.opacity(isHovered ? 0.8 : 0.3))
-		.cornerRadius(6)
+		.cornerRadius(DesignTokens.CornerRadius.md)
 		.onHover { hovering in
 			isHovered = hovering
 		}

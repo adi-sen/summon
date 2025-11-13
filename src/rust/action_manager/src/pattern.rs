@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::action::{ActionResult, PatternActionType, ResultAction};
 
+#[must_use]
 pub fn match_pattern(pattern: &str, input: &str) -> Option<HashMap<String, String>> {
 	let mut captures = HashMap::new();
 	let pattern_parts: Vec<_> = pattern.split_whitespace().collect();
@@ -29,12 +30,7 @@ pub fn match_pattern(pattern: &str, input: &str) -> Option<HashMap<String, Strin
 						let next_literal_idx = var_end + 1;
 						let value_end = if next_literal_idx < pat_bytes.len() {
 							let next_literal = pat_bytes[next_literal_idx];
-							inp_bytes
-								.iter()
-								.skip(inp_idx)
-								.position(|&b| b == next_literal)
-								.map(|p| inp_idx + p)
-								.unwrap_or(inp_bytes.len())
+							inp_bytes.iter().skip(inp_idx).position(|&b| b == next_literal).map_or(inp_bytes.len(), |p| inp_idx + p)
 						} else {
 							inp_bytes.len()
 						};
@@ -73,22 +69,24 @@ pub fn match_pattern(pattern: &str, input: &str) -> Option<HashMap<String, Strin
 	Some(captures)
 }
 
-pub fn expand_template(template: &str, captures: &HashMap<String, String>) -> String {
+#[must_use]
+pub fn expand_template<S: std::hash::BuildHasher>(template: &str, captures: &HashMap<String, String, S>) -> String {
 	let mut result = template.to_string();
 
 	for (key, value) in captures {
-		result = result.replace(&format!("{{{}}}", key), value);
+		result = result.replace(&format!("{{{key}}}"), value);
 	}
 
 	result
 }
 
-pub fn create_result(
+#[must_use]
+pub fn create_result<S: std::hash::BuildHasher>(
 	action_id: &str,
 	_action_name: &str,
 	pattern: &str,
 	action_type: &PatternActionType,
-	captures: &HashMap<String, String>,
+	captures: &HashMap<String, String, S>,
 	icon: &str,
 ) -> ActionResult {
 	let title = expand_template(pattern, captures);
@@ -111,9 +109,9 @@ pub fn create_result(
 
 	let subtitle = match &result_action {
 		ResultAction::OpenUrl(url) => url.clone(),
-		ResultAction::CopyText(text) => format!("Copy: {}", text),
-		ResultAction::RunCommand { cmd, args } => format!("Run: {} {}", cmd, args.join(" ")),
+		ResultAction::CopyText(text) => format!("Copy: {text}"),
+		ResultAction::RunCommand { cmd, args } => format!("Run: {cmd} {}", args.join(" ")),
 	};
 
-	ActionResult::new(format!("{}:{}", action_id, title), title, subtitle, icon, 95.0, result_action)
+	ActionResult::new(format!("{action_id}:{title}"), title, subtitle, icon, 95.0, result_action)
 }

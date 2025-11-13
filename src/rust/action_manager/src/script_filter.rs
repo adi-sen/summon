@@ -96,6 +96,9 @@ fn store_cache(key: CacheKey, results: Vec<ActionResult>) {
 	}
 }
 
+/// # Errors
+/// Returns error if script fails or times out
+#[allow(clippy::too_many_lines)]
 pub fn execute_script_filter(
 	script_path: &str,
 	extension_dir: &str,
@@ -118,23 +121,12 @@ pub fn execute_script_filter(
 	}
 
 	let manifest_path = Path::new(extension_dir).join("manifest.json");
-	let env_vars: Vec<(String, String)> = if manifest_path.exists() {
-		if let Ok(content) = std::fs::read(&manifest_path) {
-			if let Ok(manifest) = sonic_rs::from_slice::<sonic_rs::Value>(&content) {
-				if let Some(env) = manifest.get("env").and_then(|e| e.as_object()) {
-					env.iter().filter_map(|(k, v)| v.as_str().map(|s| (k.to_string(), s.to_string()))).collect()
-				} else {
-					Vec::new()
-				}
-			} else {
-				Vec::new()
-			}
-		} else {
-			Vec::new()
-		}
-	} else {
-		Vec::new()
-	};
+	let env_vars: Vec<(String, String)> = std::fs::read(&manifest_path)
+		.ok()
+		.and_then(|content| sonic_rs::from_slice::<sonic_rs::Value>(&content).ok())
+		.and_then(|manifest| manifest.get("env")?.as_object().cloned())
+		.map(|env| env.iter().filter_map(|(k, v)| v.as_str().map(|s| (k.to_owned(), s.to_owned()))).collect())
+		.unwrap_or_default();
 
 	let mut command = Command::new(&script_path);
 	command.arg(query).current_dir(extension_dir).stdout(Stdio::piped()).stderr(Stdio::piped());
@@ -143,17 +135,14 @@ pub fn execute_script_filter(
 		command.env(key, value);
 	}
 
-	let mut child = command.spawn().map_err(|e| format!("Failed to execute script: {}", e))?;
+	let mut child = command.spawn().map_err(|e| format!("Failed to execute script: {e}"))?;
 
 	let timeout = Duration::from_millis(SCRIPT_TIMEOUT_MS);
 
-	let status = match child.wait_timeout(timeout).map_err(|e| format!("Failed to wait for script: {}", e))? {
-		Some(status) => status,
-		None => {
-			let _ = child.kill();
-			let _ = child.wait();
-			return Err(format!("Script timed out after {}ms", SCRIPT_TIMEOUT_MS));
-		}
+	let Some(status) = child.wait_timeout(timeout).map_err(|e| format!("Failed to wait for script: {e}"))? else {
+		let _ = child.kill();
+		let _ = child.wait();
+		return Err(format!("Script timed out after {SCRIPT_TIMEOUT_MS}ms"));
 	};
 
 	let mut stdout = Vec::new();
@@ -170,7 +159,7 @@ pub fn execute_script_filter(
 
 	if !output.status.success() {
 		let stderr = String::from_utf8_lossy(&output.stderr);
-		return Err(format!("Script failed: {}", stderr));
+		return Err(format!("Script failed: {stderr}"));
 	}
 
 	let script_output: ScriptOutput = sonic_rs::from_slice(&output.stdout)
@@ -187,9 +176,9 @@ pub fn execute_script_filter(
 					ResultAction::OpenUrl(arg.clone())
 				} else if arg.starts_with("cmd:") {
 					let cmd_str = arg.strip_prefix("cmd:").unwrap_or(arg);
-					ResultAction::RunCommand { cmd: "/bin/sh".to_string(), args: vec!["-c".to_string(), cmd_str.to_string()] }
+					ResultAction::RunCommand { cmd: "/bin/sh".to_owned(), args: vec!["-c".to_owned(), cmd_str.to_string()] }
 				} else if arg.starts_with('/') || arg.starts_with("~/") {
-					ResultAction::OpenUrl(format!("file://{}", arg))
+					ResultAction::OpenUrl(format!("file://{arg}"))
 				} else {
 					ResultAction::OpenUrl(arg.clone())
 				}
@@ -201,20 +190,20 @@ pub fn execute_script_filter(
 				let resolved_path = if Path::new(&icon_obj.path).is_absolute() {
 					icon_obj.path.clone()
 				} else {
-					Path::new(extension_dir).join(&icon_obj.path).to_string_lossy().to_string()
+					Path::new(extension_dir).join(&icon_obj.path).to_string_lossy().into_owned()
 				};
 
 				if Path::new(&resolved_path).exists() {
-					("doc.text".to_string(), Some(resolved_path))
+					("doc.text".to_owned(), Some(resolved_path))
 				} else {
-					("doc.text".to_string(), None)
+					("doc.text".to_owned(), None)
 				}
 			} else {
-				("doc.text".to_string(), None)
+				("doc.text".to_owned(), None)
 			};
 
 			let mut result = ActionResult::new(
-				item.uid.unwrap_or_else(|| format!("{}-{}", action_id, i)),
+				item.uid.unwrap_or_else(|| format!("{action_id}-{i}")),
 				item.title,
 				item.subtitle.unwrap_or_default(),
 				icon,

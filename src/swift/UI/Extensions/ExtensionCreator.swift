@@ -57,42 +57,42 @@ struct ExtensionCreator: View {
 		VStack(spacing: 0) {
 			HStack {
 				Text("Create Extension")
-					.font(Font(settings.uiFont.withSize(16)))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(settings.textColorUI)
 				Spacer()
 				Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
-						.font(.system(size: 18))
+						.font(.system(size: DesignTokens.Typography.large + 2))
 						.foregroundColor(settings.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 			.background(settings.backgroundColorUI)
 
 			Divider().background(Color.white.opacity(0.1))
 
 			ScrollView {
 				VStack(alignment: .leading, spacing: 20) {
-					HStack(spacing: 12) {
+					HStack(spacing: DesignTokens.Spacing.lg) {
 						Image(systemName: "info.circle.fill")
-							.font(.system(size: 14))
+							.font(.system(size: DesignTokens.Typography.title))
 							.foregroundColor(settings.accentColorUI)
 						VStack(alignment: .leading, spacing: 4) {
 							Text("Script Filter Extensions")
-								.font(Font(settings.uiFont.withSize(12)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.textColorUI)
 							Text(
 								"Creates a script-based extension. For high-performance native (Rust) extensions, see documentation."
 							)
-							.font(Font(settings.uiFont.withSize(11)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.secondaryTextColorUI)
 							.fixedSize(horizontal: false, vertical: true)
 						}
 					}
-					.padding(12)
+					.padding(DesignTokens.Spacing.lg)
 					.background(settings.searchBarColorUI.opacity(0.3))
-					.cornerRadius(8)
+					.cornerRadius(DesignTokens.CornerRadius.lg)
 
 					VStack(alignment: .leading, spacing: 16) {
 						FormFieldText(
@@ -130,7 +130,7 @@ struct ExtensionCreator: View {
 
 					VStack(alignment: .leading, spacing: 12) {
 						Text("Template Type")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.textColorUI)
 
 						ForEach(ScriptTemplate.allCases, id: \.self) { tmpl in
@@ -147,56 +147,56 @@ struct ExtensionCreator: View {
 
 					VStack(alignment: .leading, spacing: 12) {
 						Text("Script Language")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.textColorUI)
 
-						HStack(spacing: 8) {
+						HStack(spacing: DesignTokens.Spacing.md) {
 							ForEach(ScriptLanguage.allCases, id: \.self) { lang in
 								Button(action: { scriptLanguage = lang }) {
 									Text(lang.rawValue)
-										.font(Font(settings.uiFont.withSize(12)))
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 										.foregroundColor(
 											scriptLanguage == lang
 												? Color.white : settings.textColorUI
 										)
-										.padding(.horizontal, 12)
-										.padding(.vertical, 8)
+										.padding(.horizontal, DesignTokens.Spacing.lg)
+										.padding(.vertical, DesignTokens.Spacing.md)
 										.background(
 											scriptLanguage == lang
 												? settings.accentColorUI
 												: settings
 												.searchBarColorUI
 										)
-										.cornerRadius(6)
+										.cornerRadius(DesignTokens.CornerRadius.md)
 								}
 								.buttonStyle(PlainButtonStyle())
 							}
 						}
 					}
 
-					HStack(spacing: 10) {
+					HStack(spacing: DesignTokens.Spacing.md + 2) {
 						Image(systemName: "info.circle")
 							.foregroundColor(settings.accentColorUI)
 						VStack(alignment: .leading, spacing: 4) {
 							Text("A starter script will be created for you")
-								.font(Font(settings.uiFont.withSize(11)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.textColorUI)
 							Text("You can customize it after creation")
-								.font(Font(settings.uiFont.withSize(10)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md + 2)))
 								.foregroundColor(settings.secondaryTextColorUI)
 						}
 						Spacer()
 					}
-					.padding(12)
+					.padding(DesignTokens.Spacing.lg)
 					.background(settings.searchBarColorUI.opacity(0.5))
-					.cornerRadius(6)
+					.cornerRadius(DesignTokens.CornerRadius.md)
 				}
-				.padding(24)
+				.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 			}
 
 			Divider().background(Color.white.opacity(0.1))
 
-			HStack(spacing: 12) {
+			HStack(spacing: DesignTokens.Spacing.lg) {
 				StyledButton("Cancel", style: .secondary) {
 					presentationMode.wrappedValue.dismiss()
 				}
@@ -205,17 +205,17 @@ struct ExtensionCreator: View {
 
 				Button(action: createExtension) {
 					Text("Create Extension")
-						.font(Font(settings.uiFont.withSize(13)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(Color.white)
-						.padding(.horizontal, 16)
-						.padding(.vertical, 8)
+						.padding(.horizontal, DesignTokens.Spacing.xl)
+						.padding(.vertical, DesignTokens.Spacing.md)
 						.background(isFormValid ? settings.accentColorUI : settings.searchBarColorUI)
-						.cornerRadius(6)
+						.cornerRadius(DesignTokens.CornerRadius.md)
 				}
 				.buttonStyle(PlainButtonStyle())
 				.disabled(!isFormValid)
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 			.background(settings.backgroundColorUI)
 		}
 		.frame(width: 520, height: 680)
@@ -579,27 +579,27 @@ struct TemplateButton: View {
 
 	var body: some View {
 		Button(action: onSelect) {
-			HStack(spacing: 12) {
+			HStack(spacing: DesignTokens.Spacing.lg) {
 				Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
 					.foregroundColor(
 						isSelected ? settings.accentColorUI : settings.secondaryTextColorUI)
 
 				VStack(alignment: .leading, spacing: 2) {
 					Text(template.rawValue)
-						.font(Font(settings.uiFont.withSize(13)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(settings.textColorUI)
 					Text(template.description)
-						.font(Font(settings.uiFont.withSize(10)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md + 2)))
 						.foregroundColor(settings.secondaryTextColorUI)
 				}
 
 				Spacer()
 			}
-			.padding(12)
+			.padding(DesignTokens.Spacing.lg)
 			.background(
 				isSelected ? settings.searchBarColorUI : settings.searchBarColorUI.opacity(0.3)
 			)
-			.cornerRadius(6)
+			.cornerRadius(DesignTokens.CornerRadius.md)
 		}
 		.buttonStyle(PlainButtonStyle())
 	}

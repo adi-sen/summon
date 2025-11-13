@@ -9,6 +9,10 @@ parking_lot.workspace = true
 
 [dev-dependencies]
 tempfile = "3.8"
+bytecheck = "0.8"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[lints]
+workspace = true

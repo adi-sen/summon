@@ -15,3 +15,5 @@ target/
 benchmarks/
 /OPTIMIZATION_SUMMARY.md
 /RELEASE_NOTES.md
+src/rust/ffi/cbindgen.toml
+src/rust/ffi/ffi.h

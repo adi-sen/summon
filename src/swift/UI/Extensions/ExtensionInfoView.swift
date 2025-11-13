@@ -24,34 +24,34 @@ struct ExtensionInfoView: View {
 					.foregroundColor(settings.accentColorUI)
 
 				VStack(alignment: .leading, spacing: 6) {
-					HStack(spacing: 8) {
+					HStack(spacing: DesignTokens.Spacing.md) {
 						Text(editingName)
 							.font(Font(NSFont.systemFont(ofSize: 18, weight: .semibold)))
 							.foregroundColor(settings.textColorUI)
 
 						if !editingVersion.isEmpty {
 							Text("v\(editingVersion)")
-								.font(Font(settings.uiFont.withSize(11)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.secondaryTextColorUI)
-								.padding(.horizontal, 6)
-								.padding(.vertical, 2)
+								.padding(.horizontal, DesignTokens.Spacing.sm)
+								.padding(.vertical, DesignTokens.Spacing.xxs)
 								.background(settings.searchBarColorUI.opacity(0.5))
-								.cornerRadius(4)
+								.cornerRadius(DesignTokens.CornerRadius.sm)
 						}
 					}
 
 					if !editingAuthor.isEmpty {
 						Text("by \(editingAuthor)")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.secondaryTextColorUI)
 					}
 
 					if case .scriptFilter = action.kind {
-						HStack(spacing: 4) {
+						HStack(spacing: DesignTokens.Spacing.xs) {
 							Image(systemName: "command")
-								.font(.system(size: 10))
+								.font(.system(size: DesignTokens.Spacing.md + 2))
 							Text(editingKeyword)
-								.font(Font(settings.uiFont.withSize(12)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						}
 						.foregroundColor(settings.accentColorUI.opacity(0.8))
 					}
@@ -59,7 +59,7 @@ struct ExtensionInfoView: View {
 
 				Spacer()
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 			.background(settings.searchBarColorUI.opacity(0.3))
 
 			Divider().background(Color.white.opacity(0.1))
@@ -118,14 +118,14 @@ struct ExtensionInfoView: View {
 
 						VStack(alignment: .leading, spacing: 8) {
 							Text("Environment Variables")
-								.font(Font(settings.uiFont.withSize(11)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.secondaryTextColorUI)
 								.textCase(.uppercase)
 
 							ForEach(Array(editingEnv.keys.sorted()), id: \.self) { key in
-								HStack(spacing: 8) {
+								HStack(spacing: DesignTokens.Spacing.md) {
 									Text(key)
-										.font(Font(settings.uiFont.withSize(12)))
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 										.foregroundColor(settings.secondaryTextColorUI)
 										.frame(width: 150, alignment: .leading)
 
@@ -136,11 +136,11 @@ struct ExtensionInfoView: View {
 										}
 									))
 									.textFieldStyle(PlainTextFieldStyle())
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 									.foregroundColor(settings.textColorUI)
-									.padding(8)
+									.padding(DesignTokens.Spacing.md)
 									.background(settings.searchBarColorUI.opacity(0.5))
-									.cornerRadius(4)
+									.cornerRadius(DesignTokens.CornerRadius.sm)
 
 									Button(action: {
 										editingEnv.removeValue(forKey: key)
@@ -153,23 +153,23 @@ struct ExtensionInfoView: View {
 								}
 							}
 
-							HStack(spacing: 8) {
+							HStack(spacing: DesignTokens.Spacing.md) {
 								TextField("Key", text: $newEnvKey)
 									.textFieldStyle(PlainTextFieldStyle())
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 									.foregroundColor(settings.textColorUI)
-									.padding(8)
+									.padding(DesignTokens.Spacing.md)
 									.frame(width: 150)
 									.background(settings.searchBarColorUI.opacity(0.3))
-									.cornerRadius(4)
+									.cornerRadius(DesignTokens.CornerRadius.sm)
 
 								TextField("Value", text: $newEnvValue)
 									.textFieldStyle(PlainTextFieldStyle())
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 									.foregroundColor(settings.textColorUI)
-									.padding(8)
+									.padding(DesignTokens.Spacing.md)
 									.background(settings.searchBarColorUI.opacity(0.3))
-									.cornerRadius(4)
+									.cornerRadius(DesignTokens.CornerRadius.sm)
 
 								Button(action: {
 									if !newEnvKey.isEmpty {
@@ -201,7 +201,7 @@ struct ExtensionInfoView: View {
 
 						Divider().background(Color.white.opacity(0.1))
 
-						HStack(spacing: 12) {
+						HStack(spacing: DesignTokens.Spacing.lg) {
 							StyledButton(
 								"Show in Finder",
 								icon: "folder",
@@ -224,12 +224,12 @@ struct ExtensionInfoView: View {
 						}
 					}
 				}
-				.padding(24)
+				.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 			}
 
 			Divider().background(Color.white.opacity(0.1))
 
-			HStack(spacing: 12) {
+			HStack(spacing: DesignTokens.Spacing.lg) {
 				if hasChanges {
 					StyledButton("Save Changes", style: .primary) {
 						if case let .scriptFilter(_, scriptPath, extensionDir) = action.kind {
@@ -244,7 +244,7 @@ struct ExtensionInfoView: View {
 					onClose()
 				}
 			}
-			.padding(16)
+			.padding(DesignTokens.Spacing.xl)
 			.background(settings.backgroundColorUI)
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity)

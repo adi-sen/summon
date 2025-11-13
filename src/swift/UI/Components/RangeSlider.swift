@@ -9,15 +9,15 @@ struct RangeSlider: View {
 	@ObservedObject var settings = AppSettings.shared
 
 	var body: some View {
-		HStack(spacing: 12) {
+		HStack(spacing: DesignTokens.Spacing.lg) {
 			Text(valueLabel(value))
-				.font(Font(settings.uiFont.withSize(13)))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 				.foregroundColor(settings.textColorUI)
 				.frame(minWidth: 50, alignment: .trailing)
-				.padding(.horizontal, 10)
-				.padding(.vertical, 6)
+				.padding(.horizontal, DesignTokens.Spacing.md + 2)
+				.padding(.vertical, DesignTokens.Spacing.sm)
 				.background(settings.searchBarColorUI)
-				.cornerRadius(6)
+				.cornerRadius(DesignTokens.CornerRadius.md)
 
 			ThemedSliderControl(value: $value, range: range, step: step)
 				.frame(width: 120)

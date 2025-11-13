@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-evalexpr = "11.3"
+evalexpr = "13.0.0"
 chrono = "0.4"
 chrono-tz = "0.10.4"
+
+[lints]
+workspace = true

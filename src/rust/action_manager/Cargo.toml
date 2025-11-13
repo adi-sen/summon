@@ -4,7 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rkyv = { version = "0.7", features = ["validation"] }
+rkyv.workspace = true
+bytecheck = "0.8"
 serde = { version = "1.0", features = ["derive", "serde_derive"] }
 sonic-rs = "0.3"
 parking_lot = "0.12"
@@ -19,3 +20,6 @@ walkdir = "2.5"
 fuzzy-matcher = { workspace = true }
 
 storage_utils = { path = "../storage_utils" }
+
+[lints]
+workspace = true

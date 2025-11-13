@@ -207,17 +207,17 @@ struct ExtensionsSettingsTab: View {
 			VStack(spacing: 0) {
 				HStack {
 					Text("Extensions")
-						.font(Font(settings.uiFont.withSize(14)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 						.foregroundColor(settings.textColorUI.opacity(0.7))
 					Spacer()
 
-					HStack(spacing: 12) {
+					HStack(spacing: DesignTokens.Spacing.lg) {
 						Button(action: {
 							let extensionsDir = StoragePathManager.shared.getExtensionsDir()
 							NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: extensionsDir)
 						}) {
 							Image(systemName: "folder")
-								.font(.system(size: 13))
+								.font(.system(size: DesignTokens.Typography.body))
 								.foregroundColor(settings.secondaryTextColorUI)
 						}
 						.buttonStyle(PlainButtonStyle())
@@ -225,7 +225,7 @@ struct ExtensionsSettingsTab: View {
 
 						Button(action: importExtension) {
 							Image(systemName: "square.and.arrow.down")
-								.font(.system(size: 13))
+								.font(.system(size: DesignTokens.Typography.body))
 								.foregroundColor(settings.secondaryTextColorUI)
 						}
 						.buttonStyle(PlainButtonStyle())
@@ -233,42 +233,42 @@ struct ExtensionsSettingsTab: View {
 
 						Button(action: { showingCreateExtension = true }) {
 							Image(systemName: "plus")
-								.font(.system(size: 13))
+								.font(.system(size: DesignTokens.Typography.body))
 								.foregroundColor(settings.accentColorUI)
 						}
 						.buttonStyle(PlainButtonStyle())
 						.help("Create extension")
 					}
 				}
-				.padding(.horizontal, 16)
-				.padding(.vertical, 12)
+				.padding(.horizontal, DesignTokens.Spacing.xl)
+				.padding(.vertical, DesignTokens.Spacing.lg)
 				.background(settings.backgroundColorUI)
 
 				Divider().background(Color.white.opacity(0.1))
 
 				if extensions.isEmpty {
-					VStack(spacing: 12) {
+					VStack(spacing: DesignTokens.Spacing.lg) {
 						Spacer()
 						Image(systemName: "puzzlepiece.extension")
 							.font(.system(size: 32))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
 						Text("No extensions yet")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.secondaryTextColorUI)
 						Button(action: {
 							showingCreateExtension = true
 						}) {
-							HStack(spacing: 6) {
+							HStack(spacing: DesignTokens.Spacing.sm) {
 								Image(systemName: "plus.circle.fill")
-									.font(.system(size: 14))
+									.font(.system(size: DesignTokens.Typography.title))
 								Text("Create Extension")
-									.font(Font(settings.uiFont.withSize(12)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							}
 							.foregroundColor(settings.accentColorUI)
-							.padding(.horizontal, 16)
-							.padding(.vertical, 10)
+							.padding(.horizontal, DesignTokens.Spacing.xl)
+							.padding(.vertical, DesignTokens.Spacing.md + 2)
 							.background(settings.searchBarColorUI)
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 						}
 						.buttonStyle(PlainButtonStyle())
 						Spacer()
@@ -276,7 +276,7 @@ struct ExtensionsSettingsTab: View {
 					.frame(maxWidth: .infinity)
 				} else {
 					ScrollView {
-						VStack(spacing: 4) {
+						VStack(spacing: DesignTokens.Spacing.xs) {
 							ForEach(extensions) { ext in
 								ExtensionListItem(
 									action: ext,
@@ -291,7 +291,7 @@ struct ExtensionsSettingsTab: View {
 								)
 							}
 						}
-						.padding(8)
+						.padding(DesignTokens.Spacing.md)
 					}
 				}
 			}
@@ -310,7 +310,7 @@ struct ExtensionsSettingsTab: View {
 					)
 					.id(selectedExtension.id)
 				} else {
-					VStack(spacing: 16) {
+					VStack(spacing: DesignTokens.Spacing.xl) {
 						Image(systemName: "puzzlepiece.extension")
 							.font(.system(size: 64))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.3))
@@ -318,7 +318,7 @@ struct ExtensionsSettingsTab: View {
 							.font(Font(settings.uiFont.withSize(15)))
 							.foregroundColor(settings.secondaryTextColorUI)
 						Text("Extensions are managed via manifest.json files")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.6))
 					}
 					.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -347,9 +347,9 @@ struct ExtensionListItem: View {
 	@State private var isHovered = false
 
 	var body: some View {
-		HStack(spacing: 10) {
+		HStack(spacing: DesignTokens.Spacing.md + 2) {
 			Image(systemName: action.icon.isEmpty ? "puzzlepiece.extension" : action.icon)
-				.font(.system(size: 14))
+				.font(.system(size: DesignTokens.Typography.title))
 				.foregroundColor(isSelected ? settings.accentColorUI : settings.textColorUI)
 				.frame(width: 20)
 
@@ -358,7 +358,7 @@ struct ExtensionListItem: View {
 			}) {
 				VStack(alignment: .leading, spacing: 2) {
 					Text(action.name)
-						.font(Font(settings.uiFont.withSize(12)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(isSelected ? settings.accentColorUI : settings.textColorUI)
 						.lineLimit(1)
 				}
@@ -372,17 +372,17 @@ struct ExtensionListItem: View {
 					onDelete()
 				}) {
 					Image(systemName: "trash")
-						.font(.system(size: 11))
+						.font(.system(size: DesignTokens.Typography.small))
 						.foregroundColor(.red.opacity(0.7))
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
 		}
-		.padding(.horizontal, 12)
-		.padding(.vertical, 8)
+		.padding(.horizontal, DesignTokens.Spacing.lg)
+		.padding(.vertical, DesignTokens.Spacing.md)
 		.background(isSelected ? settings.accentColorUI
 			.opacity(0.15) : (isHovered ? settings.searchBarColorUI.opacity(0.5) : Color.clear))
-		.cornerRadius(6)
+		.cornerRadius(DesignTokens.CornerRadius.md)
 		.onHover { hovering in
 			isHovered = hovering
 		}

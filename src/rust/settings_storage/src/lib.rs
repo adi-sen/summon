@@ -1,11 +1,12 @@
 use std::{io, path::Path};
 
+use bytecheck::CheckBytes;
 use rkyv::{Archive, Deserialize, Serialize};
 use storage_utils::RkyvStorage;
 
-#[derive(Archive, Deserialize, Serialize, Debug, Clone)]
-#[archive(compare(PartialEq))]
-#[archive_attr(derive(Debug))]
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, Debug, Clone)]
+#[rkyv(derive(Debug))]
 pub struct AppSettings {
 	pub theme:                    String,
 	pub custom_font_name:         String,
@@ -28,25 +29,25 @@ pub struct AppSettings {
 impl Default for AppSettings {
 	fn default() -> Self {
 		Self {
-			theme:                    "dark".to_string(),
+			theme:                    "dark".to_owned(),
 			custom_font_name:         String::new(),
-			font_size:                "medium".to_string(),
+			font_size:                "medium".to_owned(),
 			max_results:              7,
 			max_clipboard_items:      30,
 			clipboard_retention_days: 7,
-			quick_select_modifier:    "option".to_string(),
+			quick_select_modifier:    "option".to_owned(),
 			enable_commands:          true,
 			show_tray_icon:           true,
 			show_dock_icon:           false,
 			hide_traffic_lights:      false,
-			launcher_shortcut_key:    "space".to_string(),
-			launcher_shortcut_mods:   vec!["command".to_string()],
-			clipboard_shortcut_key:   "v".to_string(),
-			clipboard_shortcut_mods:  vec!["command".to_string(), "shift".to_string()],
+			launcher_shortcut_key:    "space".to_owned(),
+			launcher_shortcut_mods:   vec!["command".to_owned()],
+			clipboard_shortcut_key:   "v".to_owned(),
+			clipboard_shortcut_mods:  vec!["command".to_owned(), "shift".to_owned()],
 			search_folders:           vec![
-				"/Applications".to_string(),
-				"/System/Applications".to_string(),
-				"/System/Applications/Utilities".to_string(),
+				"/Applications".to_owned(),
+				"/System/Applications".to_owned(),
+				"/System/Applications/Utilities".to_owned(),
 			],
 		}
 	}
@@ -65,6 +66,7 @@ impl SettingsStorage {
 		Ok(Self { storage })
 	}
 
+	#[must_use]
 	pub fn get(&self) -> AppSettings { self.storage.get_all().into_iter().next().unwrap_or_default() }
 
 	pub fn save(&self, settings: AppSettings) -> io::Result<()> {
@@ -98,7 +100,7 @@ mod tests {
 		let storage = SettingsStorage::new(temp.path()).unwrap();
 
 		let mut settings = storage.get();
-		settings.theme = "light".to_string();
+		settings.theme = "light".to_owned();
 		settings.max_results = 10;
 		storage.save(settings).unwrap();
 

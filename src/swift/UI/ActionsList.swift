@@ -42,7 +42,7 @@ struct ActionsList: View {
 
 	var body: some View {
 		ScrollView {
-			VStack(spacing: 6) {
+			VStack(spacing: DesignTokens.Spacing.sm) {
 				ForEach(filteredActions) { action in
 					InlineEditableActionCard(
 						action: action,
@@ -63,16 +63,16 @@ struct ActionsList: View {
 						Button(action: { showingAddAction = true }) {
 							HStack(spacing: 8) {
 								Image(systemName: "plus.circle.fill")
-									.font(.system(size: 14))
+									.font(.system(size: DesignTokens.Typography.title))
 								Text("Add Web Search")
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							}
 							.foregroundColor(settings.accentColorUI)
-							.padding(.horizontal, 12)
-							.padding(.vertical, 10)
+							.padding(.horizontal, DesignTokens.Spacing.lg)
+							.padding(.vertical, DesignTokens.Spacing.md + 2)
 							.frame(maxWidth: .infinity)
 							.background(settings.searchBarColorUI.opacity(0.3))
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 							.overlay(
 								RoundedRectangle(cornerRadius: 6)
 									.strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -80,36 +80,36 @@ struct ActionsList: View {
 							)
 						}
 						.buttonStyle(PlainButtonStyle())
-						.keyboardShortcut("n", modifiers: .command)
+						.newItemShortcut()
 
 						Button(action: { actionManager.importDefaults() }) {
 							HStack(spacing: 6) {
 								Image(systemName: "arrow.counterclockwise")
-									.font(.system(size: 12))
+									.font(.system(size: DesignTokens.Typography.small))
 								Text("Reset to Defaults")
-									.font(Font(settings.uiFont.withSize(12)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							}
 							.foregroundColor(settings.secondaryTextColorUI)
-							.padding(.horizontal, 10)
-							.padding(.vertical, 10)
+							.padding(.horizontal, DesignTokens.Spacing.md + 2)
+							.padding(.vertical, DesignTokens.Spacing.md + 2)
 							.background(settings.searchBarColorUI.opacity(0.3))
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 						}
 						.buttonStyle(PlainButtonStyle())
 					} else if filterType == .extensions {
 						Button(action: { showingAddAction = true }) {
 							HStack(spacing: 8) {
 								Image(systemName: "square.and.pencil")
-									.font(.system(size: 14))
+									.font(.system(size: DesignTokens.Typography.title))
 								Text("Create Extension")
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							}
 							.foregroundColor(settings.accentColorUI)
-							.padding(.horizontal, 12)
-							.padding(.vertical, 10)
+							.padding(.horizontal, DesignTokens.Spacing.lg)
+							.padding(.vertical, DesignTokens.Spacing.md + 2)
 							.frame(maxWidth: .infinity)
 							.background(settings.searchBarColorUI.opacity(0.3))
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 							.overlay(
 								RoundedRectangle(cornerRadius: 6)
 									.strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -117,11 +117,11 @@ struct ActionsList: View {
 							)
 						}
 						.buttonStyle(PlainButtonStyle())
-						.keyboardShortcut("n", modifiers: .command)
+						.newItemShortcut()
 					}
 				}
 			}
-			.padding(24)
+			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.sheet(isPresented: $showingAddAction) {
 			if filterType == .extensions {
@@ -160,7 +160,7 @@ struct InlineEditableActionCard: View {
 				.frame(width: 36)
 
 				Image(systemName: action.icon.isEmpty ? "bolt.circle" : action.icon)
-					.font(.system(size: 13))
+					.font(.system(size: DesignTokens.Typography.body))
 					.foregroundColor(action.enabled ? settings.accentColorUI : settings.secondaryTextColorUI)
 					.frame(width: 18)
 
@@ -168,13 +168,13 @@ struct InlineEditableActionCard: View {
 					if isEditingName {
 						TextField("Name", text: $editingName)
 							.textFieldStyle(PlainTextFieldStyle())
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.textColorUI)
 							.focused($nameFocused)
 							.onSubmit { saveName() }
 					} else {
 						Text(action.name)
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.textColorUI)
 							.onTapGesture { startEditingName() }
 					}
@@ -184,7 +184,7 @@ struct InlineEditableActionCard: View {
 
 				Button(action: onDelete) {
 					Image(systemName: "trash")
-						.font(.system(size: 11))
+						.font(.system(size: DesignTokens.Typography.small))
 						.foregroundColor(Color.red.opacity(isHovered ? 0.8 : 0.4))
 						.frame(width: 20, height: 20)
 				}
@@ -198,39 +198,39 @@ struct InlineEditableActionCard: View {
 						if isEditingKeyword {
 							TextField("Keyword", text: $editingKeyword)
 								.textFieldStyle(PlainTextFieldStyle())
-								.font(Font(settings.uiFont.withSize(11)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.accentColorUI)
 								.focused($keywordFocused)
 								.onSubmit { saveKeyword() }
 								.frame(width: 80)
 						} else {
 							Text(keyword)
-								.font(Font(settings.uiFont.withSize(11)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.accentColorUI)
 								.frame(width: 80, alignment: .leading)
 								.onTapGesture { startEditingKeyword(keyword) }
 						}
 					}
-					.padding(.horizontal, 6)
-					.padding(.vertical, 3)
+					.padding(.horizontal, DesignTokens.Spacing.sm)
+					.padding(.vertical, DesignTokens.Spacing.xxs + 1)
 					.background(settings.searchBarColorUI)
-					.cornerRadius(3)
+					.cornerRadius(DesignTokens.CornerRadius.sm - 1)
 
 					Image(systemName: "arrow.right")
-						.font(.system(size: 8))
+						.font(.system(size: DesignTokens.Spacing.md))
 						.foregroundColor(settings.secondaryTextColorUI)
 
 					Group {
 						if isEditingURL {
 							TextField("URL", text: $editingURL)
 								.textFieldStyle(PlainTextFieldStyle())
-								.font(Font(settings.uiFont.withSize(11)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.secondaryTextColorUI)
 								.focused($urlFocused)
 								.onSubmit { saveURL() }
 						} else {
 							Text(url)
-								.font(Font(settings.uiFont.withSize(11)))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								.foregroundColor(settings.secondaryTextColorUI)
 								.lineLimit(1)
 								.truncationMode(.middle)
@@ -244,19 +244,19 @@ struct InlineEditableActionCard: View {
 			case let .pattern(pattern, url):
 				HStack(spacing: 6) {
 					Text(pattern)
-						.font(Font(settings.uiFont.withSize(11)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.accentColorUI)
-						.padding(.horizontal, 6)
-						.padding(.vertical, 3)
+						.padding(.horizontal, DesignTokens.Spacing.sm)
+						.padding(.vertical, DesignTokens.Spacing.xxs + 1)
 						.background(settings.searchBarColorUI)
-						.cornerRadius(3)
+						.cornerRadius(DesignTokens.CornerRadius.sm - 1)
 
 					Image(systemName: "arrow.right")
-						.font(.system(size: 8))
+						.font(.system(size: DesignTokens.Spacing.md))
 						.foregroundColor(settings.secondaryTextColorUI)
 
 					Text(url)
-						.font(Font(settings.uiFont.withSize(11)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.secondaryTextColorUI)
 						.lineLimit(1)
 						.truncationMode(.middle)
@@ -266,19 +266,19 @@ struct InlineEditableActionCard: View {
 			case let .scriptFilter(keyword, scriptPath, _):
 				HStack(spacing: 6) {
 					Text(keyword)
-						.font(Font(settings.uiFont.withSize(11)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.accentColorUI)
-						.padding(.horizontal, 6)
-						.padding(.vertical, 3)
+						.padding(.horizontal, DesignTokens.Spacing.sm)
+						.padding(.vertical, DesignTokens.Spacing.xxs + 1)
 						.background(settings.searchBarColorUI)
-						.cornerRadius(3)
+						.cornerRadius(DesignTokens.CornerRadius.sm - 1)
 
 					Image(systemName: "arrow.right")
-						.font(.system(size: 8))
+						.font(.system(size: DesignTokens.Spacing.md))
 						.foregroundColor(settings.secondaryTextColorUI)
 
 					Text(scriptPath.split(separator: "/").last.map(String.init) ?? scriptPath)
-						.font(Font(settings.uiFont.withSize(11)))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.secondaryTextColorUI)
 						.lineLimit(1)
 						.truncationMode(.middle)
@@ -286,10 +286,10 @@ struct InlineEditableActionCard: View {
 				.padding(.leading, 44)
 			}
 		}
-		.padding(.horizontal, 10)
-		.padding(.vertical, 7)
+		.padding(.horizontal, DesignTokens.Spacing.md + 2)
+		.padding(.vertical, DesignTokens.Spacing.sm + 1)
 		.background(settings.searchBarColorUI.opacity(isHovered ? 0.8 : 0.3))
-		.cornerRadius(5)
+		.cornerRadius(DesignTokens.CornerRadius.sm + 1)
 		.onHover { hovering in
 			isHovered = hovering
 		}
@@ -360,7 +360,7 @@ struct AddActionView: View {
 		VStack(spacing: 0) {
 			HStack {
 				Text("Add Web Search")
-					.font(Font(settings.uiFont.withSize(16)))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(settings.textColorUI)
 				Spacer()
 				Button(action: { presentationMode.wrappedValue.dismiss() }) {
@@ -379,84 +379,84 @@ struct AddActionView: View {
 				VStack(alignment: .leading, spacing: 16) {
 					VStack(alignment: .leading, spacing: 6) {
 						Text("Name")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.textColorUI)
 						TextField("e.g., Google Search", text: $name)
 							.textFieldStyle(PlainTextFieldStyle())
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.textColorUI)
-							.padding(10)
+							.padding(DesignTokens.Spacing.md + 2)
 							.background(settings.searchBarColorUI)
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 					}
 
 					VStack(alignment: .leading, spacing: 6) {
 						Text("Keyword")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.textColorUI)
 						TextField("e.g., g", text: $keyword)
 							.textFieldStyle(PlainTextFieldStyle())
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.textColorUI)
-							.padding(10)
+							.padding(DesignTokens.Spacing.md + 2)
 							.background(settings.searchBarColorUI)
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 					}
 
 					VStack(alignment: .leading, spacing: 6) {
 						Text("URL (use {query} for search term)")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.textColorUI)
 						TextField("e.g., https://google.com/search?q={query}", text: $url)
 							.textFieldStyle(PlainTextFieldStyle())
-							.font(Font(settings.uiFont.withSize(13)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							.foregroundColor(settings.textColorUI)
-							.padding(10)
+							.padding(DesignTokens.Spacing.md + 2)
 							.background(settings.searchBarColorUI)
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 					}
 
 					VStack(alignment: .leading, spacing: 10) {
 						Text("Icon")
-							.font(Font(settings.uiFont.withSize(12)))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.textColorUI)
 
 						HStack(spacing: 12) {
 							Button(action: { useCustomIcon = false }) {
 								HStack(spacing: 8) {
 									Image(systemName: useCustomIcon ? "circle" : "circle.fill")
-										.font(.system(size: 12))
+										.font(.system(size: DesignTokens.Typography.small))
 									Text("SF Symbol")
-										.font(Font(settings.uiFont.withSize(12)))
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								}
 								.foregroundColor(settings.textColorUI)
-								.padding(.horizontal, 12)
-								.padding(.vertical, 8)
+								.padding(.horizontal, DesignTokens.Spacing.lg)
+								.padding(.vertical, DesignTokens.Spacing.md)
 								.background(
 									useCustomIcon
 										? settings.searchBarColorUI.opacity(0.5)
 										: settings.accentColorUI.opacity(0.2)
 								)
-								.cornerRadius(6)
+								.cornerRadius(DesignTokens.CornerRadius.md)
 							}
 							.buttonStyle(PlainButtonStyle())
 
 							Button(action: { useCustomIcon = true }) {
 								HStack(spacing: 8) {
 									Image(systemName: useCustomIcon ? "circle.fill" : "circle")
-										.font(.system(size: 12))
+										.font(.system(size: DesignTokens.Typography.small))
 									Text("Upload Image")
-										.font(Font(settings.uiFont.withSize(12)))
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								}
 								.foregroundColor(settings.textColorUI)
-								.padding(.horizontal, 12)
-								.padding(.vertical, 8)
+								.padding(.horizontal, DesignTokens.Spacing.lg)
+								.padding(.vertical, DesignTokens.Spacing.md)
 								.background(
 									useCustomIcon
 										? settings.accentColorUI.opacity(0.2)
 										: settings.searchBarColorUI.opacity(0.5)
 								)
-								.cornerRadius(6)
+								.cornerRadius(DesignTokens.CornerRadius.md)
 							}
 							.buttonStyle(PlainButtonStyle())
 						}
@@ -470,14 +470,14 @@ struct AddActionView: View {
 											.interpolation(.high)
 											.frame(width: 32, height: 32)
 											.background(Color.white.opacity(0.1))
-											.cornerRadius(6)
+											.cornerRadius(DesignTokens.CornerRadius.md)
 									} else {
 										RoundedRectangle(cornerRadius: 6)
 											.fill(settings.searchBarColorUI)
 											.frame(width: 32, height: 32)
 											.overlay(
 												Image(systemName: "photo.badge.plus")
-													.font(.system(size: 14))
+													.font(.system(size: DesignTokens.Typography.title))
 													.foregroundColor(settings.secondaryTextColorUI)
 											)
 									}
@@ -485,27 +485,27 @@ struct AddActionView: View {
 									Button(action: { selectImage() }) {
 										HStack(spacing: 6) {
 											Image(systemName: "photo")
-												.font(.system(size: 12))
+												.font(.system(size: DesignTokens.Typography.small))
 											Text(customIconImage == nil ? "Choose Image" : "Change Image")
-												.font(Font(settings.uiFont.withSize(12)))
+												.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 										}
 										.foregroundColor(settings.accentColorUI)
-										.padding(.horizontal, 12)
-										.padding(.vertical, 8)
+										.padding(.horizontal, DesignTokens.Spacing.lg)
+										.padding(.vertical, DesignTokens.Spacing.md)
 										.background(settings.searchBarColorUI)
-										.cornerRadius(6)
+										.cornerRadius(DesignTokens.CornerRadius.md)
 									}
 									.buttonStyle(PlainButtonStyle())
 
 									if customIconImage != nil {
 										Button(action: { clearCustomIcon() }) {
 											Text("Remove")
-												.font(Font(settings.uiFont.withSize(12)))
+												.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 												.foregroundColor(Color.red)
-												.padding(.horizontal, 12)
-												.padding(.vertical, 8)
+												.padding(.horizontal, DesignTokens.Spacing.lg)
+												.padding(.vertical, DesignTokens.Spacing.md)
 												.background(settings.searchBarColorUI)
-												.cornerRadius(6)
+												.cornerRadius(DesignTokens.CornerRadius.md)
 										}
 										.buttonStyle(PlainButtonStyle())
 									}
@@ -515,9 +515,9 @@ struct AddActionView: View {
 									.font(Font(settings.uiFont.withSize(10)))
 									.foregroundColor(settings.secondaryTextColorUI.opacity(0.6))
 							}
-							.padding(12)
+							.padding(DesignTokens.Spacing.lg)
 							.background(settings.searchBarColorUI.opacity(0.3))
-							.cornerRadius(6)
+							.cornerRadius(DesignTokens.CornerRadius.md)
 						} else {
 							HStack(spacing: 12) {
 								Image(systemName: icon.isEmpty ? "globe" : icon)
@@ -525,15 +525,15 @@ struct AddActionView: View {
 									.foregroundColor(settings.accentColorUI)
 									.frame(width: 32, height: 32)
 									.background(settings.searchBarColorUI.opacity(0.3))
-									.cornerRadius(6)
+									.cornerRadius(DesignTokens.CornerRadius.md)
 
 								TextField("e.g., globe, magnifyingglass, star.fill", text: $icon)
 									.textFieldStyle(PlainTextFieldStyle())
-									.font(Font(settings.uiFont.withSize(13)))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 									.foregroundColor(settings.textColorUI)
-									.padding(10)
+									.padding(DesignTokens.Spacing.md + 2)
 									.background(settings.searchBarColorUI)
-									.cornerRadius(6)
+									.cornerRadius(DesignTokens.CornerRadius.md)
 							}
 						}
 					}
@@ -545,26 +545,26 @@ struct AddActionView: View {
 						}
 						.buttonStyle(PlainButtonStyle())
 						.foregroundColor(settings.textColorUI)
-						.padding(.horizontal, 16)
-						.padding(.vertical, 8)
+						.padding(.horizontal, DesignTokens.Spacing.xl)
+						.padding(.vertical, DesignTokens.Spacing.md)
 						.background(settings.searchBarColorUI)
-						.cornerRadius(6)
+						.cornerRadius(DesignTokens.CornerRadius.md)
 
 						Button("Add") {
 							addWebSearch()
 						}
 						.buttonStyle(PlainButtonStyle())
 						.foregroundColor(Color.white)
-						.padding(.horizontal, 16)
-						.padding(.vertical, 8)
+						.padding(.horizontal, DesignTokens.Spacing.xl)
+						.padding(.vertical, DesignTokens.Spacing.md)
 						.background(settings.accentColorUI)
-						.cornerRadius(6)
+						.cornerRadius(DesignTokens.CornerRadius.md)
 						.disabled(name.isEmpty || keyword.isEmpty || url.isEmpty)
 						.opacity(name.isEmpty || keyword.isEmpty || url.isEmpty ? 0.5 : 1.0)
 					}
 					.padding(.top, 4)
 				}
-				.padding(24)
+				.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 			}
 		}
 		.frame(width: 520, height: 520)

@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// A generalized styled button component supporting common button patterns.
-/// Provides consistent styling across the application with configurable styles and layouts.
 struct StyledButton: View {
 	let title: String
 	let icon: String?
@@ -26,33 +24,33 @@ struct StyledButton: View {
 
 		var fontSize: CGFloat {
 			switch self {
-			case .small: 11
-			case .medium: 13
-			case .large: 14
+			case .small: DesignTokens.Typography.small
+			case .medium: DesignTokens.Typography.body
+			case .large: DesignTokens.Typography.title
 			}
 		}
 
 		var iconSize: CGFloat {
 			switch self {
-			case .small: 11
-			case .medium: 14
-			case .large: 16
+			case .small: DesignTokens.Typography.iconSmall
+			case .medium: DesignTokens.Typography.icon
+			case .large: DesignTokens.Typography.iconLarge
 			}
 		}
 
 		var horizontalPadding: CGFloat {
 			switch self {
-			case .small: 8
-			case .medium: 16
-			case .large: 20
+			case .small: DesignTokens.Spacing.md
+			case .medium: DesignTokens.Spacing.xl
+			case .large: DesignTokens.Spacing.xxl
 			}
 		}
 
 		var verticalPadding: CGFloat {
 			switch self {
-			case .small: 6
-			case .medium: 10
-			case .large: 12
+			case .small: DesignTokens.Spacing.sm
+			case .medium: DesignTokens.Spacing.md + 2
+			case .large: DesignTokens.Spacing.lg
 			}
 		}
 	}
@@ -88,7 +86,7 @@ struct StyledButton: View {
 			.padding(.vertical, size.verticalPadding)
 			.frame(maxWidth: fullWidth ? .infinity : nil)
 			.background(backgroundColor)
-			.cornerRadius(6)
+			.cornerRadius(DesignTokens.CornerRadius.md)
 		}
 		.buttonStyle(PlainButtonStyle())
 	}

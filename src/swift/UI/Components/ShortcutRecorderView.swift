@@ -11,7 +11,7 @@ struct ShortcutRecorderView: View {
 	var body: some View {
 		HStack {
 			Text(label)
-				.font(Font(settings.uiFont.withSize(13)))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 				.foregroundColor(settings.textColorUI)
 
 			Spacer()
@@ -21,15 +21,15 @@ struct ShortcutRecorderView: View {
 				isFocused = isRecording
 			}) {
 				Text(isRecording ? "Press keys..." : shortcut.displayString)
-					.font(.system(size: 12, design: .monospaced))
+					.font(.system(size: DesignTokens.Typography.small, design: .monospaced))
 					.foregroundColor(isRecording ? settings.accentColorUI : settings.secondaryTextColorUI)
-					.padding(.horizontal, 12)
-					.padding(.vertical, 6)
+					.padding(.horizontal, DesignTokens.Spacing.lg)
+					.padding(.vertical, DesignTokens.Spacing.sm)
 					.background(
-						RoundedRectangle(cornerRadius: 6)
+						RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
 							.fill(settings.metadataColorUI)
 							.overlay(
-								RoundedRectangle(cornerRadius: 6)
+								RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
 									.stroke(isRecording ? settings.accentColorUI : Color.clear, lineWidth: 2)
 							)
 					)
@@ -38,7 +38,7 @@ struct ShortcutRecorderView: View {
 			.focused($isFocused)
 			.background(KeyEventView(isRecording: $isRecording, shortcut: $shortcut))
 		}
-		.padding(.vertical, 2)
+		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
 }
 

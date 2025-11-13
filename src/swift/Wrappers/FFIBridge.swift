@@ -89,33 +89,18 @@ enum FFI {
 		for i in 0 ..< outCount {
 			let cEntry = cEntries[i]
 
-			guard let contentPtr = cEntry.content else { continue }
-			let content = String(cString: contentPtr)
-
-			let imageFilePath: String? =
-				if let pathPtr = cEntry.imageFilePath {
-					String(cString: pathPtr)
-				} else {
-					nil
-				}
-
-			let sourceApp: String? =
-				if let appPtr = cEntry.sourceApp {
-					String(cString: appPtr)
-				} else {
-					nil
-				}
+			guard let content = FFIHelpers.safeString(from: cEntry.content) else { continue }
 
 			swiftEntries.append(
 				SwiftClipboardEntry(
 					content: content,
 					timestamp: cEntry.timestamp,
 					itemType: cEntry.itemType,
-					imageFilePath: imageFilePath,
+					imageFilePath: FFIHelpers.safeString(from: cEntry.imageFilePath),
 					imageWidth: cEntry.imageWidth,
 					imageHeight: cEntry.imageHeight,
 					size: cEntry.size,
-					sourceApp: sourceApp
+					sourceApp: FFIHelpers.safeString(from: cEntry.sourceApp)
 				))
 		}
 
@@ -238,8 +223,7 @@ enum FFI {
 	}
 
 	static func cStringToSwift(_ ptr: UnsafeMutablePointer<CChar>?) -> String? {
-		guard let ptr else { return nil }
-		return String(cString: ptr)
+		FFIHelpers.safeString(from: ptr)
 	}
 
 	private static func convertCSnippetsToSwift(
@@ -252,19 +236,19 @@ enum FFI {
 		for i in 0 ..< count {
 			let cSnippet = cSnippets[i]
 
-			guard let idPtr = cSnippet.id,
-			      let triggerPtr = cSnippet.trigger,
-			      let contentPtr = cSnippet.content,
-			      let categoryPtr = cSnippet.category
+			guard let id = FFIHelpers.safeString(from: cSnippet.id),
+			      let trigger = FFIHelpers.safeString(from: cSnippet.trigger),
+			      let content = FFIHelpers.safeString(from: cSnippet.content),
+			      let category = FFIHelpers.safeString(from: cSnippet.category)
 			else { continue }
 
 			swiftSnippets.append(
 				SwiftSnippet(
-					id: String(cString: idPtr),
-					trigger: String(cString: triggerPtr),
-					content: String(cString: contentPtr),
+					id: id,
+					trigger: trigger,
+					content: content,
 					enabled: cSnippet.enabled,
-					category: String(cString: categoryPtr)
+					category: category
 				))
 		}
 
@@ -350,13 +334,11 @@ enum FFI {
 
 		for i in 0 ..< outCount {
 			let cEntry = cEntries[i]
-			guard let namePtr = cEntry.name, let pathPtr = cEntry.path else { continue }
+			guard let name = FFIHelpers.safeString(from: cEntry.name),
+			      let path = FFIHelpers.safeString(from: cEntry.path)
+			else { continue }
 
-			swiftEntries.append(
-				SwiftAppEntry(
-					name: String(cString: namePtr),
-					path: String(cString: pathPtr)
-				))
+			swiftEntries.append(SwiftAppEntry(name: name, path: path))
 		}
 
 		app_entries_free(cEntries, outCount)
@@ -388,21 +370,17 @@ enum FFI {
 
 		defer { settings_free(cSettings) }
 
-		let theme = cSettings.pointee.theme.map { String(cString: $0) } ?? "dark"
-		let customFontName = cSettings.pointee.customFontName.map { String(cString: $0) } ?? ""
-		let fontSize = cSettings.pointee.fontSize.map { String(cString: $0) } ?? "medium"
-		let quickSelectModifier =
-			cSettings.pointee.quickSelectModifier.map { String(cString: $0) } ?? "option"
-		let launcherShortcutKey =
-			cSettings.pointee.launcherShortcutKey.map { String(cString: $0) } ?? "space"
-		let clipboardShortcutKey =
-			cSettings.pointee.clipboardShortcutKey.map { String(cString: $0) } ?? "v"
+		let theme = FFIHelpers.safeString(from: cSettings.pointee.theme) ?? "dark"
+		let customFontName = FFIHelpers.safeString(from: cSettings.pointee.customFontName) ?? ""
+		let fontSize = FFIHelpers.safeString(from: cSettings.pointee.fontSize) ?? "medium"
+		let quickSelectModifier = FFIHelpers.safeString(from: cSettings.pointee.quickSelectModifier) ?? "option"
+		let launcherShortcutKey = FFIHelpers.safeString(from: cSettings.pointee.launcherShortcutKey) ?? "space"
+		let clipboardShortcutKey = FFIHelpers.safeString(from: cSettings.pointee.clipboardShortcutKey) ?? "v"
 
 		let launcherShortcutMods: [String] =
-			if let jsonStr = cSettings.pointee.launcherShortcutMods
-					.map({ String(cString: $0) }),
-					let data = jsonStr.data(using: .utf8),
-					let arr = try? JSONDecoder().decode([String].self, from: data)
+			if let jsonStr = FFIHelpers.safeString(from: cSettings.pointee.launcherShortcutMods),
+			   let data = jsonStr.data(using: .utf8),
+			   let arr = try? JSONDecoder().decode([String].self, from: data)
 			{
 				arr
 			} else {
@@ -410,10 +388,9 @@ enum FFI {
 			}
 
 		let clipboardShortcutMods: [String] =
-			if let jsonStr = cSettings.pointee.clipboardShortcutMods
-					.map({ String(cString: $0) }),
-					let data = jsonStr.data(using: .utf8),
-					let arr = try? JSONDecoder().decode([String].self, from: data)
+			if let jsonStr = FFIHelpers.safeString(from: cSettings.pointee.clipboardShortcutMods),
+			   let data = jsonStr.data(using: .utf8),
+			   let arr = try? JSONDecoder().decode([String].self, from: data)
 			{
 				arr
 			} else {
@@ -421,9 +398,10 @@ enum FFI {
 			}
 
 		let searchFolders: [String] =
-			if let jsonStr = cSettings.pointee.searchFolders.map({ String(cString: $0) }),
-			let data = jsonStr.data(using: .utf8),
-			let arr = try? JSONDecoder().decode([String].self, from: data) {
+			if let jsonStr = FFIHelpers.safeString(from: cSettings.pointee.searchFolders),
+			   let data = jsonStr.data(using: .utf8),
+			   let arr = try? JSONDecoder().decode([String].self, from: data)
+			{
 				arr
 			} else {
 				["/Applications", "/System/Applications", "/System/Applications/Utilities"]
@@ -585,9 +563,9 @@ enum FFI {
 		var output: [(id: String, name: String, path: String?, score: Int64)] = []
 		for i in 0 ..< count {
 			let result = results[i]
-			let id = result.id.map { String(cString: $0) } ?? ""
-			let name = result.name.map { String(cString: $0) } ?? ""
-			let path = result.path.map { String(cString: $0) }
+			let id = FFIHelpers.safeString(from: result.id) ?? ""
+			let name = FFIHelpers.safeString(from: result.name) ?? ""
+			let path = FFIHelpers.safeString(from: result.path)
 			output.append((id: id, name: name, path: path, score: result.score))
 		}
 		return output
@@ -642,8 +620,10 @@ enum FFI {
 
 		for i in 0 ..< count {
 			let entry = entries[i]
-			guard let namePtr = entry.name, let pathPtr = entry.path else { continue }
-			apps.append((String(cString: namePtr), String(cString: pathPtr)))
+			guard let name = FFIHelpers.safeString(from: entry.name),
+			      let path = FFIHelpers.safeString(from: entry.path)
+			else { continue }
+			apps.append((name, path))
 		}
 
 		indexed_apps_free(entries, count)
@@ -673,13 +653,10 @@ enum FFI {
 		return text.withCString { cString in
 			guard let result = snippet_matcher_find(handle, cString) else { return nil }
 			defer { snippet_match_free(result) }
-			guard let triggerPtr = result.pointee.trigger,
-			      let contentPtr = result.pointee.content
+			guard let trigger = FFIHelpers.safeString(from: result.pointee.trigger),
+			      let content = FFIHelpers.safeString(from: result.pointee.content)
 			else { return nil }
-			return (
-				String(cString: triggerPtr), String(cString: contentPtr),
-				Int(result.pointee.matchEnd)
-			)
+			return (trigger, content, Int(result.pointee.matchEnd))
 		}
 	}
 }
@@ -1003,20 +980,20 @@ extension FFI {
 		var output: [SwiftActionResult] = []
 		for i in 0 ..< count {
 			let result = results[i]
-			guard let idPtr = result.id,
-			      let titlePtr = result.title,
-			      let subtitlePtr = result.subtitle,
-			      let iconPtr = result.icon,
-			      let urlPtr = result.url
+			guard let id = FFIHelpers.safeString(from: result.id),
+			      let title = FFIHelpers.safeString(from: result.title),
+			      let subtitle = FFIHelpers.safeString(from: result.subtitle),
+			      let icon = FFIHelpers.safeString(from: result.icon),
+			      let url = FFIHelpers.safeString(from: result.url)
 			else { continue }
 
 			output.append(
 				SwiftActionResult(
-					id: String(cString: idPtr),
-					title: String(cString: titlePtr),
-					subtitle: String(cString: subtitlePtr),
-					icon: String(cString: iconPtr),
-					url: String(cString: urlPtr),
+					id: id,
+					title: title,
+					subtitle: subtitle,
+					icon: icon,
+					url: url,
 					score: result.score
 				))
 		}
