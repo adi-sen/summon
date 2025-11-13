@@ -7,6 +7,15 @@ DerivedData/
 target/
 *.dylib
 
+# Swift build artifacts
+*.o
+*.d
+*.swiftdeps
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+*.dia
+
 .DS_Store
 .env
 *.log

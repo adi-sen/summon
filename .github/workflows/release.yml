@@ -20,14 +20,28 @@ jobs:
               uses: actions-rust-lang/setup-rust-toolchain@v1
               with:
                   toolchain: stable
+                  cache: true
+
+            - name: Cache cbindgen
+              id: cache-cbindgen
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cargo/bin/cbindgen
+                  key: ${{ runner.os }}-cbindgen
 
             - name: Install cbindgen
+              if: steps.cache-cbindgen.outputs.cache-hit != 'true'
               run: cargo install cbindgen
 
-            - name: Setup Swift
-              run: |
-                  swift --version
-                  xcode-select --print-path
+            - name: Cache Swift build
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .build
+                      ~/.swiftpm
+                  key: ${{ runner.os }}-spm-${{ hashFiles('Package.swift', 'src/swift/**/*.swift') }}
+                  restore-keys: |
+                      ${{ runner.os }}-spm-
 
             - name: Build app
               run: |

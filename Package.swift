@@ -10,7 +10,15 @@ let package = Package(
 	targets: [
 		.executableTarget(
 			name: "Summon",
-			path: "src/swift"
+			path: "src/swift",
+			swiftSettings: [
+				.unsafeFlags(["-import-objc-header", "src/swift/ffi.h"])
+			],
+			linkerSettings: [
+				.unsafeFlags(["-L", "target/debug"]),
+				.linkedLibrary("ffi"),
+				.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../lib"])
+			]
 		)
 	]
 )
