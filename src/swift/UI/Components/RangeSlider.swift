@@ -7,17 +7,33 @@ struct RangeSlider: View {
 	let step: Double
 	let valueLabel: (Double) -> String
 	@ObservedObject var settings = AppSettings.shared
+	@State private var textValue: String = ""
 
 	var body: some View {
 		HStack(spacing: DesignTokens.Spacing.lg) {
-			Text(valueLabel(value))
-				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
-				.foregroundColor(settings.textColorUI)
-				.frame(minWidth: 50, alignment: .trailing)
-				.padding(.horizontal, DesignTokens.Spacing.md + 2)
-				.padding(.vertical, DesignTokens.Spacing.sm)
-				.background(settings.searchBarColorUI)
-				.cornerRadius(DesignTokens.CornerRadius.md)
+			TextField("", text: $textValue, onCommit: {
+				if let newValue = Double(textValue) {
+					let clamped = min(max(newValue, range.lowerBound), range.upperBound)
+					let stepped = step > 0 ? round(clamped / step) * step : clamped
+					value = stepped
+				}
+				textValue = valueLabel(value)
+			})
+			.textFieldStyle(PlainTextFieldStyle())
+			.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+			.foregroundColor(settings.textColorUI)
+			.multilineTextAlignment(.center)
+			.frame(width: 50)
+			.padding(.horizontal, DesignTokens.Spacing.md + 2)
+			.padding(.vertical, DesignTokens.Spacing.sm)
+			.background(settings.searchBarColorUI)
+			.cornerRadius(DesignTokens.CornerRadius.md)
+			.onAppear {
+				textValue = valueLabel(value)
+			}
+			.onChange(of: value) { newValue in
+				textValue = valueLabel(newValue)
+			}
 
 			ThemedSliderControl(value: $value, range: range, step: step)
 				.frame(width: 120)

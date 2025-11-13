@@ -1,3 +1,4 @@
+pub mod file_scanner;
 pub mod fuzzy_matcher;
 pub mod indexer;
 
@@ -31,23 +32,31 @@ impl From<io::Error> for SearchError {
 
 pub type Result<T> = std::result::Result<T, SearchError>;
 
+const CACHE_SIZE: usize = 20;
+
 pub struct SearchEngine {
-	indexer: Arc<RwLock<indexer::Indexer>>,
-	matcher: fuzzy_matcher::FuzzyMatcher,
-	cache:   Arc<Mutex<LruCache<String, Vec<SearchResult>>>>,
+	indexer:      Arc<RwLock<indexer::Indexer>>,
+	matcher:      fuzzy_matcher::FuzzyMatcher,
+	cache:        Arc<Mutex<LruCache<String, Vec<SearchResult>>>>,
+	file_scanner: Option<Arc<RwLock<file_scanner::FileScanner>>>,
 }
 
 impl SearchEngine {
-	/// # Panics
-	/// Panics if cache size is zero (never happens with constant 100)
 	#[must_use]
 	pub fn new() -> Self {
 		Self {
-			indexer: Arc::new(RwLock::new(indexer::Indexer::new())),
-			matcher: fuzzy_matcher::FuzzyMatcher::new(),
-			cache:   Arc::new(Mutex::new(LruCache::new(std::num::NonZeroUsize::new(100).unwrap()))),
+			indexer:      Arc::new(RwLock::new(indexer::Indexer::new())),
+			matcher:      fuzzy_matcher::FuzzyMatcher::new(),
+			cache:        Arc::new(Mutex::new(LruCache::new(unsafe { std::num::NonZeroUsize::new_unchecked(CACHE_SIZE) }))),
+			file_scanner: None,
 		}
 	}
+
+	pub fn enable_file_search(&mut self, directories: Vec<std::path::PathBuf>, extensions: Option<Vec<String>>) {
+		self.file_scanner = Some(Arc::new(RwLock::new(file_scanner::FileScanner::new(directories, extensions))));
+	}
+
+	pub fn disable_file_search(&mut self) { self.file_scanner = None; }
 
 	pub fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
 		if query.is_empty() {
@@ -68,6 +77,15 @@ impl SearchEngine {
 				Some((item.clone(), score, indices))
 			})
 			.collect();
+
+		if let Some(ref scanner) = self.file_scanner {
+			let file_items = scanner.read().scan();
+			for item in file_items {
+				if let Some((score, indices)) = self.matcher.match_with_indices(&item.name, query) {
+					matches.push((item, score, indices));
+				}
+			}
+		}
 
 		matches.sort_unstable_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.name.cmp(&b.0.name)));
 

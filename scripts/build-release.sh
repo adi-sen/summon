@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 cargo build --release -p ffi
+cbindgen --crate ffi --output src/swift/ffi.h
 
 mkdir -p .build/macos/lib
 cp target/release/libffi.dylib .build/macos/lib/
@@ -16,6 +17,7 @@ swiftc \
   -whole-module-optimization \
   -L target/release \
   -lffi \
+  -import-objc-header src/swift/ffi.h \
   -Xlinker -rpath -Xlinker @executable_path/../lib \
   -framework SwiftUI \
   -framework AppKit \

@@ -58,40 +58,48 @@ final class LRUCache<Key: Hashable, Value> {
 final class IconCache {
 	static let shared = IconCache()
 
-	private let cache = LRUCache<String, NSImage>(maxSize: 30, label: "com.invoke.iconcache")
+	private let cache = NSCache<NSString, NSImage>()
 
-	private init() {}
+	private init() {
+		cache.countLimit = 30
+		cache.totalCostLimit = 10 * 1024 * 1024
+	}
 
 	func get(_ path: String) -> NSImage? {
-		cache.get(path)
+		cache.object(forKey: path as NSString)
 	}
 
 	func set(_ path: String, icon: NSImage) {
-		cache.set(path, value: icon)
+		let cost = Int(icon.size.width * icon.size.height * 4)
+		cache.setObject(icon, forKey: path as NSString, cost: cost)
 	}
 
 	func clear() {
-		cache.clear()
+		cache.removeAllObjects()
 	}
 }
 
 final class ThumbnailCache {
 	static let shared = ThumbnailCache()
 
-	private let cache = LRUCache<String, NSImage>(maxSize: 10, label: "com.invoke.thumbnailcache")
+	private let cache = NSCache<NSString, NSImage>()
 
-	private init() {}
+	private init() {
+		cache.countLimit = 10
+		cache.totalCostLimit = 5 * 1024 * 1024
+	}
 
 	func get(_ key: String) -> NSImage? {
-		cache.get(key)
+		cache.object(forKey: key as NSString)
 	}
 
 	func set(_ key: String, image: NSImage) {
-		cache.set(key, value: image)
+		let cost = Int(image.size.width * image.size.height * 4)
+		cache.setObject(image, forKey: key as NSString, cost: cost)
 	}
 
 	func clear() {
-		cache.clear()
+		cache.removeAllObjects()
 	}
 }
 

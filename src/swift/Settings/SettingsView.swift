@@ -79,16 +79,12 @@ struct SettingsView: View {
 				selectedTab = 5
 				NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
 			}
-			TabButton(title: "Web Searches", isSelected: selectedTab == 6) {
+			TabButton(title: "Extensions", isSelected: selectedTab == 6) {
 				selectedTab = 6
 				NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
 			}
-			TabButton(title: "Extensions", isSelected: selectedTab == 7) {
+			TabButton(title: "Shortcuts", isSelected: selectedTab == 7) {
 				selectedTab = 7
-				NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
-			}
-			TabButton(title: "Shortcuts", isSelected: selectedTab == 8) {
-				selectedTab = 8
 				NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
 			}
 			Spacer()
@@ -107,9 +103,8 @@ struct SettingsView: View {
 		case 3: ClipboardSettingsTab()
 		case 4: CommandsSettingsTab()
 		case 5: SnippetsSettingsTab()
-		case 6: WebSearchesSettingsTab()
-		case 7: ExtensionsSettingsTab()
-		case 8: ShortcutsSettingsTab()
+		case 6: ExtensionsSettingsTab()
+		case 7: ShortcutsSettingsTab()
 		default: ShortcutsSettingsTab()
 		}
 	}
@@ -145,9 +140,6 @@ struct SettingsView: View {
 					return nil
 				case "8":
 					selectedTab = 7
-					return nil
-				case "9":
-					selectedTab = 8
 					return nil
 				case "q":
 					NSApp.keyWindow?.close()
@@ -267,78 +259,62 @@ struct AppearanceSettingsTab: View {
 struct SearchSettingsTab: View {
 	@ObservedObject var settings = AppSettings.shared
 	@State private var showingFolderPicker = false
+	@State private var folderPickerMode: FolderPickerMode = .appSearch
+	@State private var selectedSection: SearchSection = .results
+	@State private var showingAddEngine = false
+	@State private var isBehaviorDropdownExpanded = false
+
+	enum FolderPickerMode {
+		case appSearch
+		case fileSearch
+	}
+
+	enum SearchSection: String, CaseIterable {
+		case results = "Results"
+		case sources = "Sources"
+		case webSearch = "Web Search"
+	}
 
 	var body: some View {
-		ScrollView(showsIndicators: false) {
-			VStack(alignment: .leading, spacing: 24) {
-				SettingSection(title: "RESULTS") {
-					VStack(alignment: .leading, spacing: 12) {
-						SettingRow(label: "Max Results") {
-							RangeSlider(
-								value: Binding(
-									get: { Double(settings.maxResults) },
-									set: { settings.maxResults = Int($0) }
-								),
-								range: 5 ... 20,
-								step: 1,
-								valueLabel: { "\(Int($0))" }
-							)
+		HStack(spacing: 0) {
+			VStack(alignment: .leading, spacing: 4) {
+				ForEach(SearchSection.allCases, id: \.self) { section in
+					Button(action: {
+						selectedSection = section
+					}) {
+						HStack(spacing: 8) {
+							Image(systemName: iconForSection(section))
+								.font(.system(size: 13))
+								.foregroundColor(selectedSection == section ? settings.accentColorUI : settings.secondaryTextColorUI)
+								.frame(width: 16)
+							Text(section.rawValue)
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+								.foregroundColor(selectedSection == section ? settings.textColorUI : settings.secondaryTextColorUI)
+							Spacer()
 						}
+						.padding(.horizontal, DesignTokens.Spacing.md)
+						.padding(.vertical, DesignTokens.Spacing.sm)
+						.background(selectedSection == section ? settings.searchBarColorUI.opacity(0.5) : Color.clear)
+						.cornerRadius(DesignTokens.CornerRadius.sm)
 					}
+					.buttonStyle(PlainButtonStyle())
 				}
-
-				SettingSection(title: "SEARCH FOLDERS") {
-					VStack(alignment: .leading, spacing: 12) {
-						Text(
-							"At least one folder must be configured. Add or remove folders to customize your search."
-						)
-						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
-						.foregroundColor(settings.secondaryTextColorUI)
-						.padding(.bottom, 8)
-
-						ForEach(settings.searchFolders, id: \.self) { folder in
-							HStack {
-								Image(systemName: "folder.fill")
-									.foregroundColor(.blue)
-								Text(folder)
-									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
-									.foregroundColor(settings.textColorUI)
-									.lineLimit(1)
-								Spacer()
-								Button(action: {
-									if settings.searchFolders.count > 1 {
-										settings.searchFolders.removeAll { $0 == folder }
-										settings.saveAndReindex()
-									}
-								}) {
-									Image(systemName: "xmark.circle.fill")
-										.foregroundColor(settings.secondaryTextColorUI
-											.opacity(settings.searchFolders.count > 1 ? 1.0 : 0.3))
-								}
-								.buttonStyle(PlainButtonStyle())
-								.disabled(settings.searchFolders.count == 1)
-							}
-							.padding(.vertical, DesignTokens.Spacing.sm)
-							.padding(.horizontal, DesignTokens.Spacing.lg)
-							.background(settings.searchBarColorUI)
-							.cornerRadius(DesignTokens.CornerRadius.md)
-						}
-
-						Button(action: {
-							showingFolderPicker = true
-						}) {
-							HStack {
-								Image(systemName: "plus.circle.fill")
-								Text("Add Folder")
-							}
-							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
-							.foregroundColor(settings.accentColorUI)
-						}
-						.buttonStyle(PlainButtonStyle())
-					}
-				}
+				Spacer()
 			}
-			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
+			.frame(width: 160)
+			.padding(DesignTokens.Spacing.md)
+			.background(settings.backgroundColorUI)
+
+			Rectangle()
+				.fill(settings.secondaryTextColorUI.opacity(0.1))
+				.frame(width: 1)
+
+			ScrollView(showsIndicators: false) {
+				VStack(alignment: .leading, spacing: 20) {
+					sectionContent
+				}
+				.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
+			}
 		}
 		.background(settings.backgroundColorUI)
 		.overlay {
@@ -351,15 +327,646 @@ struct SearchSettingsTab: View {
 
 				FolderPicker(
 					isPresented: $showingFolderPicker,
-					onSelect: { path in
-						if !settings.searchFolders.contains(path) {
-							settings.searchFolders.append(path)
-							settings.saveAndReindex()
+					onSelect: { folder in
+						if folderPickerMode == .appSearch {
+							if !settings.searchFolders.contains(folder) {
+								settings.searchFolders.append(folder)
+								settings.saveAndReindex()
+							}
+						} else {
+							if !settings.fileSearchDirectories.contains(folder) {
+								settings.fileSearchDirectories.append(folder)
+								settings.scheduleSave()
+								if let engine = AppDelegate.shared?.searchEngine {
+									engine.enableFileSearch(
+										directories: settings.fileSearchDirectories,
+										extensions: settings.fileSearchExtensions
+									)
+								}
+							}
 						}
 					}
 				)
 			}
 		}
+		.sheet(isPresented: $showingAddEngine) {
+			AddSearchEngineView(onAdd: { name, url, icon, keyword in
+				settings.addFallbackEngine(name: name, urlTemplate: url, iconName: icon)
+				let id = settings.customFallbackEngines.last?.id ?? ""
+				if !keyword.isEmpty && !id.isEmpty {
+					settings.updateEngineKeyword(id: id, keyword: keyword)
+				}
+				showingAddEngine = false
+			})
+		}
+	}
+
+	private func iconForSection(_ section: SearchSection) -> String {
+		switch section {
+		case .results: return "list.number"
+		case .sources: return "folder.fill"
+		case .webSearch: return "network"
+		}
+	}
+
+	@ViewBuilder
+	private var sectionContent: some View {
+		switch selectedSection {
+		case .results:
+			resultsSection
+		case .sources:
+			sourcesSection
+		case .webSearch:
+			webSearchSection
+		}
+	}
+
+	private var resultsSection: some View {
+		ListItem(
+			icon: .sfSymbol("list.number", settings.accentColorUI),
+			title: "Maximum Results",
+			subtitle: "Items to display in search"
+		) {
+			RangeSlider(
+				value: Binding(
+					get: { Double(settings.maxResults) },
+					set: { settings.maxResults = Int($0) }
+				),
+				range: 5 ... 20,
+				step: 1,
+				valueLabel: { "\(Int($0))" }
+			)
+		}
+	}
+
+	private var sourcesSection: some View {
+		VStack(alignment: .leading, spacing: 20) {
+			VStack(alignment: .leading, spacing: 8) {
+				sectionHeader("Application Directories", subtitle: "Folders to scan for launchable applications")
+
+				ForEach(settings.searchFolders, id: \.self) { folder in
+					folderRow(folder: folder, onDelete: {
+						if settings.searchFolders.count > 1 {
+							settings.searchFolders.removeAll { $0 == folder }
+							settings.saveAndReindex()
+						}
+					}, canDelete: settings.searchFolders.count > 1)
+				}
+
+				addButton(title: "Add Folder") {
+					folderPickerMode = .appSearch
+					showingFolderPicker = true
+				}
+
+				Text("Launchable File Types")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(settings.secondaryTextColorUI)
+					.padding(.top, DesignTokens.Spacing.xs)
+
+				TextField("app, prefPane, workflow", text: Binding(
+					get: { settings.launcherAllowedExtensions.joined(separator: ", ") },
+					set: { newValue in
+						settings.launcherAllowedExtensions = newValue
+							.split(separator: ",")
+							.map { $0.trimmingCharacters(in: .whitespaces) }
+							.filter { !$0.isEmpty }
+						settings.scheduleSave()
+					}
+				))
+				.textFieldStyle(PlainTextFieldStyle())
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+				.foregroundColor(settings.textColorUI)
+				.padding(.horizontal, DesignTokens.Spacing.lg)
+				.padding(.vertical, DesignTokens.Spacing.md)
+				.background(settings.searchBarColorUI.opacity(0.5))
+				.cornerRadius(DesignTokens.CornerRadius.md)
+			}
+
+			Divider()
+				.background(settings.secondaryTextColorUI.opacity(0.2))
+
+			VStack(alignment: .leading, spacing: 8) {
+				HStack {
+					Text("File Search")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+						.foregroundColor(settings.textColorUI)
+					Spacer()
+					Switch(isOn: Binding(
+						get: { settings.enableFileSearch },
+						set: { newValue in
+							settings.enableFileSearch = newValue
+							settings.scheduleSave()
+							if newValue, let engine = AppDelegate.shared?.searchEngine {
+								engine.enableFileSearch(
+									directories: settings.fileSearchDirectories,
+									extensions: settings.fileSearchExtensions
+								)
+							} else if let engine = AppDelegate.shared?.searchEngine {
+								engine.disableFileSearch()
+							}
+						}
+					))
+				}
+
+				if settings.enableFileSearch {
+					Text("Directories")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+						.foregroundColor(settings.secondaryTextColorUI)
+
+					ForEach(settings.fileSearchDirectories, id: \.self) { dir in
+						folderRow(folder: dir, onDelete: {
+							settings.fileSearchDirectories.removeAll { $0 == dir }
+							settings.scheduleSave()
+							if let engine = AppDelegate.shared?.searchEngine {
+								engine.enableFileSearch(
+									directories: settings.fileSearchDirectories,
+									extensions: settings.fileSearchExtensions
+								)
+							}
+						}, canDelete: true)
+					}
+
+					addButton(title: "Add Folder") {
+						folderPickerMode = .fileSearch
+						showingFolderPicker = true
+					}
+
+					Text("Searchable File Types")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+						.foregroundColor(settings.secondaryTextColorUI)
+						.padding(.top, DesignTokens.Spacing.xs)
+
+					TextField("txt, md, pdf, doc, docx", text: Binding(
+						get: { settings.fileSearchExtensions.joined(separator: ", ") },
+						set: { newValue in
+							settings.fileSearchExtensions = newValue
+								.split(separator: ",")
+								.map { $0.trimmingCharacters(in: .whitespaces) }
+								.filter { !$0.isEmpty }
+							settings.scheduleSave()
+							if let engine = AppDelegate.shared?.searchEngine {
+								engine.enableFileSearch(
+									directories: settings.fileSearchDirectories,
+									extensions: settings.fileSearchExtensions
+								)
+							}
+						}
+					))
+					.textFieldStyle(PlainTextFieldStyle())
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+					.foregroundColor(settings.textColorUI)
+					.padding(.horizontal, DesignTokens.Spacing.lg)
+					.padding(.vertical, DesignTokens.Spacing.md)
+					.background(settings.searchBarColorUI.opacity(0.5))
+					.cornerRadius(DesignTokens.CornerRadius.md)
+				}
+			}
+		}
+	}
+
+	private func folderRow(folder: String, onDelete: @escaping () -> Void, canDelete: Bool) -> some View {
+		let folderName = folder.split(separator: "/").last.map(String.init) ?? folder
+		let isHomePath = folder.hasPrefix(NSHomeDirectory())
+		let displayPath = isHomePath ? folder.replacingOccurrences(of: NSHomeDirectory(), with: "~") : folder
+
+		return HStack(spacing: DesignTokens.Spacing.md) {
+			VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+				Text(folderName)
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(settings.textColorUI)
+
+				Text(displayPath)
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+					.lineLimit(1)
+			}
+
+			Spacer()
+
+			Button(action: onDelete) {
+				Image(systemName: "xmark.circle.fill")
+					.font(.system(size: DesignTokens.Typography.icon))
+					.foregroundColor(settings.secondaryTextColorUI.opacity(canDelete ? 0.8 : 0.4))
+			}
+			.buttonStyle(PlainButtonStyle())
+			.disabled(!canDelete)
+			.help(canDelete ? "Remove" : "At least one folder required")
+		}
+		.padding(.horizontal, DesignTokens.Spacing.sm)
+		.padding(.vertical, DesignTokens.Spacing.sm)
+		.background(settings.searchBarColorUI.opacity(0.3))
+		.cornerRadius(DesignTokens.CornerRadius.sm)
+	}
+
+	private func addButton(title: String, action: @escaping () -> Void) -> some View {
+		Button(action: action) {
+			HStack(spacing: DesignTokens.Spacing.xs) {
+				Image(systemName: "plus.circle")
+					.font(.system(size: DesignTokens.Typography.iconSmall))
+				Text(title)
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+			}
+			.foregroundColor(settings.accentColorUI)
+			.padding(.horizontal, DesignTokens.Spacing.sm)
+			.padding(.vertical, DesignTokens.Spacing.xs)
+		}
+		.buttonStyle(PlainButtonStyle())
+	}
+
+	private func sectionHeader(_ title: String, subtitle: String? = nil) -> some View {
+		VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+			Text(title)
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+				.foregroundColor(settings.textColorUI)
+			if let subtitle {
+				Text(subtitle)
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(settings.secondaryTextColorUI.opacity(0.8))
+			}
+		}
+	}
+
+	private func settingsRow<Content: View>(
+		_ label: String,
+		@ViewBuilder content: () -> Content
+	) -> some View {
+		HStack {
+			Text(label)
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+				.foregroundColor(settings.textColorUI)
+			Spacer()
+			content()
+		}
+	}
+
+	private var webSearchSection: some View {
+		VStack(alignment: .leading, spacing: 20) {
+			HStack {
+				Text("Fallback Search")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+					.foregroundColor(settings.textColorUI)
+				Spacer()
+				Switch(isOn: Binding(
+					get: { settings.enableFallbackSearch },
+					set: { newValue in
+						settings.enableFallbackSearch = newValue
+						settings.scheduleSave()
+					}
+				))
+			}
+
+			if settings.enableFallbackSearch {
+				VStack(alignment: .leading, spacing: 12) {
+					settingsRow("Behavior") {
+						Dropdown(
+							items: FallbackSearchBehavior.allCases,
+							selection: Binding(
+								get: { settings.fallbackSearchBehavior },
+								set: { newValue in
+									settings.fallbackSearchBehavior = newValue
+									settings.scheduleSave()
+								}
+							),
+							label: { $0.displayName },
+							isExpanded: $isBehaviorDropdownExpanded,
+							width: 180
+						)
+					}
+
+					settingsRow("Minimum Query Length") {
+						RangeSlider(
+							value: Binding(
+								get: { Double(settings.fallbackSearchMinQueryLength) },
+								set: { settings.fallbackSearchMinQueryLength = Int($0) }
+							),
+							range: 1 ... 5,
+							step: 1,
+							valueLabel: { "\(Int($0))" }
+						)
+					}
+
+					settingsRow("Maximum Engines") {
+						RangeSlider(
+							value: Binding(
+								get: { Double(settings.fallbackSearchMaxEngines) },
+								set: { settings.fallbackSearchMaxEngines = Int($0) }
+							),
+							range: 1 ... 4,
+							step: 1,
+							valueLabel: { "\(Int($0))" }
+						)
+					}
+
+					Divider()
+						.background(settings.secondaryTextColorUI.opacity(0.2))
+
+					VStack(alignment: .leading, spacing: 4) {
+						HStack {
+							Text("Search Engines")
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+								.foregroundColor(settings.secondaryTextColorUI)
+
+							Spacer()
+
+							HStack(spacing: 6) {
+							Button(action: {
+								showingAddEngine = true
+							}) {
+								HStack(spacing: 4) {
+									Image(systemName: "plus")
+										.font(.system(size: 10))
+									Text("Add")
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+								}
+								.foregroundColor(settings.accentColorUI)
+								.padding(.horizontal, 8)
+								.padding(.vertical, 4)
+								.background(settings.searchBarColorUI.opacity(0.3))
+								.cornerRadius(DesignTokens.CornerRadius.sm)
+							}
+							.buttonStyle(PlainButtonStyle())
+
+							Button(action: {
+								settings.customFallbackEngines = []
+								settings.disabledDefaultEngines = []
+								settings.engineKeywords = [:]
+								settings.fallbackSearchEngines = ["google", "duckduckgo"]
+								settings.scheduleSave()
+							}) {
+								HStack(spacing: 4) {
+									Image(systemName: "arrow.counterclockwise")
+										.font(.system(size: 10))
+									Text("Reset")
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+								}
+								.foregroundColor(settings.secondaryTextColorUI)
+								.padding(.horizontal, 8)
+								.padding(.vertical, 4)
+								.background(settings.searchBarColorUI.opacity(0.3))
+								.cornerRadius(DesignTokens.CornerRadius.sm)
+							}
+							.buttonStyle(PlainButtonStyle())
+						}
+					}
+
+					Text("Fallback: show when no results • Bang: keyword search (e.g., \"g search term\")")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+						.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+				}
+
+				ForEach(settings.allFallbackEngines, id: \.id) { engine in
+						FallbackSearchEngineCard(
+							engine: engine,
+							isEnabled: settings.fallbackSearchEngines.contains(engine.id),
+							onToggle: {
+								if settings.fallbackSearchEngines.contains(engine.id) {
+									settings.fallbackSearchEngines.removeAll { $0 == engine.id }
+								} else {
+									settings.fallbackSearchEngines.append(engine.id)
+								}
+								settings.scheduleSave()
+							},
+							onDelete: {
+								settings.removeFallbackEngine(id: engine.id)
+							},
+							onKeywordChange: { keyword in
+								settings.updateEngineKeyword(id: engine.id, keyword: keyword)
+							},
+							canDelete: settings.allFallbackEngines.count > 1
+						)
+					}
+				}
+			}
+		}
+	}
+
+}
+
+struct FallbackSearchEngineCard: View {
+	let engine: WebSearchEngine
+	let isEnabled: Bool
+	let onToggle: () -> Void
+	let onDelete: () -> Void
+	let onKeywordChange: (String) -> Void
+	let canDelete: Bool
+	@ObservedObject var settings = AppSettings.shared
+	@State private var isHovered = false
+	@State private var brandIcon: NSImage?
+	@State private var editingKeyword: String
+
+	init(engine: WebSearchEngine, isEnabled: Bool, onToggle: @escaping () -> Void, onDelete: @escaping () -> Void, onKeywordChange: @escaping (String) -> Void, canDelete: Bool) {
+		self.engine = engine
+		self.isEnabled = isEnabled
+		self.onToggle = onToggle
+		self.onDelete = onDelete
+		self.onKeywordChange = onKeywordChange
+		self.canDelete = canDelete
+		let settings = AppSettings.shared
+		_editingKeyword = State(initialValue: settings.getEngineKeyword(id: engine.id))
+	}
+
+	var body: some View {
+		HStack(spacing: 12) {
+			if let icon = brandIcon {
+				Image(nsImage: icon)
+					.resizable()
+					.frame(width: 24, height: 24)
+			} else {
+				Image(systemName: engine.iconName.hasPrefix("web:") ? "globe" : engine.iconName)
+					.font(.system(size: DesignTokens.Typography.title))
+					.foregroundColor(settings.accentColorUI)
+					.frame(width: 24)
+			}
+
+			VStack(alignment: .leading, spacing: 4) {
+				Text(engine.name)
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+					.foregroundColor(settings.textColorUI)
+
+				HStack(spacing: 12) {
+					HStack(spacing: 6) {
+						Text("Fallback")
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+							.foregroundColor(settings.secondaryTextColorUI)
+						Switch(
+							isOn: Binding(
+								get: { isEnabled },
+								set: { _ in onToggle() }
+							)
+						)
+						.controlSize(.mini)
+					}
+
+					HStack(spacing: 6) {
+						Text("Bang")
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+							.foregroundColor(settings.secondaryTextColorUI)
+						TextField("", text: $editingKeyword, onCommit: {
+							onKeywordChange(editingKeyword)
+						})
+						.textFieldStyle(PlainTextFieldStyle())
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+						.foregroundColor(settings.textColorUI)
+						.frame(width: 50)
+						.padding(.horizontal, 6)
+						.padding(.vertical, 2)
+						.background(settings.backgroundColorUI)
+						.cornerRadius(DesignTokens.CornerRadius.sm)
+					}
+				}
+			}
+
+			Spacer()
+
+			if canDelete {
+				Button(action: onDelete) {
+					Image(systemName: "xmark.circle.fill")
+						.font(.system(size: DesignTokens.Typography.icon))
+						.foregroundColor(settings.secondaryTextColorUI.opacity(isHovered ? 0.9 : 0.6))
+						.frame(width: 24, height: 24)
+				}
+				.buttonStyle(PlainButtonStyle())
+			}
+		}
+		.padding(.horizontal, DesignTokens.Spacing.sm + 2)
+		.padding(.vertical, DesignTokens.Spacing.sm)
+		.background(settings.searchBarColorUI.opacity(isHovered ? 0.8 : 0.3))
+		.cornerRadius(DesignTokens.CornerRadius.md)
+		.onHover { hovering in
+			isHovered = hovering
+		}
+		.onAppear {
+			loadBrandIcon()
+		}
+	}
+
+	private func loadBrandIcon() {
+		if engine.iconName.hasPrefix("web:") {
+			let iconName = String(engine.iconName.dropFirst(4))
+			WebIconDownloader.getIcon(for: iconName, size: NSSize(width: 20, height: 20)) { image in
+				DispatchQueue.main.async {
+					self.brandIcon = image
+				}
+			}
+		}
+	}
+}
+
+struct AddSearchEngineView: View {
+	let onAdd: (String, String, String, String) -> Void
+	@ObservedObject var settings = AppSettings.shared
+	@State private var name: String = ""
+	@State private var urlTemplate: String = ""
+	@State private var iconName: String = "globe"
+	@State private var keyword: String = ""
+	@Environment(\.dismiss) private var dismiss
+
+	var body: some View {
+		VStack(alignment: .leading, spacing: 16) {
+			Text("Add Search Engine")
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
+				.foregroundColor(settings.textColorUI)
+
+			VStack(alignment: .leading, spacing: 8) {
+				Text("Name")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(settings.secondaryTextColorUI)
+
+				TextField("Google, DuckDuckGo, etc.", text: $name)
+					.textFieldStyle(PlainTextFieldStyle())
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+					.foregroundColor(settings.textColorUI)
+					.padding(DesignTokens.Spacing.sm)
+					.background(settings.searchBarColorUI.opacity(0.5))
+					.cornerRadius(DesignTokens.CornerRadius.sm)
+			}
+
+			VStack(alignment: .leading, spacing: 8) {
+				Text("URL Template")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(settings.secondaryTextColorUI)
+
+				Text("Use {query} as placeholder")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+
+				TextField("https://example.com/search?q={query}", text: $urlTemplate)
+					.textFieldStyle(PlainTextFieldStyle())
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+					.foregroundColor(settings.textColorUI)
+					.padding(DesignTokens.Spacing.sm)
+					.background(settings.searchBarColorUI.opacity(0.5))
+					.cornerRadius(DesignTokens.CornerRadius.sm)
+			}
+
+			VStack(alignment: .leading, spacing: 8) {
+				Text("Bang Keyword (optional)")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(settings.secondaryTextColorUI)
+
+				TextField("g, ddg, etc.", text: $keyword)
+					.textFieldStyle(PlainTextFieldStyle())
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+					.foregroundColor(settings.textColorUI)
+					.padding(DesignTokens.Spacing.sm)
+					.background(settings.searchBarColorUI.opacity(0.5))
+					.cornerRadius(DesignTokens.CornerRadius.sm)
+			}
+
+			VStack(alignment: .leading, spacing: 8) {
+				Text("Icon (SF Symbol or web:domain)")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(settings.secondaryTextColorUI)
+
+				Text("Examples: globe, web:google, magnifyingglass.circle")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+
+				TextField("globe", text: $iconName)
+					.textFieldStyle(PlainTextFieldStyle())
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+					.foregroundColor(settings.textColorUI)
+					.padding(DesignTokens.Spacing.sm)
+					.background(settings.searchBarColorUI.opacity(0.5))
+					.cornerRadius(DesignTokens.CornerRadius.sm)
+			}
+
+			HStack(spacing: 12) {
+				Button(action: {
+					dismiss()
+				}) {
+					Text("Cancel")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+						.foregroundColor(settings.secondaryTextColorUI)
+						.padding(.horizontal, DesignTokens.Spacing.lg)
+						.padding(.vertical, DesignTokens.Spacing.sm)
+						.background(settings.searchBarColorUI.opacity(0.3))
+						.cornerRadius(DesignTokens.CornerRadius.md)
+				}
+				.buttonStyle(PlainButtonStyle())
+
+				Spacer()
+
+				Button(action: {
+					guard !name.isEmpty, !urlTemplate.isEmpty else { return }
+					onAdd(name, urlTemplate, iconName, keyword)
+				}) {
+					Text("Add")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+						.foregroundColor(.white)
+						.padding(.horizontal, DesignTokens.Spacing.lg)
+						.padding(.vertical, DesignTokens.Spacing.sm)
+						.background(settings.accentColorUI)
+						.cornerRadius(DesignTokens.CornerRadius.md)
+				}
+				.buttonStyle(PlainButtonStyle())
+				.disabled(name.isEmpty || urlTemplate.isEmpty)
+				.opacity(name.isEmpty || urlTemplate.isEmpty ? 0.5 : 1.0)
+			}
+		}
+		.padding(DesignTokens.Spacing.xxl)
+		.frame(width: 450, height: 400)
+		.background(settings.backgroundColorUI)
 	}
 }
 
@@ -1051,13 +1658,14 @@ struct SettingSection<Content: View>: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 10) {
 			Text(title)
-				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)).weight(.medium))
 				.foregroundColor(
 					Color(
 						red: settings.theme.secondaryTextColor.0,
 						green: settings.theme.secondaryTextColor.1,
 						blue: settings.theme.secondaryTextColor.2
-					).opacity(0.8))
+					).opacity(0.9))
+				.tracking(0.5)
 
 			VStack(alignment: .leading, spacing: 10) {
 				content
@@ -1462,61 +2070,3 @@ struct EditSnippetView: View {
 	}
 }
 
-struct WebSearchesSettingsTab: View {
-	@ObservedObject var settings = AppSettings.shared
-	@ObservedObject var actionManager = ActionManager.shared
-
-	var quickLinks: [Action] {
-		actionManager.actions.filter { action in
-			if case .quickLink = action.kind {
-				return true
-			}
-			return false
-		}
-	}
-
-	var body: some View {
-		Group {
-			if quickLinks.isEmpty {
-				VStack {
-					Spacer()
-					VStack(spacing: DesignTokens.Spacing.xl) {
-						Image(systemName: "magnifyingglass")
-							.font(.system(size: 48))
-							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
-						Text("No web searches yet")
-							.font(Font(settings.uiFont.withSize(15)))
-							.foregroundColor(settings.secondaryTextColorUI)
-
-						HStack(spacing: DesignTokens.Spacing.lg) {
-							Button(action: { actionManager.importDefaults() }) {
-								HStack(spacing: DesignTokens.Spacing.sm) {
-									Image(systemName: "arrow.counterclockwise")
-										.font(.system(size: DesignTokens.Typography.small))
-									Text("Import Defaults")
-										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
-								}
-								.foregroundColor(Color.white)
-								.padding(.horizontal, DesignTokens.Spacing.xl)
-								.padding(.vertical, DesignTokens.Spacing.md + 2)
-								.background(settings.accentColorUI)
-								.cornerRadius(DesignTokens.CornerRadius.md)
-							}
-							.buttonStyle(PlainButtonStyle())
-						}
-						.padding(.top, 8)
-
-						Text("Or press ⌘N to add a web search")
-							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
-							.foregroundColor(settings.secondaryTextColorUI.opacity(0.5))
-					}
-					Spacer()
-				}
-				.background(settings.backgroundColorUI)
-			} else {
-				WebSearchesList()
-					.background(settings.backgroundColorUI)
-			}
-		}
-	}
-}

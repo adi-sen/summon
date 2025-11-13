@@ -7,7 +7,7 @@ edition.workspace = true
 rkyv.workspace = true
 bytecheck = "0.8"
 serde = { version = "1.0", features = ["derive", "serde_derive"] }
-sonic-rs = "0.3"
+sonic-rs = "0.5"
 parking_lot = "0.12"
 thiserror = "2.0"
 urlencoding = "2.1"

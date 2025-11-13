@@ -17,3 +17,4 @@ benchmarks/
 /RELEASE_NOTES.md
 src/rust/ffi/cbindgen.toml
 src/rust/ffi/ffi.h
+src/swift/ffi.h

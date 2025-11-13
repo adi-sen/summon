@@ -65,4 +65,12 @@ final class SearchEngine {
 	func getAllApps() -> [(name: String, path: String)] {
 		FFI.searchEngineGetApps(handle)
 	}
+
+	func enableFileSearch(directories: [String], extensions: [String]?) {
+		FFI.searchEngineEnableFileSearch(handle, directories: directories, extensions: extensions ?? [])
+	}
+
+	func disableFileSearch() {
+		FFI.searchEngineDisableFileSearch(handle)
+	}
 }

@@ -54,6 +54,35 @@ struct RecentApp: Codable, Equatable {
 	let timestamp: Double
 }
 
+struct WebSearchEngine: Codable, Identifiable, Hashable {
+	let id: String
+	let name: String
+	let urlTemplate: String
+	let iconName: String
+	var keyword: String?
+
+	static let defaults: [WebSearchEngine] = [
+		WebSearchEngine(id: "google", name: "Google", urlTemplate: "https://www.google.com/search?q={query}", iconName: "web:google", keyword: "g"),
+		WebSearchEngine(id: "duckduckgo", name: "DuckDuckGo", urlTemplate: "https://duckduckgo.com/?q={query}", iconName: "web:duckduckgo", keyword: "ddg"),
+		WebSearchEngine(id: "startpage", name: "Startpage", urlTemplate: "https://www.startpage.com/do/search?q={query}", iconName: "web:startpage", keyword: "sp"),
+		WebSearchEngine(id: "ecosia", name: "Ecosia", urlTemplate: "https://www.ecosia.org/search?q={query}", iconName: "web:ecosia", keyword: "eco"),
+		WebSearchEngine(id: "brave", name: "Brave Search", urlTemplate: "https://search.brave.com/search?q={query}", iconName: "web:brave", keyword: "brave"),
+		WebSearchEngine(id: "kagi", name: "Kagi", urlTemplate: "https://kagi.com/search?q={query}", iconName: "web:kagi", keyword: "kagi"),
+	]
+}
+
+enum FallbackSearchBehavior: String, Codable, CaseIterable {
+	case onlyWhenEmpty = "only_when_empty"
+	case appendToResults = "append_to_results"
+
+	var displayName: String {
+		switch self {
+		case .onlyWhenEmpty: return "Only when no results"
+		case .appendToResults: return "Append to results"
+		}
+	}
+}
+
 class AppSettings: ObservableObject {
 	static let shared = AppSettings()
 
@@ -77,12 +106,34 @@ class AppSettings: ObservableObject {
 		"/System/Applications",
 		"/System/Applications/Utilities"
 	]
+	@Published var enableFileSearch: Bool = false
+	@Published var fileSearchDirectories: [String] = [
+		NSHomeDirectory() + "/Documents",
+		NSHomeDirectory() + "/Desktop"
+	]
+	@Published var fileSearchExtensions: [String] = [
+		"txt", "md", "pdf", "doc", "docx"
+	]
+	@Published var launcherAllowedExtensions: [String] = [
+		"app", "prefPane", "workflow"
+	]
+	@Published var enableFallbackSearch: Bool = true
+	@Published var fallbackSearchBehavior: FallbackSearchBehavior = .onlyWhenEmpty
+	@Published var fallbackSearchEngines: [String] = ["google", "duckduckgo"]
+	@Published var fallbackSearchMinQueryLength: Int = 2
+	@Published var fallbackSearchMaxEngines: Int = 2
+	@Published var customFallbackEngines: [WebSearchEngine] = []
+	@Published var engineKeywords: [String: String] = [:]
+	@Published var disabledDefaultEngines: Set<String> = []
 
 	private var settingsStorage: FFI.SettingsStorageHandle?
 	private let userDefaults = UserDefaults.standard
 	private var saveWorkItem: DispatchWorkItem?
 	private let recentAppsKey = "app_recentApps"
 	private let pinnedAppsKey = "app_pinnedApps"
+	private let customEnginesKey = "app_customFallbackEngines"
+	private let engineKeywordsKey = "app_engineKeywords"
+	private let disabledDefaultEnginesKey = "app_disabledDefaultEngines"
 
 	deinit {
 		FFI.settingsStorageFree(settingsStorage)
@@ -129,7 +180,11 @@ class AppSettings: ObservableObject {
 			showTrayIcon = swiftSettings.showTrayIcon
 			showDockIcon = swiftSettings.showDockIcon
 			hideTrafficLights = swiftSettings.hideTrafficLights
-			searchFolders = swiftSettings.searchFolders
+			searchFolders = swiftSettings.searchFolders.isEmpty ? [
+				"/Applications",
+				"/System/Applications",
+				"/System/Applications/Utilities"
+			] : swiftSettings.searchFolders
 
 			launcherShortcut = keyboardShortcutFromStrings(
 				key: swiftSettings.launcherShortcutKey,
@@ -152,6 +207,24 @@ class AppSettings: ObservableObject {
 		   let apps = try? JSONDecoder().decode([RecentApp].self, from: data)
 		{
 			pinnedApps = apps
+		}
+
+		if let data = userDefaults.data(forKey: customEnginesKey),
+		   let engines = try? JSONDecoder().decode([WebSearchEngine].self, from: data)
+		{
+			customFallbackEngines = engines
+		}
+
+		if let data = userDefaults.data(forKey: engineKeywordsKey),
+		   let keywords = try? JSONDecoder().decode([String: String].self, from: data)
+		{
+			engineKeywords = keywords
+		}
+
+		if let data = userDefaults.data(forKey: disabledDefaultEnginesKey),
+		   let disabled = try? JSONDecoder().decode(Set<String>.self, from: data)
+		{
+			disabledDefaultEngines = disabled
 		}
 	}
 
@@ -293,6 +366,18 @@ class AppSettings: ObservableObject {
 			clipboardShortcutMods: clipboardMods,
 			searchFolders: searchFolders
 		)
+
+		if let data = try? JSONEncoder().encode(customFallbackEngines) {
+			userDefaults.set(data, forKey: customEnginesKey)
+		}
+
+		if let data = try? JSONEncoder().encode(engineKeywords) {
+			userDefaults.set(data, forKey: engineKeywordsKey)
+		}
+
+		if let data = try? JSONEncoder().encode(disabledDefaultEngines) {
+			userDefaults.set(data, forKey: disabledDefaultEnginesKey)
+		}
 	}
 
 	private func keyboardShortcutToStrings(_ shortcut: KeyboardShortcut) -> (key: String, mods: [String]) {
@@ -341,6 +426,49 @@ class AppSettings: ObservableObject {
 	func saveAndReindex() {
 		saveNow()
 		NotificationCenter.default.post(name: .settingsChanged, object: nil)
+	}
+
+	var allFallbackEngines: [WebSearchEngine] {
+		let enabledDefaults = WebSearchEngine.defaults.filter { !disabledDefaultEngines.contains($0.id) }
+		return enabledDefaults + customFallbackEngines
+	}
+
+	func addFallbackEngine(name: String, urlTemplate: String, iconName: String) {
+		let id = UUID().uuidString
+		let engine = WebSearchEngine(id: id, name: name, urlTemplate: urlTemplate, iconName: iconName)
+		customFallbackEngines.append(engine)
+		fallbackSearchEngines.append(id)
+		scheduleSave()
+	}
+
+	func removeFallbackEngine(id: String) {
+		if WebSearchEngine.defaults.contains(where: { $0.id == id }) {
+			disabledDefaultEngines.insert(id)
+		} else {
+			customFallbackEngines.removeAll { $0.id == id }
+		}
+		fallbackSearchEngines.removeAll { $0 == id }
+		scheduleSave()
+	}
+
+	func updateEngineKeyword(id: String, keyword: String) {
+		if keyword.isEmpty {
+			engineKeywords.removeValue(forKey: id)
+		} else {
+			engineKeywords[id] = keyword
+		}
+		scheduleSave()
+	}
+
+	func getEngineKeyword(id: String) -> String {
+		if let override = engineKeywords[id] {
+			return override
+		}
+		return allFallbackEngines.first { $0.id == id }?.keyword ?? ""
+	}
+
+	func fallbackEngineById(_ id: String) -> WebSearchEngine? {
+		allFallbackEngines.first { $0.id == id }
 	}
 }
 

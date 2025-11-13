@@ -23,6 +23,7 @@ use snippet_matcher::{Snippet, SnippetMatcher};
 use snippet_storage::SnippetStorage;
 use sonic_rs::{JsonContainerTrait, JsonValueTrait};
 
+/// cbindgen:ignore
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -78,10 +79,6 @@ fn optional_cstring(s: Option<String>) -> *mut c_char {
 
 macro_rules! storage_handle {
 	($name:ident, $inner:ty, $prefix:ident) => {
-		pub struct $name {
-			inner: Arc<$inner>,
-		}
-
 		paste::paste! {
 			#[unsafe(no_mangle)]
 			pub unsafe extern "C" fn [<$prefix _new>](path: *const c_char) -> *mut $name {
@@ -183,8 +180,8 @@ pub unsafe extern "C" fn search_engine_search(
 	let c_results: Vec<CSearchResult> = results
 		.into_iter()
 		.map(|r| CSearchResult {
-			id:    CString::new(r.item.id.as_str()).unwrap().into_raw(),
-			name:  CString::new(r.item.name.as_str()).unwrap().into_raw(),
+			id:    to_cstring_ptr(r.item.id.as_str()),
+			name:  to_cstring_ptr(r.item.name.as_str()),
 			path:  r.item.path.and_then(|p| CString::new(p.as_str()).ok()).map(CString::into_raw).unwrap_or(ptr::null_mut()),
 			score: r.score,
 		})
@@ -374,8 +371,8 @@ pub unsafe extern "C" fn search_engine_get_apps(
 	let c_apps: Vec<CIndexedApp> = apps
 		.into_iter()
 		.map(|(name, path)| CIndexedApp {
-			name: CString::new(name).unwrap().into_raw(),
-			path: CString::new(path).unwrap().into_raw(),
+			name: to_cstring_ptr(name),
+			path: to_cstring_ptr(path),
 		})
 		.collect();
 
@@ -402,6 +399,53 @@ pub unsafe extern "C" fn indexed_apps_free(entries: *mut CIndexedApp, count: siz
 	}
 }
 
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn search_engine_enable_file_search(
+	handle: *mut SearchEngineHandle,
+	directories: CStringArray,
+	extensions: CStringArray,
+) -> bool {
+	if handle.is_null() || directories.data.is_null() {
+		return false;
+	}
+
+	let dirs: Vec<std::path::PathBuf> = unsafe {
+		std::slice::from_raw_parts(directories.data, directories.len)
+			.iter()
+			.filter_map(
+				|&ptr| {
+					if ptr.is_null() { None } else { CStr::from_ptr(ptr).to_str().ok().map(std::path::PathBuf::from) }
+				},
+			)
+			.collect()
+	};
+
+	let exts: Option<Vec<String>> = if extensions.data.is_null() {
+		None
+	} else {
+		Some(unsafe {
+			std::slice::from_raw_parts(extensions.data, extensions.len)
+				.iter()
+				.filter_map(|&ptr| if ptr.is_null() { None } else { CStr::from_ptr(ptr).to_str().ok().map(String::from) })
+				.collect()
+		})
+	};
+
+	let engine = unsafe { &(*handle).engine };
+	engine.lock().enable_file_search(dirs, exts);
+	true
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn search_engine_disable_file_search(handle: *mut SearchEngineHandle) -> bool {
+	if handle.is_null() {
+		return false;
+	}
+	let engine = unsafe { &(*handle).engine };
+	engine.lock().disable_file_search();
+	true
+}
+
 pub struct CalculatorHandle {
 	calc: std::cell::RefCell<Calculator>,
 }
@@ -424,7 +468,7 @@ pub unsafe extern "C" fn calculator_evaluate(handle: *mut CalculatorHandle, expr
 		return ptr::null_mut();
 	}
 	match unsafe { (*handle).calc.borrow_mut().evaluate(cstr!(expr)) } {
-		Some(result) => CString::new(result).unwrap().into_raw(),
+		Some(result) => to_cstring_ptr(result),
 		None => ptr::null_mut(),
 	}
 }
@@ -438,7 +482,7 @@ pub unsafe extern "C" fn calculator_get_history_json(handle: *mut CalculatorHand
 	let json_entries: Vec<_> =
 		history_vec.iter().map(|e| sonic_rs::json!({"query": e.query, "result": e.result})).collect();
 	match sonic_rs::to_string(&json_entries) {
-		Ok(json) => CString::new(json).unwrap().into_raw(),
+		Ok(json) => to_cstring_ptr(json),
 		Err(_) => ptr::null_mut(),
 	}
 }
@@ -455,6 +499,10 @@ pub unsafe extern "C" fn calculator_clear_history(handle: *mut CalculatorHandle)
 	if !handle.is_null() {
 		unsafe { (*handle).calc.borrow_mut().clear_history() };
 	}
+}
+
+pub struct ClipboardStorageHandle {
+	inner: Arc<ClipboardStorage>,
 }
 
 storage_handle!(ClipboardStorageHandle, ClipboardStorage, clipboard_storage);
@@ -529,7 +577,7 @@ pub unsafe extern "C" fn clipboard_storage_get_entries(
 		.map(|e| {
 			let (width, height) = e.image_size.map(|s| (s.width, s.height)).unwrap_or((0.0, 0.0));
 			CClipboardEntry {
-				content:         CString::new(e.content).unwrap().into_raw(),
+				content:         to_cstring_ptr(e.content),
 				timestamp:       e.timestamp,
 				item_type:       e.item_type.as_u8(),
 				image_file_path: e
@@ -653,8 +701,8 @@ pub unsafe extern "C" fn snippet_matcher_find(
 	}
 	match unsafe { (*handle).matcher.find_match(cstr!(text)) } {
 		Some((trigger, content, _)) => Box::into_raw(Box::new(CSnippetMatch {
-			trigger: CString::new(trigger).unwrap().into_raw(),
-			content: CString::new(content).unwrap().into_raw(),
+			trigger: to_cstring_ptr(trigger),
+			content: to_cstring_ptr(content),
 		})),
 		None => ptr::null_mut(),
 	}
@@ -673,6 +721,10 @@ pub unsafe extern "C" fn snippet_match_free(result: *mut CSnippetMatch) {
 			drop(Box::from_raw(result));
 		}
 	}
+}
+
+pub struct SnippetStorageHandle {
+	inner: Arc<SnippetStorage>,
 }
 
 storage_handle!(SnippetStorageHandle, SnippetStorage, snippet_storage);
@@ -746,11 +798,11 @@ fn snippets_to_c(snippets: Vec<snippet_storage::Snippet>) -> (*mut CSnippet, siz
 	let c_snippets: Vec<CSnippet> = snippets
 		.into_iter()
 		.map(|s| CSnippet {
-			id:       CString::new(s.id).unwrap().into_raw(),
-			trigger:  CString::new(s.trigger).unwrap().into_raw(),
-			content:  CString::new(s.content).unwrap().into_raw(),
+			id:       to_cstring_ptr(s.id),
+			trigger:  to_cstring_ptr(s.trigger),
+			content:  to_cstring_ptr(s.content),
 			enabled:  s.enabled,
-			category: CString::new(s.category).unwrap().into_raw(),
+			category: to_cstring_ptr(s.category),
 		})
 		.collect();
 
@@ -817,6 +869,10 @@ pub unsafe extern "C" fn snippet_storage_len(handle: *mut SnippetStorageHandle) 
 	unsafe { (*handle).inner.len() }
 }
 
+pub struct AppStorageHandle {
+	inner: Arc<AppStorage>,
+}
+
 storage_handle!(AppStorageHandle, AppStorage, app_storage);
 
 #[repr(C)]
@@ -854,8 +910,8 @@ pub unsafe extern "C" fn app_storage_get_all(handle: *mut AppStorageHandle, out_
 	let c_entries: Vec<CAppEntry> = entries
 		.into_iter()
 		.map(|e| CAppEntry {
-			name: CString::new(e.name).unwrap().into_raw(),
-			path: CString::new(e.path).unwrap().into_raw(),
+			name: to_cstring_ptr(e.name),
+			path: to_cstring_ptr(e.path),
 		})
 		.collect();
 
@@ -898,6 +954,10 @@ pub unsafe extern "C" fn app_storage_clear(handle: *mut AppStorageHandle) -> boo
 	unsafe { (*handle).inner.clear().is_ok() }
 }
 
+pub struct SettingsStorageHandle {
+	inner: Arc<SettingsStorage>,
+}
+
 storage_handle!(SettingsStorageHandle, SettingsStorage, settings_storage);
 
 #[repr(C)]
@@ -924,13 +984,13 @@ pub unsafe extern "C" fn settings_storage_get(handle: *mut SettingsStorageHandle
 	let settings = unsafe { (*handle).inner.get() };
 
 	Box::into_raw(Box::new(CAppSettings {
-		theme:                    CString::new(settings.theme).unwrap().into_raw(),
-		custom_font_name:         CString::new(settings.custom_font_name).unwrap().into_raw(),
-		font_size:                CString::new(settings.font_size).unwrap().into_raw(),
+		theme:                    to_cstring_ptr(settings.theme),
+		custom_font_name:         to_cstring_ptr(settings.custom_font_name),
+		font_size:                to_cstring_ptr(settings.font_size),
 		max_results:              settings.max_results,
 		max_clipboard_items:      settings.max_clipboard_items,
 		clipboard_retention_days: settings.clipboard_retention_days,
-		quick_select_modifier:    CString::new(settings.quick_select_modifier).unwrap().into_raw(),
+		quick_select_modifier:    to_cstring_ptr(settings.quick_select_modifier),
 		enable_commands:          settings.enable_commands,
 		show_tray_icon:           settings.show_tray_icon,
 		show_dock_icon:           settings.show_dock_icon,
@@ -1041,7 +1101,7 @@ pub unsafe extern "C" fn settings_storage_get_search_folders(handle: *mut Settin
 	}
 	let settings = unsafe { (*handle).inner.get() };
 	let json = sonic_rs::to_string(&settings.search_folders).unwrap_or_else(|_| "[]".to_owned());
-	CString::new(json).unwrap().into_raw()
+	to_cstring_ptr(json)
 }
 
 #[unsafe(no_mangle)]
@@ -1050,12 +1110,13 @@ pub unsafe extern "C" fn settings_storage_get_launcher_shortcut(handle: *mut Set
 		return ptr::null_mut();
 	}
 	let settings = unsafe { (*handle).inner.get() };
-	let json = sonic_rs::to_string(&sonic_rs::json!({
+	let Ok(json) = sonic_rs::to_string(&sonic_rs::json!({
 		"key": settings.launcher_shortcut_key,
 		"modifiers": settings.launcher_shortcut_mods
-	}))
-	.unwrap();
-	CString::new(json).unwrap().into_raw()
+	})) else {
+		return ptr::null_mut();
+	};
+	to_cstring_ptr(json)
 }
 
 #[unsafe(no_mangle)]
@@ -1064,12 +1125,13 @@ pub unsafe extern "C" fn settings_storage_get_clipboard_shortcut(handle: *mut Se
 		return ptr::null_mut();
 	}
 	let settings = unsafe { (*handle).inner.get() };
-	let json = sonic_rs::to_string(&sonic_rs::json!({
+	let Ok(json) = sonic_rs::to_string(&sonic_rs::json!({
 		"key": settings.clipboard_shortcut_key,
 		"modifiers": settings.clipboard_shortcut_mods
-	}))
-	.unwrap();
-	CString::new(json).unwrap().into_raw()
+	})) else {
+		return ptr::null_mut();
+	};
+	to_cstring_ptr(json)
 }
 
 pub struct ActionManagerHandle {
@@ -1126,16 +1188,16 @@ pub unsafe extern "C" fn action_manager_search(
 		.into_iter()
 		.map(|r| {
 			let url = match r.action {
-				ResultAction::OpenUrl(url) => CString::new(url).unwrap().into_raw(),
-				ResultAction::CopyText(text) => CString::new(text).unwrap().into_raw(),
-				ResultAction::RunCommand { cmd, .. } => CString::new(cmd).unwrap().into_raw(),
+				ResultAction::OpenUrl(url) => to_cstring_ptr(url),
+				ResultAction::CopyText(text) => to_cstring_ptr(text),
+				ResultAction::RunCommand { cmd, .. } => to_cstring_ptr(cmd),
 			};
 
 			CActionResult {
-				id: CString::new(r.id).unwrap().into_raw(),
-				title: CString::new(r.title).unwrap().into_raw(),
-				subtitle: CString::new(r.subtitle).unwrap().into_raw(),
-				icon: CString::new(r.icon).unwrap().into_raw(),
+				id: to_cstring_ptr(r.id),
+				title: to_cstring_ptr(r.title),
+				subtitle: to_cstring_ptr(r.subtitle),
+				icon: to_cstring_ptr(r.icon),
 				url,
 				score: r.score,
 			}
@@ -1272,7 +1334,7 @@ pub unsafe extern "C" fn action_manager_get_all_json(handle: *mut ActionManagerH
 	let actions = unsafe { (*handle).manager.get_all() };
 	let json = sonic_rs::to_string(&actions).unwrap_or_default();
 
-	CString::new(json).unwrap().into_raw()
+	to_cstring_ptr(json)
 }
 
 #[unsafe(no_mangle)]

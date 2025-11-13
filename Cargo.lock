@@ -15,7 +15,7 @@ dependencies = [
  "rkyv",
  "rustc-hash",
  "serde",
- "sonic-rs 0.3.17",
+ "sonic-rs",
  "storage_utils",
  "thiserror",
  "urlencoding",
@@ -266,7 +266,7 @@ dependencies = [
  "settings_storage",
  "snippet_matcher",
  "snippet_storage",
- "sonic-rs 0.5.6",
+ "sonic-rs",
 ]
 
 [[package]]
@@ -729,6 +729,7 @@ dependencies = [
  "rustc-hash",
  "serde",
  "smallvec",
+ "walkdir",
 ]
 
 [[package]]
@@ -824,26 +825,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8a74044c092f4f43ca7a6cfd62854cf9fb5ac8502b131347c990bf22bef1dfe"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "sonic-rs"
-version = "0.3.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0275f9f2f07d47556fe60c2759da8bc4be6083b047b491b2d476aa0bfa558eb1"
-dependencies = [
- "bumpalo",
- "bytes",
- "cfg-if",
- "faststr",
- "itoa",
- "ref-cast",
- "ryu",
- "serde",
- "simdutf8",
- "sonic-number",
- "sonic-simd",
- "thiserror",
 ]
 
 [[package]]

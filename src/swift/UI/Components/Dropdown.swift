@@ -38,6 +38,10 @@ struct Dropdown<T: Hashable>: View {
 
 	var body: some View {
 		HStack(spacing: 0) {
+			if alignRight {
+				Spacer()
+			}
+
 			DropdownButtonWrapper(
 				label: label(selection),
 				isExpanded: $isExpanded,
@@ -47,10 +51,6 @@ struct Dropdown<T: Hashable>: View {
 				}
 			)
 			.frame(height: 20)
-
-			if alignRight {
-				Spacer()
-			}
 		}
 		.frame(maxWidth: .infinity, alignment: alignRight ? .trailing : .leading)
 		.onReceive(NotificationCenter.default.publisher(for: .closeAllDropdowns)) { _ in

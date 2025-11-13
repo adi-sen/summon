@@ -530,6 +530,59 @@ struct ContentView: View {
 						)
 					})
 
+				let shouldShowFallback = settings.enableFallbackSearch
+					&& query.count >= settings.fallbackSearchMinQueryLength
+					&& (settings.fallbackSearchBehavior == .onlyWhenEmpty ? allResults.isEmpty : allResults.count < maxResults)
+
+				if shouldShowFallback {
+					let availableSlots = settings.fallbackSearchBehavior == .appendToResults
+						? maxResults - allResults.count
+						: maxResults
+					let maxEngines = min(availableSlots, settings.fallbackSearchMaxEngines)
+
+					for engineId in settings.fallbackSearchEngines.prefix(maxEngines) {
+						guard let engine = settings.fallbackEngineById(engineId) else { continue }
+
+						let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+						let searchURL = engine.urlTemplate.replacingOccurrences(of: "{query}", with: encodedQuery)
+
+						var icon: NSImage?
+						if engine.iconName.hasPrefix("web:") {
+							let iconName = String(engine.iconName.dropFirst(4))
+							WebIconDownloader.getIcon(for: iconName, size: NSSize(width: 28, height: 28)) { loadedIcon in
+								icon = loadedIcon
+							}
+						}
+
+						if icon == nil {
+							icon = ActionIconGenerator.loadIcon(
+								iconName: engine.iconName,
+								title: engine.name,
+								url: searchURL
+							)
+						}
+
+						allResults.append(
+							CategoryResult(
+								id: "fallback_\(engine.id)",
+								name: "Search with \(engine.name)",
+								category: "Web",
+								path: searchURL,
+								action: {
+									if let url = URL(string: searchURL) {
+										NSWorkspace.shared.open(url)
+									}
+									NSApp.keyWindow?.orderOut(nil)
+								},
+								fullContent: nil,
+								clipboardEntry: nil,
+								icon: icon,
+								score: 0
+							)
+						)
+					}
+				}
+
 				allResults.sort { $0.score > $1.score }
 				allResults = Array(allResults.prefix(maxResults))
 

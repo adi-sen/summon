@@ -4,17 +4,6 @@ import Foundation
 enum FFI {
 	typealias ClipboardStorageHandle = OpaquePointer
 
-	struct CClipboardEntry {
-		let content: UnsafeMutablePointer<CChar>?
-		let timestamp: Double
-		let itemType: UInt8
-		let imageFilePath: UnsafeMutablePointer<CChar>?
-		let imageWidth: Double
-		let imageHeight: Double
-		let size: Int32
-		let sourceApp: UnsafeMutablePointer<CChar>?
-	}
-
 	struct SwiftClipboardEntry {
 		let content: String
 		let timestamp: Double
@@ -95,12 +84,12 @@ enum FFI {
 				SwiftClipboardEntry(
 					content: content,
 					timestamp: cEntry.timestamp,
-					itemType: cEntry.itemType,
-					imageFilePath: FFIHelpers.safeString(from: cEntry.imageFilePath),
-					imageWidth: cEntry.imageWidth,
-					imageHeight: cEntry.imageHeight,
+					itemType: cEntry.item_type,
+					imageFilePath: FFIHelpers.safeString(from: cEntry.image_file_path),
+					imageWidth: cEntry.image_width,
+					imageHeight: cEntry.image_height,
 					size: cEntry.size,
-					sourceApp: FFIHelpers.safeString(from: cEntry.sourceApp)
+					sourceApp: FFIHelpers.safeString(from: cEntry.source_app)
 				))
 		}
 
@@ -130,14 +119,6 @@ enum FFI {
 	}
 
 	typealias SnippetStorageHandle = OpaquePointer
-
-	struct CSnippet {
-		let id: UnsafeMutablePointer<CChar>?
-		let trigger: UnsafeMutablePointer<CChar>?
-		let content: UnsafeMutablePointer<CChar>?
-		let enabled: Bool
-		let category: UnsafeMutablePointer<CChar>?
-	}
 
 	struct SwiftSnippet {
 		let id: String
@@ -269,25 +250,6 @@ enum FFI {
 
 	typealias SettingsStorageHandle = OpaquePointer
 
-	struct CAppSettings {
-		let theme: UnsafeMutablePointer<CChar>?
-		let customFontName: UnsafeMutablePointer<CChar>?
-		let fontSize: UnsafeMutablePointer<CChar>?
-		let maxResults: Int32
-		let maxClipboardItems: Int32
-		let clipboardRetentionDays: Int32
-		let quickSelectModifier: UnsafeMutablePointer<CChar>?
-		let enableCommands: Bool
-		let showTrayIcon: Bool
-		let showDockIcon: Bool
-		let hideTrafficLights: Bool
-		let launcherShortcutKey: UnsafeMutablePointer<CChar>?
-		let launcherShortcutMods: UnsafeMutablePointer<CChar>?
-		let clipboardShortcutKey: UnsafeMutablePointer<CChar>?
-		let clipboardShortcutMods: UnsafeMutablePointer<CChar>?
-		let searchFolders: UnsafeMutablePointer<CChar>?
-	}
-
 	struct SwiftAppSettings {
 		let theme: String
 		let customFontName: String
@@ -371,58 +333,63 @@ enum FFI {
 		defer { settings_free(cSettings) }
 
 		let theme = FFIHelpers.safeString(from: cSettings.pointee.theme) ?? "dark"
-		let customFontName = FFIHelpers.safeString(from: cSettings.pointee.customFontName) ?? ""
-		let fontSize = FFIHelpers.safeString(from: cSettings.pointee.fontSize) ?? "medium"
-		let quickSelectModifier = FFIHelpers.safeString(from: cSettings.pointee.quickSelectModifier) ?? "option"
-		let launcherShortcutKey = FFIHelpers.safeString(from: cSettings.pointee.launcherShortcutKey) ?? "space"
-		let clipboardShortcutKey = FFIHelpers.safeString(from: cSettings.pointee.clipboardShortcutKey) ?? "v"
+		let customFontName = FFIHelpers.safeString(from: cSettings.pointee.custom_font_name) ?? ""
+		let fontSize = FFIHelpers.safeString(from: cSettings.pointee.font_size) ?? "medium"
+		let quickSelectModifier = FFIHelpers.safeString(from: cSettings.pointee.quick_select_modifier) ?? "option"
 
-		let launcherShortcutMods: [String] =
-			if let jsonStr = FFIHelpers.safeString(from: cSettings.pointee.launcherShortcutMods),
+		var launcherShortcut = ("space", ["command"])
+		if let jsonPtr = settings_storage_get_launcher_shortcut(handle) {
+			defer { calculator_free_string(jsonPtr) }
+			if let jsonStr = FFIHelpers.safeString(from: jsonPtr),
+			   let data = jsonStr.data(using: .utf8),
+			   let dict = try? JSONDecoder().decode([String: [String]].self, from: data),
+			   let key = dict["key"]?.first,
+			   let mods = dict["modifiers"]
+			{
+				launcherShortcut = (key, mods)
+			}
+		}
+
+		var clipboardShortcut = ("v", ["command", "shift"])
+		if let jsonPtr = settings_storage_get_clipboard_shortcut(handle) {
+			defer { calculator_free_string(jsonPtr) }
+			if let jsonStr = FFIHelpers.safeString(from: jsonPtr),
+			   let data = jsonStr.data(using: .utf8),
+			   let dict = try? JSONDecoder().decode([String: [String]].self, from: data),
+			   let key = dict["key"]?.first,
+			   let mods = dict["modifiers"]
+			{
+				clipboardShortcut = (key, mods)
+			}
+		}
+
+		var searchFolders = ["/Applications", "/System/Applications", "/System/Applications/Utilities"]
+		if let jsonPtr = settings_storage_get_search_folders(handle) {
+			defer { calculator_free_string(jsonPtr) }
+			if let jsonStr = FFIHelpers.safeString(from: jsonPtr),
 			   let data = jsonStr.data(using: .utf8),
 			   let arr = try? JSONDecoder().decode([String].self, from: data)
 			{
-				arr
-			} else {
-				["command"]
+				searchFolders = arr
 			}
-
-		let clipboardShortcutMods: [String] =
-			if let jsonStr = FFIHelpers.safeString(from: cSettings.pointee.clipboardShortcutMods),
-			   let data = jsonStr.data(using: .utf8),
-			   let arr = try? JSONDecoder().decode([String].self, from: data)
-			{
-				arr
-			} else {
-				["command", "shift"]
-			}
-
-		let searchFolders: [String] =
-			if let jsonStr = FFIHelpers.safeString(from: cSettings.pointee.searchFolders),
-			   let data = jsonStr.data(using: .utf8),
-			   let arr = try? JSONDecoder().decode([String].self, from: data)
-			{
-				arr
-			} else {
-				["/Applications", "/System/Applications", "/System/Applications/Utilities"]
-			}
+		}
 
 		return SwiftAppSettings(
 			theme: theme,
 			customFontName: customFontName,
 			fontSize: fontSize,
-			maxResults: Int(cSettings.pointee.maxResults),
-			maxClipboardItems: Int(cSettings.pointee.maxClipboardItems),
-			clipboardRetentionDays: Int(cSettings.pointee.clipboardRetentionDays),
+			maxResults: Int(cSettings.pointee.max_results),
+			maxClipboardItems: Int(cSettings.pointee.max_clipboard_items),
+			clipboardRetentionDays: Int(cSettings.pointee.clipboard_retention_days),
 			quickSelectModifier: quickSelectModifier,
-			enableCommands: cSettings.pointee.enableCommands,
-			showTrayIcon: cSettings.pointee.showTrayIcon,
-			showDockIcon: cSettings.pointee.showDockIcon,
-			hideTrafficLights: cSettings.pointee.hideTrafficLights,
-			launcherShortcutKey: launcherShortcutKey,
-			launcherShortcutMods: launcherShortcutMods,
-			clipboardShortcutKey: clipboardShortcutKey,
-			clipboardShortcutMods: clipboardShortcutMods,
+			enableCommands: cSettings.pointee.enable_commands,
+			showTrayIcon: cSettings.pointee.show_tray_icon,
+			showDockIcon: cSettings.pointee.show_dock_icon,
+			hideTrafficLights: cSettings.pointee.hide_traffic_lights,
+			launcherShortcutKey: launcherShortcut.0,
+			launcherShortcutMods: launcherShortcut.1,
+			clipboardShortcutKey: clipboardShortcut.0,
+			clipboardShortcutMods: clipboardShortcut.1,
 			searchFolders: searchFolders
 		)
 	}
@@ -630,6 +597,33 @@ enum FFI {
 		return apps
 	}
 
+	static func searchEngineEnableFileSearch(
+		_ handle: SearchEngineHandle?,
+		directories: [String],
+		extensions: [String]
+	) {
+		guard let handle else { return }
+
+		var dirPointers = directories.map { strdup($0) }
+		defer { dirPointers.forEach { free($0) } }
+
+		var extPointers = extensions.map { strdup($0) }
+		defer { extPointers.forEach { free($0) } }
+
+		dirPointers.withUnsafeMutableBufferPointer { dirBuffer in
+			extPointers.withUnsafeMutableBufferPointer { extBuffer in
+				let dirCArray = CStringArray(data: dirBuffer.baseAddress, len: dirBuffer.count)
+				let extCArray = CStringArray(data: extBuffer.baseAddress, len: extBuffer.count)
+				search_engine_enable_file_search(handle, dirCArray, extCArray)
+			}
+		}
+	}
+
+	static func searchEngineDisableFileSearch(_ handle: SearchEngineHandle?) {
+		guard let handle else { return }
+		search_engine_disable_file_search(handle)
+	}
+
 	typealias SnippetMatcherHandle = OpaquePointer
 
 	static func snippetMatcherNew() -> SnippetMatcherHandle? {
@@ -650,20 +644,15 @@ enum FFI {
 		trigger: String, content: String, matchEnd: Int
 	)? {
 		guard let handle else { return nil }
-		return text.withCString { cString in
+		return text.withCString { cString -> (String, String, Int)? in
 			guard let result = snippet_matcher_find(handle, cString) else { return nil }
 			defer { snippet_match_free(result) }
 			guard let trigger = FFIHelpers.safeString(from: result.pointee.trigger),
 			      let content = FFIHelpers.safeString(from: result.pointee.content)
 			else { return nil }
-			return (trigger, content, Int(result.pointee.matchEnd))
+			return (trigger, content, trigger.count)
 		}
 	}
-}
-
-struct CStringArray {
-	var data: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
-	var len: Int
 }
 
 struct CSearchResult {
@@ -679,18 +668,6 @@ struct CSnippetMatch {
 	var matchEnd: Int
 }
 
-@_silgen_name("calculator_new")
-func calculator_new() -> OpaquePointer?
-
-@_silgen_name("calculator_free")
-func calculator_free(_ handle: OpaquePointer?)
-
-@_silgen_name("calculator_evaluate")
-func calculator_evaluate(_ handle: OpaquePointer?, _ query: UnsafePointer<CChar>?)
-	-> UnsafeMutablePointer<CChar>?
-
-@_silgen_name("calculator_get_history_json")
-func calculator_get_history_json(_ handle: OpaquePointer?) -> UnsafeMutablePointer<CChar>?
 
 @_silgen_name("calculator_clear_history")
 func calculator_clear_history(_ handle: OpaquePointer?)
@@ -731,7 +708,7 @@ func clipboard_storage_get_entries(
 	_ start: Int,
 	_ count: Int,
 	_ outCount: UnsafeMutablePointer<Int>?
-) -> UnsafeMutablePointer<FFI.CClipboardEntry>?
+) -> UnsafeMutablePointer<CClipboardEntry>?
 
 @_silgen_name("clipboard_storage_len")
 func clipboard_storage_len(_ handle: OpaquePointer?) -> Int
@@ -747,7 +724,7 @@ func clipboard_storage_remove_at(_ handle: OpaquePointer?, _ index: Int32) -> Bo
 
 @_silgen_name("clipboard_entries_free")
 func clipboard_entries_free(
-	_ entries: UnsafeMutablePointer<FFI.CClipboardEntry>?,
+	_ entries: UnsafeMutablePointer<CClipboardEntry>?,
 	_ count: Int
 )
 
@@ -787,20 +764,20 @@ func snippet_storage_delete(
 func snippet_storage_get_all(
 	_ handle: OpaquePointer?,
 	_ outCount: UnsafeMutablePointer<Int>?
-) -> UnsafeMutablePointer<FFI.CSnippet>?
+) -> UnsafeMutablePointer<CSnippet>?
 
 @_silgen_name("snippet_storage_get_enabled")
 func snippet_storage_get_enabled(
 	_ handle: OpaquePointer?,
 	_ outCount: UnsafeMutablePointer<Int>?
-) -> UnsafeMutablePointer<FFI.CSnippet>?
+) -> UnsafeMutablePointer<CSnippet>?
 
 @_silgen_name("snippet_storage_len")
 func snippet_storage_len(_ handle: OpaquePointer?) -> Int
 
 @_silgen_name("snippets_free")
 func snippets_free(
-	_ snippets: UnsafeMutablePointer<FFI.CSnippet>?,
+	_ snippets: UnsafeMutablePointer<CSnippet>?,
 	_ count: Int
 )
 
@@ -907,7 +884,7 @@ func settings_storage_new(_ path: UnsafePointer<CChar>?) -> OpaquePointer?
 func settings_storage_free(_ handle: OpaquePointer?)
 
 @_silgen_name("settings_storage_get")
-func settings_storage_get(_ handle: OpaquePointer?) -> UnsafeMutablePointer<FFI.CAppSettings>?
+func settings_storage_get(_ handle: OpaquePointer?) -> UnsafeMutablePointer<CAppSettings>?
 
 @_silgen_name("settings_storage_save")
 // swiftlint:disable:next function_parameter_count
@@ -932,7 +909,16 @@ func settings_storage_save(
 ) -> Bool
 
 @_silgen_name("settings_free")
-func settings_free(_ settings: UnsafeMutablePointer<FFI.CAppSettings>?)
+func settings_free(_ settings: UnsafeMutablePointer<CAppSettings>?)
+
+@_silgen_name("settings_storage_get_search_folders")
+func settings_storage_get_search_folders(_ handle: OpaquePointer?) -> UnsafeMutablePointer<CChar>?
+
+@_silgen_name("settings_storage_get_launcher_shortcut")
+func settings_storage_get_launcher_shortcut(_ handle: OpaquePointer?) -> UnsafeMutablePointer<CChar>?
+
+@_silgen_name("settings_storage_get_clipboard_shortcut")
+func settings_storage_get_clipboard_shortcut(_ handle: OpaquePointer?) -> UnsafeMutablePointer<CChar>?
 
 extension FFI {
 	typealias ActionManagerHandle = OpaquePointer

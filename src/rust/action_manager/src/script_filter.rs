@@ -62,7 +62,7 @@ fn default_true() -> bool { true }
 fn init_cache() {
 	let mut cache = SCRIPT_CACHE.write();
 	if cache.is_none() {
-		*cache = Some(LruCache::new(std::num::NonZeroUsize::new(CACHE_SIZE).unwrap()));
+		*cache = Some(LruCache::new(unsafe { std::num::NonZeroUsize::new_unchecked(CACHE_SIZE) }));
 	}
 }
 

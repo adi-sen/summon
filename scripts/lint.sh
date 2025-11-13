@@ -16,7 +16,8 @@ fi
 echo ""
 echo "=== Rust Clippy ==="
 CLIPPY_OUT=$(mktemp)
-if cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee "$CLIPPY_OUT" | rg -q "^error:"; then
+cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee "$CLIPPY_OUT"
+if rg -q "^error:" "$CLIPPY_OUT"; then
     ERRORS=$(rg "^error:" "$CLIPPY_OUT" | wc -l | tr -d ' ')
     echo "FAIL: $ERRORS errors"
     FAIL=1
@@ -47,7 +48,10 @@ fi
 echo ""
 echo "=== Swift Linting ==="
 if command -v swiftlint &> /dev/null; then
-    VIOLATIONS=$(swiftlint lint --quiet src/swift 2>&1 | rg "^\S+:\d+:\d+:" | wc -l | tr -d ' ')
+    SWIFT_OUT=$(mktemp)
+    swiftlint lint --quiet src/swift 2>&1 | tee "$SWIFT_OUT"
+    VIOLATIONS=$(rg "^\S+:\d+:\d+:" "$SWIFT_OUT" | wc -l | tr -d ' ')
+    rm -f "$SWIFT_OUT"
     [ "$VIOLATIONS" -gt 0 ] && echo "WARN: $VIOLATIONS violations" || echo "PASS"
 else
     echo "SKIP: swiftlint not installed"

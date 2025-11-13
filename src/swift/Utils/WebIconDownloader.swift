@@ -8,6 +8,10 @@ enum WebIconDownloader {
 	private static let iconURLs: [String: String] = [
 		"google": "https://www.google.com/favicon.ico",
 		"duckduckgo": "https://duckduckgo.com/favicon.ico",
+		"startpage": "https://www.startpage.com/favicon.ico",
+		"ecosia": "https://www.ecosia.org/favicon.ico",
+		"brave": "https://brave.com/static-assets/images/brave-favicon.png",
+		"kagi": "https://kagi.com/favicon.ico",
 		"github": "https://github.com/favicon.ico",
 		"stackoverflow": "https://stackoverflow.com/favicon.ico",
 		"wikipedia": "https://en.wikipedia.org/favicon.ico",

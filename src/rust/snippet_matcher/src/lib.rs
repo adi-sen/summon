@@ -19,8 +19,6 @@ impl SnippetMatcher {
 	#[must_use]
 	pub fn new() -> Self { Self { snippets: RwLock::new(Vec::new()), automaton: RwLock::new(None) } }
 
-	/// # Panics
-	/// Panics if pattern building fails (should not happen with valid inputs)
 	pub fn update_snippets(&self, snippets: Vec<Snippet>) {
 		let enabled_snippets: Vec<Snippet> = snippets.into_iter().filter(|s| s.enabled).collect();
 
@@ -29,12 +27,7 @@ impl SnippetMatcher {
 		let automaton = if patterns.is_empty() {
 			None
 		} else {
-			Some(
-				AhoCorasickBuilder::new()
-					.match_kind(aho_corasick::MatchKind::LeftmostLongest)
-					.build(&patterns)
-					.expect("Failed to build Aho-Corasick automaton"),
-			)
+			AhoCorasickBuilder::new().match_kind(aho_corasick::MatchKind::LeftmostLongest).build(&patterns).ok()
 		};
 
 		*self.snippets.write() = enabled_snippets;

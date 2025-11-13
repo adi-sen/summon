@@ -11,6 +11,7 @@ parking_lot.workspace = true
 rustc-hash.workspace = true
 compact_str.workspace = true
 smallvec.workspace = true
+walkdir.workspace = true
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
