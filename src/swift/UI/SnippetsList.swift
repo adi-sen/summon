@@ -4,6 +4,7 @@ struct SnippetsList: View {
 	@ObservedObject var settings = AppSettings.shared
 	@ObservedObject var snippetManager = SnippetManager.shared
 	@State private var showingAddSnippet = false
+	@State private var initialSnippetContent: String?
 
 	private func hasConflict(_ snippet: Snippet) -> Bool {
 		snippetManager.snippets.filter { $0.trigger == snippet.trigger && $0.enabled }.count > 1
@@ -55,7 +56,21 @@ struct SnippetsList: View {
 			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.sheet(isPresented: $showingAddSnippet) {
-			AddSnippetView()
+			AddSnippetView(initialContent: initialSnippetContent)
+		}
+		.onAppear {
+			if let pending = snippetManager.pendingSnippetContent {
+				initialSnippetContent = pending
+				showingAddSnippet = true
+				snippetManager.pendingSnippetContent = nil
+			}
+		}
+		.onChange(of: snippetManager.pendingSnippetContent) { newContent in
+			if let newContent {
+				initialSnippetContent = newContent
+				showingAddSnippet = true
+				snippetManager.pendingSnippetContent = nil
+			}
 		}
 	}
 }

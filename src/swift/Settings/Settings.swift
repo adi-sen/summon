@@ -99,6 +99,7 @@ class AppSettings: ObservableObject {
 	@Published var showTrayIcon: Bool = true
 	@Published var showDockIcon: Bool = false
 	@Published var hideTrafficLights: Bool = false
+	@Published var showFooterHints: Bool = true
 	@Published var recentApps: [RecentApp] = []
 	@Published var pinnedApps: [RecentApp] = []
 	@Published var searchFolders: [String] = [
@@ -134,6 +135,7 @@ class AppSettings: ObservableObject {
 	private let customEnginesKey = "app_customFallbackEngines"
 	private let engineKeywordsKey = "app_engineKeywords"
 	private let disabledDefaultEnginesKey = "app_disabledDefaultEngines"
+	private let showFooterHintsKey = "app_showFooterHints"
 
 	deinit {
 		FFI.settingsStorageFree(settingsStorage)
@@ -225,6 +227,10 @@ class AppSettings: ObservableObject {
 		   let disabled = try? JSONDecoder().decode(Set<String>.self, from: data)
 		{
 			disabledDefaultEngines = disabled
+		}
+
+		if userDefaults.object(forKey: showFooterHintsKey) != nil {
+			showFooterHints = userDefaults.bool(forKey: showFooterHintsKey)
 		}
 	}
 
@@ -378,6 +384,8 @@ class AppSettings: ObservableObject {
 		if let data = try? JSONEncoder().encode(disabledDefaultEngines) {
 			userDefaults.set(data, forKey: disabledDefaultEnginesKey)
 		}
+
+		userDefaults.set(showFooterHints, forKey: showFooterHintsKey)
 	}
 
 	private func keyboardShortcutToStrings(_ shortcut: KeyboardShortcut) -> (key: String, mods: [String]) {

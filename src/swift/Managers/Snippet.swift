@@ -9,6 +9,8 @@ final class SnippetManager: ObservableObject {
 		}
 	}
 
+	@Published var pendingSnippetContent: String?
+
 	private let storage: SnippetStorage
 	private let matcher = SnippetMatcher()
 
@@ -18,6 +20,22 @@ final class SnippetManager: ObservableObject {
 		storage = SnippetStorage(appSupportDir: appDir)
 		load()
 		matcher.updateSnippets(snippets)
+
+		NotificationCenter.default.addObserver(
+			self,
+			selector: #selector(handleSaveAsSnippet),
+			name: .saveClipboardAsSnippet,
+			object: nil
+		)
+	}
+
+	@objc private func handleSaveAsSnippet(_ notification: Notification) {
+		if let content = notification.userInfo?["content"] as? String {
+			pendingSnippetContent = content
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+				NotificationCenter.default.post(name: .showSettings, object: nil)
+			}
+		}
 	}
 
 	func load() {

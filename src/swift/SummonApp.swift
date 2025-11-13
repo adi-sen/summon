@@ -13,6 +13,7 @@ extension Notification.Name {
 	static let dockIconSettingChanged = Notification.Name("dockIconSettingChanged")
 	static let trafficLightsSettingChanged = Notification.Name("trafficLightsSettingChanged")
 	static let closeAllDropdowns = Notification.Name("closeAllDropdowns")
+	static let saveClipboardAsSnippet = Notification.Name("saveClipboardAsSnippet")
 }
 
 @main

@@ -22,7 +22,12 @@ struct ContentView: View {
 		let searchBarHeight: CGFloat = 50
 		let rowHeight: CGFloat = 50
 		let visibleRows = 6
-		return searchBarHeight + CGFloat(visibleRows) * rowHeight + 20
+		let footerHeight: CGFloat = shouldShowFooter ? 32 : 0
+		return searchBarHeight + CGFloat(visibleRows) * rowHeight + 20 + footerHeight
+	}
+
+	private var shouldShowFooter: Bool {
+		settings.showFooterHints && !results.isEmpty && (isClipboardMode || searchTimeMs != nil)
 	}
 
 	@State private var isClipboardMode = false
@@ -30,6 +35,7 @@ struct ContentView: View {
 	@State private var clipboardPageSize = 9
 	@State private var searchGeneration = 0
 	@State private var eventMonitor: Any?
+	@State private var searchTimeMs: Double?
 	var onOpenSettings: (() -> Void)?
 
 	private var placeholderText: String {
@@ -167,6 +173,29 @@ struct ContentView: View {
 						}
 						Spacer()
 					}
+					.background(settings.backgroundColorUI)
+				}
+
+				if shouldShowFooter {
+					Divider()
+						.opacity(0.3)
+
+					HStack {
+						if isClipboardMode, selectedIndex < clipboardHistory.count,
+						   clipboardHistory[selectedIndex].type == .text
+						{
+							ContextualHints(hints: [
+								HintAction(shortcut: "⌘S", label: "Save as text expansion")
+							])
+						}
+
+						Spacer()
+
+						if !isClipboardMode, let searchTimeMs {
+							SearchMetrics(resultCount: results.count, searchTimeMs: searchTimeMs)
+						}
+					}
+					.frame(height: 28)
 					.background(settings.backgroundColorUI)
 				}
 			}
@@ -423,6 +452,8 @@ struct ContentView: View {
 				return
 			}
 
+			let startTime = CFAbsoluteTimeGetCurrent()
+
 			autoreleasepool {
 				var allResults: [CategoryResult] = []
 				let maxResults = settings.maxResults
@@ -591,6 +622,9 @@ struct ContentView: View {
 				allResults.sort { $0.score > $1.score }
 				allResults = Array(allResults.prefix(maxResults))
 
+				let endTime = CFAbsoluteTimeGetCurrent()
+				let elapsedMs = (endTime - startTime) * 1000
+
 				DispatchQueue.main.async {
 					guard generation == searchGeneration else {
 						return
@@ -598,6 +632,7 @@ struct ContentView: View {
 
 					autoreleasepool {
 						results = allResults
+						searchTimeMs = elapsedMs
 						if selectedIndex >= allResults.count {
 							selectedIndex = 0
 						}
@@ -713,6 +748,7 @@ struct ContentView: View {
 		clipboardHistory = []
 		isClipboardMode = false
 		selectedIndex = 0
+		searchTimeMs = nil
 	}
 
 	private func resetState() {
@@ -726,6 +762,7 @@ struct ContentView: View {
 			selectedIndex = 0
 			clipboardPage = 0
 			searchGeneration += 1
+			searchTimeMs = nil
 
 			IconCache.shared.clear()
 			ThumbnailCache.shared.clear()
@@ -739,6 +776,21 @@ struct ContentView: View {
 		launchSelected()
 	}
 
+	private func handleSaveAsSnippet() {
+		guard isClipboardMode, selectedIndex < clipboardHistory.count else { return }
+		let entry = clipboardHistory[selectedIndex]
+
+		guard entry.type == .text else { return }
+
+		NotificationCenter.default.post(
+			name: .saveClipboardAsSnippet,
+			object: nil,
+			userInfo: ["content": entry.content]
+		)
+
+		NSApp.keyWindow?.orderOut(nil)
+	}
+
 	private func setupEventMonitor() {
 		eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
 			if let keyWindow = NSApp.keyWindow,
@@ -748,6 +800,13 @@ struct ContentView: View {
 			   }) != nil
 			{
 				return event
+			}
+
+			if isClipboardMode, event.modifierFlags.contains(.command),
+			   event.charactersIgnoringModifiers?.lowercased() == "s"
+			{
+				handleSaveAsSnippet()
+				return nil
 			}
 
 			if let char = event.charactersIgnoringModifiers?.first,

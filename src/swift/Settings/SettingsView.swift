@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
 	@ObservedObject var settings = AppSettings.shared
 	@ObservedObject var dropdownState = DropdownStateManager.shared
+	@ObservedObject var snippetManager = SnippetManager.shared
 	@State private var selectedTab = 0
 	@State private var eventMonitor: Any?
 
@@ -18,8 +19,22 @@ struct SettingsView: View {
 			idealHeight: 900,
 			maxHeight: .infinity
 		)
-		.onAppear { setupEventMonitor() }
+		.onAppear {
+			setupEventMonitor()
+			if snippetManager.pendingSnippetContent != nil {
+				DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+					selectedTab = 5
+				}
+			}
+		}
 		.onDisappear { removeEventMonitor() }
+		.onChange(of: snippetManager.pendingSnippetContent) { newContent in
+			if newContent != nil {
+				DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+					selectedTab = 5
+				}
+			}
+		}
 	}
 
 	private var mainContent: some View {
@@ -248,6 +263,23 @@ struct AppearanceSettingsTab: View {
 
 				SettingSection(title: "FONT") {
 					FontPickerMenu(selectedFont: $settings.customFontName)
+				}
+
+				SettingSection(title: "UI") {
+					HStack {
+						Text("Show footer hints")
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+							.foregroundColor(settings.textColorUI)
+
+						Spacer()
+
+						Switch(
+							isOn: Binding(
+								get: { settings.showFooterHints },
+								set: { settings.showFooterHints = $0; settings.save() }
+							)
+						)
+					}
 				}
 			}
 			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
@@ -1708,8 +1740,14 @@ struct AddSnippetView: View {
 	@ObservedObject var settings = AppSettings.shared
 	@ObservedObject var snippetManager = SnippetManager.shared
 
+	let initialContent: String?
+
 	@State private var trigger = ""
 	@State private var content = ""
+
+	init(initialContent: String? = nil) {
+		self.initialContent = initialContent
+	}
 
 	var body: some View {
 		VStack(spacing: 0) {
@@ -1852,6 +1890,11 @@ struct AddSnippetView: View {
 				green: settings.theme.backgroundColor.1,
 				blue: settings.theme.backgroundColor.2
 			))
+		.onAppear {
+			if let initialContent {
+				content = initialContent
+			}
+		}
 	}
 }
 
