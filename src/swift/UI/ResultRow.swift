@@ -26,7 +26,9 @@ struct ResultRow: View {
 
 	private var calculatorRow: some View {
 		let accentColor = themeColor(settings.theme.accentColor)
-		let font = Font(settings.uiFont.withSize(DesignTokens.Typography.xlarge))
+		let fontSize = settings.compactMode ? DesignTokens.Typography.large : DesignTokens.Typography.xlarge
+		let font = Font(settings.uiFont.withSize(fontSize))
+		let verticalPadding = settings.compactMode ? DesignTokens.Spacing.sm : DesignTokens.Spacing.lg
 
 		return HStack(spacing: 0) {
 			if let subtitle = resultSubtitle {
@@ -51,7 +53,7 @@ struct ResultRow: View {
 				.multilineTextAlignment(.center)
 		}
 		.padding(.horizontal, DesignTokens.Spacing.xl)
-		.padding(.vertical, DesignTokens.Spacing.lg)
+		.padding(.vertical, verticalPadding)
 		.frame(maxWidth: .infinity)
 		.background(
 			RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg)
@@ -67,16 +69,26 @@ struct ResultRow: View {
 
 	private var standardRow: some View {
 		HStack(spacing: DesignTokens.Spacing.md + 2) {
-			if let icon {
-				Image(nsImage: icon)
-					.resizable()
-					.frame(width: iconSize, height: iconSize)
-			} else {
-				Image(systemName: iconName)
-					.font(.system(size: symbolFontSize))
-					.frame(width: iconSize, height: iconSize)
-					.foregroundColor(iconColor)
+			ZStack(alignment: .topTrailing) {
+				if let icon {
+					Image(nsImage: icon)
+						.resizable()
+						.frame(width: iconSize, height: iconSize)
+				} else {
+					Image(systemName: iconName)
+						.font(.system(size: symbolFontSize))
+						.frame(width: iconSize, height: iconSize)
+						.foregroundColor(iconColor)
+				}
+
+				if result.category == "Pinned" {
+					Image(systemName: "pin.fill")
+						.font(.system(size: 8))
+						.foregroundColor(themeColor(settings.theme.accentColor))
+						.offset(x: 4, y: -4)
+				}
 			}
+			.frame(width: iconSize, height: iconSize)
 
 			VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
 				Text(result.name)
@@ -94,16 +106,10 @@ struct ResultRow: View {
 
 			Spacer()
 
-			if let number = quickSelectNumber {
+			if let number = quickSelectNumber, settings.showQuickSelect {
 				Text(settings.quickSelectModifier.displaySymbol + String(number))
 					.font(.system(size: DesignTokens.Typography.small, design: .monospaced))
 					.foregroundColor(.secondary.opacity(0.5))
-			}
-
-			if !hideCategory, quickSelectNumber == nil {
-				Text(result.category)
-					.font(settings.resultCategoryFont)
-					.foregroundColor(.secondary.opacity(0.7))
 			}
 		}
 		.padding(.horizontal, DesignTokens.Spacing.md + 2)
@@ -121,28 +127,34 @@ struct ResultRow: View {
 	private var symbolFontSize: CGFloat { isSmallIcon ? DesignTokens.Typography.body : 20 }
 
 	private var iconName: String {
+		if result.id.hasPrefix("cmd_") {
+			return ["cmd_settings": "gearshape.fill", "cmd_clipboard": "doc.on.clipboard.fill"][result.id] ?? "command.circle.fill"
+		}
+
 		switch result.category {
-		case "Calculator": "equal.circle.fill"
-		case "Command":
-			["cmd_settings": "gearshape.fill", "cmd_clipboard": "doc.on.clipboard.fill"][result.id] ?? "command.circle.fill"
-		case "Action": "globe"
+		case "Calculator": return "equal.circle.fill"
+		case "Action": return "globe"
 		case "Clipboard":
 			if let entry = result.clipboardEntry {
 				switch entry.type {
-				case .image: "photo.fill"
-				case .text: entry.content.hasPrefix("http") ? "link" : "textformat"
-				case .unknown: "doc.on.clipboard"
+				case .image: return "photo.fill"
+				case .text: return entry.content.hasPrefix("http") ? "link" : "textformat"
+				case .unknown: return "doc.on.clipboard"
 				}
-			} else { "doc.on.clipboard" }
-		default: "app"
+			} else { return "doc.on.clipboard" }
+		default: return "app"
 		}
 	}
 
 	private var iconColor: Color {
 		let accentColor = themeColor(settings.theme.accentColor)
+
+		if result.id.hasPrefix("cmd_") {
+			return accentColor.opacity(0.8)
+		}
+
 		switch result.category {
 		case "Calculator": return accentColor
-		case "Command": return accentColor.opacity(0.8)
 		default: return Color.secondary.opacity(0.8)
 		}
 	}

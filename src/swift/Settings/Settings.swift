@@ -46,6 +46,31 @@ struct KeyboardShortcut: Codable, Equatable {
 	static var defaultClipboard: KeyboardShortcut {
 		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_V), modifiers: UInt32(optionKey | shiftKey))
 	}
+
+	// Action shortcuts
+	static var defaultPinApp: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_P), modifiers: UInt32(cmdKey))
+	}
+
+	static var defaultRevealApp: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_R), modifiers: UInt32(cmdKey))
+	}
+
+	static var defaultCopyPath: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_C), modifiers: UInt32(cmdKey | optionKey))
+	}
+
+	static var defaultQuitApp: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_Q), modifiers: UInt32(cmdKey))
+	}
+
+	static var defaultHideApp: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_H), modifiers: UInt32(cmdKey))
+	}
+
+	static var defaultSaveClipboard: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(cmdKey))
+	}
 }
 
 struct RecentApp: Codable, Equatable {
@@ -94,12 +119,24 @@ class AppSettings: ObservableObject {
 	@Published var clipboardRetentionDays: Int = 7
 	@Published var launcherShortcut: KeyboardShortcut = .defaultLauncher
 	@Published var clipboardShortcut: KeyboardShortcut = .defaultClipboard
-	@Published var quickSelectModifier: QuickSelectModifier = .option
+	@Published var quickSelectModifier: QuickSelectModifier = .command
+
+	// Action shortcuts
+	@Published var pinAppShortcut: KeyboardShortcut = .defaultPinApp
+	@Published var revealAppShortcut: KeyboardShortcut = .defaultRevealApp
+	@Published var copyPathShortcut: KeyboardShortcut = .defaultCopyPath
+	@Published var quitAppShortcut: KeyboardShortcut = .defaultQuitApp
+	@Published var hideAppShortcut: KeyboardShortcut = .defaultHideApp
+	@Published var saveClipboardShortcut: KeyboardShortcut = .defaultSaveClipboard
 	@Published var enableCommands: Bool = true
 	@Published var showTrayIcon: Bool = true
 	@Published var showDockIcon: Bool = false
 	@Published var hideTrafficLights: Bool = false
 	@Published var showFooterHints: Bool = true
+	@Published var compactMode: Bool = false
+	@Published var showRecentAppsOnLanding: Bool = true
+	@Published var imageSavePath: String = ""
+	@Published var showQuickSelect: Bool = true
 	@Published var recentApps: [RecentApp] = []
 	@Published var pinnedApps: [RecentApp] = []
 	@Published var searchFolders: [String] = [
@@ -136,6 +173,16 @@ class AppSettings: ObservableObject {
 	private let engineKeywordsKey = "app_engineKeywords"
 	private let disabledDefaultEnginesKey = "app_disabledDefaultEngines"
 	private let showFooterHintsKey = "app_showFooterHints"
+	private let compactModeKey = "app_compactMode"
+	private let showRecentAppsOnLandingKey = "app_showRecentAppsOnLanding"
+	private let imageSavePathKey = "app_imageSavePath"
+	private let showQuickSelectKey = "app_showQuickSelect"
+	private let pinAppShortcutKey = "app_pinAppShortcut"
+	private let revealAppShortcutKey = "app_revealAppShortcut"
+	private let copyPathShortcutKey = "app_copyPathShortcut"
+	private let quitAppShortcutKey = "app_quitAppShortcut"
+	private let hideAppShortcutKey = "app_hideAppShortcut"
+	private let saveClipboardShortcutKey = "app_saveClipboardShortcut"
 
 	deinit {
 		FFI.settingsStorageFree(settingsStorage)
@@ -232,6 +279,58 @@ class AppSettings: ObservableObject {
 		if userDefaults.object(forKey: showFooterHintsKey) != nil {
 			showFooterHints = userDefaults.bool(forKey: showFooterHintsKey)
 		}
+
+		if userDefaults.object(forKey: compactModeKey) != nil {
+			compactMode = userDefaults.bool(forKey: compactModeKey)
+		}
+
+		if userDefaults.object(forKey: showRecentAppsOnLandingKey) != nil {
+			showRecentAppsOnLanding = userDefaults.bool(forKey: showRecentAppsOnLandingKey)
+		}
+
+		if let savedPath = userDefaults.string(forKey: imageSavePathKey), !savedPath.isEmpty {
+			imageSavePath = savedPath
+		}
+
+		if userDefaults.object(forKey: showQuickSelectKey) != nil {
+			showQuickSelect = userDefaults.bool(forKey: showQuickSelectKey)
+		}
+
+		if let data = userDefaults.data(forKey: pinAppShortcutKey),
+		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
+		{
+			pinAppShortcut = shortcut
+		}
+
+		if let data = userDefaults.data(forKey: revealAppShortcutKey),
+		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
+		{
+			revealAppShortcut = shortcut
+		}
+
+		if let data = userDefaults.data(forKey: copyPathShortcutKey),
+		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
+		{
+			copyPathShortcut = shortcut
+		}
+
+		if let data = userDefaults.data(forKey: quitAppShortcutKey),
+		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
+		{
+			quitAppShortcut = shortcut
+		}
+
+		if let data = userDefaults.data(forKey: hideAppShortcutKey),
+		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
+		{
+			hideAppShortcut = shortcut
+		}
+
+		if let data = userDefaults.data(forKey: saveClipboardShortcutKey),
+		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
+		{
+			saveClipboardShortcut = shortcut
+		}
 	}
 
 	private func keyboardShortcutFromStrings(key: String, mods: [String]) -> KeyboardShortcut? {
@@ -304,10 +403,13 @@ class AppSettings: ObservableObject {
 			}
 		}
 
-		let validPinned = pinnedApps.filter { app in
-			let exists = fileManager.fileExists(atPath: app.path)
+		let validPinned = pinnedApps.filter { item in
+			if item.path.hasPrefix("cmd_") {
+				return true
+			}
+			let exists = fileManager.fileExists(atPath: item.path)
 			if !exists {
-				print("Removing invalid pinned app: \(app.name) at \(app.path)")
+				print("Removing invalid pinned app: \(item.name) at \(item.path)")
 			}
 			return exists
 		}
@@ -386,6 +488,29 @@ class AppSettings: ObservableObject {
 		}
 
 		userDefaults.set(showFooterHints, forKey: showFooterHintsKey)
+		userDefaults.set(compactMode, forKey: compactModeKey)
+		userDefaults.set(showRecentAppsOnLanding, forKey: showRecentAppsOnLandingKey)
+		userDefaults.set(imageSavePath, forKey: imageSavePathKey)
+		userDefaults.set(showQuickSelect, forKey: showQuickSelectKey)
+
+		if let data = try? JSONEncoder().encode(pinAppShortcut) {
+			userDefaults.set(data, forKey: pinAppShortcutKey)
+		}
+		if let data = try? JSONEncoder().encode(revealAppShortcut) {
+			userDefaults.set(data, forKey: revealAppShortcutKey)
+		}
+		if let data = try? JSONEncoder().encode(copyPathShortcut) {
+			userDefaults.set(data, forKey: copyPathShortcutKey)
+		}
+		if let data = try? JSONEncoder().encode(quitAppShortcut) {
+			userDefaults.set(data, forKey: quitAppShortcutKey)
+		}
+		if let data = try? JSONEncoder().encode(hideAppShortcut) {
+			userDefaults.set(data, forKey: hideAppShortcutKey)
+		}
+		if let data = try? JSONEncoder().encode(saveClipboardShortcut) {
+			userDefaults.set(data, forKey: saveClipboardShortcutKey)
+		}
 	}
 
 	private func keyboardShortcutToStrings(_ shortcut: KeyboardShortcut) -> (key: String, mods: [String]) {

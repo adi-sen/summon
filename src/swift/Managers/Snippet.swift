@@ -32,7 +32,7 @@ final class SnippetManager: ObservableObject {
 	@objc private func handleSaveAsSnippet(_ notification: Notification) {
 		if let content = notification.userInfo?["content"] as? String {
 			pendingSnippetContent = content
-			DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
 				NotificationCenter.default.post(name: .showSettings, object: nil)
 			}
 		}

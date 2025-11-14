@@ -5,6 +5,7 @@ extension Notification.Name {
 	static let showClipboard = Notification.Name("showClipboard")
 	static let showLauncher = Notification.Name("showLauncher")
 	static let showSettings = Notification.Name("showSettings")
+	static let switchToExtensionsTab = Notification.Name("switchToExtensionsTab")
 	static let shortcutsChanged = Notification.Name("shortcutsChanged")
 	static let clearIconCache = Notification.Name("clearIconCache")
 	static let windowHidden = Notification.Name("windowHidden")
@@ -154,6 +155,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 		}
 		statusBarManager?.onSettings = { [weak self] in
 			self?.openSettings()
+		}
+		statusBarManager?.onExtensions = { [weak self] in
+			self?.openExtensions()
+		}
+		statusBarManager?.onClearClipboard = { [weak self] in
+			self?.clipboardManager?.clear()
 		}
 		statusBarManager?.onQuit = {
 			NSApp.terminate(nil)
@@ -407,6 +414,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 	func openSettings() {
 		showSettingsWindow()
+	}
+
+	func openExtensions() {
+		showSettingsWindow()
+		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+			NotificationCenter.default.post(name: .switchToExtensionsTab, object: nil)
+		}
 	}
 
 	func showSettingsWindow() {

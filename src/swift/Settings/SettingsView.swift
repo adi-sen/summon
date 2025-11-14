@@ -4,8 +4,12 @@ struct SettingsView: View {
 	@ObservedObject var settings = AppSettings.shared
 	@ObservedObject var dropdownState = DropdownStateManager.shared
 	@ObservedObject var snippetManager = SnippetManager.shared
-	@State private var selectedTab = 0
+	@State private var selectedTab: Int
 	@State private var eventMonitor: Any?
+
+	init(initialTab: Int = 0) {
+		_selectedTab = State(initialValue: initialTab)
+	}
 
 	var body: some View {
 		ZStack {
@@ -22,17 +26,16 @@ struct SettingsView: View {
 		.onAppear {
 			setupEventMonitor()
 			if snippetManager.pendingSnippetContent != nil {
-				DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-					selectedTab = 5
-				}
+				selectedTab = 5
 			}
 		}
 		.onDisappear { removeEventMonitor() }
+		.onReceive(NotificationCenter.default.publisher(for: .switchToExtensionsTab)) { _ in
+			selectedTab = 6
+		}
 		.onChange(of: snippetManager.pendingSnippetContent) { newContent in
 			if newContent != nil {
-				DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-					selectedTab = 5
-				}
+				selectedTab = 5
 			}
 		}
 	}
@@ -280,6 +283,36 @@ struct AppearanceSettingsTab: View {
 							)
 						)
 					}
+
+					HStack {
+						Text("Compact mode")
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+							.foregroundColor(settings.textColorUI)
+
+						Spacer()
+
+						Switch(
+							isOn: Binding(
+								get: { settings.compactMode },
+								set: { settings.compactMode = $0; settings.save() }
+							)
+						)
+					}
+
+					HStack {
+						Text("Show recent apps on landing")
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+							.foregroundColor(settings.textColorUI)
+
+						Spacer()
+
+						Switch(
+							isOn: Binding(
+								get: { settings.showRecentAppsOnLanding },
+								set: { settings.showRecentAppsOnLanding = $0; settings.save() }
+							)
+						)
+					}
 				}
 			}
 			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
@@ -414,20 +447,35 @@ struct SearchSettingsTab: View {
 	}
 
 	private var resultsSection: some View {
-		ListItem(
-			icon: .sfSymbol("list.number", settings.accentColorUI),
-			title: "Maximum Results",
-			subtitle: "Items to display in search"
-		) {
-			RangeSlider(
-				value: Binding(
-					get: { Double(settings.maxResults) },
-					set: { settings.maxResults = Int($0) }
-				),
-				range: 5 ... 20,
-				step: 1,
-				valueLabel: { "\(Int($0))" }
-			)
+		VStack(alignment: .leading, spacing: 16) {
+			ListItem(
+				icon: .sfSymbol("list.number", settings.accentColorUI),
+				title: "Maximum Results",
+				subtitle: "Capped at 9 for optimal quick select (⌘1-9)"
+			) {
+				RangeSlider(
+					value: Binding(
+						get: { Double(settings.maxResults) },
+						set: { settings.maxResults = Int($0) }
+					),
+					range: 5 ... 9,
+					step: 1,
+					valueLabel: { "\(Int($0))" }
+				)
+			}
+
+			ListItem(
+				icon: .sfSymbol("keyboard", settings.accentColorUI),
+				title: "Quick Select Numbers",
+				subtitle: "Show ⌘1-9 shortcuts next to results"
+			) {
+				Switch(
+					isOn: Binding(
+						get: { settings.showQuickSelect },
+						set: { settings.showQuickSelect = $0; settings.scheduleSave() }
+					)
+				)
+			}
 		}
 	}
 
@@ -1004,6 +1052,7 @@ struct AddSearchEngineView: View {
 
 struct ClipboardSettingsTab: View {
 	@ObservedObject var settings = AppSettings.shared
+	@State private var showingFolderPicker = false
 
 	var body: some View {
 		ScrollView(showsIndicators: false) {
@@ -1035,10 +1084,60 @@ struct ClipboardSettingsTab: View {
 						}
 					}
 				}
+
+				SettingSection(title: "IMAGE SAVE") {
+					VStack(alignment: .leading, spacing: 8) {
+						Text("Save Directory")
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+							.foregroundColor(settings.textColorUI)
+
+						Text("Press ⌘S to save clipboard images to this directory")
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+							.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+
+						HStack {
+							Text(settings.imageSavePath.isEmpty ? "Pictures (default)" : settings.imageSavePath)
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+								.foregroundColor(settings.imageSavePath.isEmpty ? settings.secondaryTextColorUI : settings.textColorUI)
+								.lineLimit(1)
+								.truncationMode(.middle)
+
+							Spacer()
+
+							StyledButton("Choose Folder", style: .plain) {
+								showingFolderPicker = true
+							}
+						}
+
+						if !settings.imageSavePath.isEmpty {
+							StyledButton("Reset to Default", style: .plain) {
+								settings.imageSavePath = ""
+								settings.scheduleSave()
+							}
+						}
+					}
+				}
 			}
 			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
 		.background(settings.backgroundColorUI)
+		.overlay {
+			if showingFolderPicker {
+				Color.black.opacity(0.4)
+					.ignoresSafeArea()
+					.onTapGesture {
+						showingFolderPicker = false
+					}
+
+				FolderPicker(
+					isPresented: $showingFolderPicker,
+					onSelect: { folder in
+						settings.imageSavePath = folder
+						settings.scheduleSave()
+					}
+				)
+			}
+		}
 	}
 }
 
@@ -1622,6 +1721,22 @@ struct ShortcutsSettingsTab: View {
 						}
 					}
 				}
+
+				SettingSection(title: "APP ACTIONS") {
+					VStack(alignment: .leading, spacing: 12) {
+						ShortcutRecorderView(label: "Pin/Unpin app", shortcut: $settings.pinAppShortcut)
+						ShortcutRecorderView(label: "Reveal in Finder", shortcut: $settings.revealAppShortcut)
+						ShortcutRecorderView(label: "Copy app path", shortcut: $settings.copyPathShortcut)
+						ShortcutRecorderView(label: "Quit app (if running)", shortcut: $settings.quitAppShortcut)
+						ShortcutRecorderView(label: "Hide app (if running)", shortcut: $settings.hideAppShortcut)
+					}
+				}
+
+				SettingSection(title: "CLIPBOARD ACTIONS") {
+					VStack(alignment: .leading, spacing: 12) {
+						ShortcutRecorderView(label: "Save clipboard item", shortcut: $settings.saveClipboardShortcut)
+					}
+				}
 			}
 			.padding(DesignTokens.Spacing.xxl + DesignTokens.Spacing.xs)
 		}
@@ -1634,6 +1749,12 @@ struct ShortcutsSettingsTab: View {
 			settings.scheduleSave()
 			NotificationCenter.default.post(name: .shortcutsChanged, object: nil)
 		}
+		.onChange(of: settings.pinAppShortcut) { _ in settings.scheduleSave() }
+		.onChange(of: settings.revealAppShortcut) { _ in settings.scheduleSave() }
+		.onChange(of: settings.copyPathShortcut) { _ in settings.scheduleSave() }
+		.onChange(of: settings.quitAppShortcut) { _ in settings.scheduleSave() }
+		.onChange(of: settings.hideAppShortcut) { _ in settings.scheduleSave() }
+		.onChange(of: settings.saveClipboardShortcut) { _ in settings.scheduleSave() }
 	}
 }
 

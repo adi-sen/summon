@@ -1,3 +1,4 @@
+import Carbon
 import SwiftUI
 
 struct ContentView: View {
@@ -19,15 +20,56 @@ struct ContentView: View {
 	@State private var clipboardHistory: [ClipboardEntry] = []
 
 	private var windowHeight: CGFloat {
-		let searchBarHeight: CGFloat = 50
-		let rowHeight: CGFloat = 50
-		let visibleRows = 6
+		let maxVisibleRows = 7
+		let actualRows = min(results.count, maxVisibleRows)
+		let visibleRows = max(0, actualRows)
 		let footerHeight: CGFloat = shouldShowFooter ? 32 : 0
-		return searchBarHeight + CGFloat(visibleRows) * rowHeight + 20 + footerHeight
+
+		let searchBarHeight: CGFloat = 52
+		let dividerHeight: CGFloat = 1
+		let topPadding: CGFloat = 4
+		let rowHeight: CGFloat = 44
+		let bottomBuffer: CGFloat = 1
+
+		if settings.compactMode && !isClipboardMode {
+			if visibleRows == 0 {
+				return searchBarHeight
+			}
+			return searchBarHeight + dividerHeight + topPadding + CGFloat(visibleRows) * rowHeight + bottomBuffer + footerHeight
+		} else {
+			return searchBarHeight + dividerHeight + topPadding + CGFloat(maxVisibleRows) * rowHeight + bottomBuffer + footerHeight
+		}
 	}
 
 	private var shouldShowFooter: Bool {
-		settings.showFooterHints && !results.isEmpty && (isClipboardMode || searchTimeMs != nil)
+		guard settings.showFooterHints else { return false }
+
+		// In non-compact mode, always show footer
+		if !settings.compactMode {
+			return true
+		}
+
+		// In compact mode, show footer conditionally
+		if isClipboardMode {
+			return !results.isEmpty && selectedIndex < clipboardHistory.count
+		}
+
+		if results.isEmpty {
+			return false
+		}
+
+		if selectedIndex < results.count {
+			let selectedResult = results[selectedIndex]
+			let isApp = selectedResult.category == "Applications" || selectedResult.category == "Pinned" || selectedResult.category == "Recent"
+			let isCommand = selectedResult.category == "Command"
+			let isAction = selectedResult.category == "Action" || selectedResult.category == "Web"
+
+			if isApp || isCommand || isAction {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	@State private var isClipboardMode = false
@@ -36,7 +78,54 @@ struct ContentView: View {
 	@State private var searchGeneration = 0
 	@State private var eventMonitor: Any?
 	@State private var searchTimeMs: Double?
+	@State private var selectedAppInfo: AppInfo?
+	@State private var showSecondaryHints = false
+	@State private var appIcon: NSImage?
 	var onOpenSettings: (() -> Void)?
+
+	struct AppInfo {
+		let name: String
+		let path: String
+		let size: String
+		let version: String?
+	}
+
+	private func isAppRunning(path: String) -> Bool {
+		NSWorkspace.shared.runningApplications.contains { app in
+			app.bundleURL?.path == path
+		}
+	}
+
+	private func getAppHints(for result: CategoryResult, identifier: String) -> [HintAction] {
+		let isCommand = result.category == "Command"
+		let isPinned = settings.pinnedApps.contains { $0.path == identifier }
+
+		if isCommand {
+			return [HintAction(shortcut: settings.pinAppShortcut.displayString, label: isPinned ? "Unpin" : "Pin")]
+		}
+
+		let running = isAppRunning(path: identifier)
+
+		if showSecondaryHints {
+			var hints: [HintAction] = [HintAction(shortcut: settings.copyPathShortcut.displayString, label: "Copy Path")]
+			if running {
+				hints.insert(HintAction(shortcut: settings.quitAppShortcut.displayString, label: "Quit App"), at: 0)
+				hints.insert(HintAction(shortcut: settings.hideAppShortcut.displayString, label: "Hide App"), at: 1)
+			}
+			return hints
+		} else {
+			var hints: [HintAction] = []
+			if running {
+				hints.append(HintAction(shortcut: settings.quitAppShortcut.displayString, label: "Quit"))
+				hints.append(HintAction(shortcut: settings.hideAppShortcut.displayString, label: "Hide"))
+			}
+			hints.append(HintAction(shortcut: settings.pinAppShortcut.displayString, label: isPinned ? "Unpin" : "Pin"))
+			if !running {
+				hints.append(HintAction(shortcut: settings.revealAppShortcut.displayString, label: "Reveal"))
+			}
+			return hints
+		}
+	}
 
 	private var placeholderText: String {
 		isClipboardMode ? "Type to filter entries..." : "Search applications..."
@@ -74,8 +163,10 @@ struct ContentView: View {
 				.background(settings.backgroundColorUI)
 				.zIndex(1000)
 
-				Divider()
-					.opacity(0.5)
+				if !results.isEmpty || !settings.compactMode {
+					Divider()
+						.opacity(0.5)
+				}
 
 				if !results.isEmpty {
 					HStack(spacing: 0) {
@@ -108,6 +199,7 @@ struct ContentView: View {
 									withAnimation(.easeInOut(duration: 0.15)) {
 										proxy.scrollTo(newIndex, anchor: .center)
 									}
+									selectedAppInfo = nil
 								}
 							}
 						}
@@ -180,13 +272,43 @@ struct ContentView: View {
 					Divider()
 						.opacity(0.3)
 
-					HStack {
-						if isClipboardMode, selectedIndex < clipboardHistory.count,
-						   clipboardHistory[selectedIndex].type == .text
-						{
-							ContextualHints(hints: [
-								HintAction(shortcut: "⌘S", label: "Save as text expansion")
-							])
+					HStack(spacing: DesignTokens.Spacing.md) {
+						if let icon = appIcon {
+							Image(nsImage: icon)
+								.resizable()
+								.frame(width: 18, height: 18)
+								.padding(.leading, DesignTokens.Spacing.md)
+						}
+
+						if isClipboardMode, selectedIndex < clipboardHistory.count {
+							let entry = clipboardHistory[selectedIndex]
+							if entry.type == .text {
+								ContextualHints(hints: [
+									HintAction(shortcut: settings.saveClipboardShortcut.displayString, label: "Save as text expansion")
+								])
+							} else if entry.type == .image {
+								ContextualHints(hints: [
+									HintAction(shortcut: settings.saveClipboardShortcut.displayString, label: "Save to Pictures")
+								])
+							}
+						} else if !isClipboardMode, selectedIndex < results.count {
+							let selectedResult = results[selectedIndex]
+							let isApp = selectedResult.category == "Applications" || selectedResult.category == "Pinned" || selectedResult.category == "Recent"
+							let isCommand = selectedResult.category == "Command"
+							let isAction = selectedResult.category == "Action" || selectedResult.category == "Web"
+
+							if isApp {
+								if let appInfo = selectedAppInfo {
+									AppInfoDisplay(info: appInfo)
+								} else if let path = selectedResult.path {
+									ContextualHints(hints: getAppHints(for: selectedResult, identifier: path))
+								}
+							} else if isCommand || isAction {
+								let hints = isCommand
+									? getAppHints(for: selectedResult, identifier: selectedResult.id)
+									: [HintAction(shortcut: "↩", label: "Open")]
+								ContextualHints(hints: hints)
+							}
 						}
 
 						Spacer()
@@ -210,6 +332,7 @@ struct ContentView: View {
 		.onAppear {
 			clipboardHistory = clipboardManager.getHistory()
 			setupEventMonitor()
+			loadAppIcon()
 		}
 		.onDisappear {
 			removeEventMonitor()
@@ -395,13 +518,16 @@ struct ContentView: View {
 
 		var landingResults: [CategoryResult] = []
 
-		let pinnedResults = settings.pinnedApps.map { app in
-			CategoryResult(
-				id: app.path,
-				name: app.name,
+		let pinnedResults = settings.pinnedApps.map { item in
+			let isCommand = item.path.hasPrefix("cmd_")
+			return CategoryResult(
+				id: item.path,
+				name: item.name,
 				category: "Pinned",
-				path: app.path,
-				action: nil,
+				path: isCommand ? nil : item.path,
+				action: isCommand ? {
+					CommandRegistry.shared.executeCommand(id: item.path)
+				} : nil,
 				fullContent: nil,
 				clipboardEntry: nil,
 				icon: nil,
@@ -410,22 +536,25 @@ struct ContentView: View {
 		}
 		landingResults.append(contentsOf: pinnedResults)
 
-		let recentResults = settings.recentApps.map { app in
-			CategoryResult(
-				id: app.path,
-				name: app.name,
-				category: "Recent",
-				path: app.path,
-				action: nil,
-				fullContent: nil,
-				clipboardEntry: nil,
-				icon: nil,
-				score: 0
-			)
+		if settings.showRecentAppsOnLanding {
+			let recentResults = settings.recentApps.map { app in
+				CategoryResult(
+					id: app.path,
+					name: app.name,
+					category: "Recent",
+					path: app.path,
+					action: nil,
+					fullContent: nil,
+					clipboardEntry: nil,
+					icon: nil,
+					score: 0
+				)
+			}
+			landingResults.append(contentsOf: recentResults)
 		}
-		landingResults.append(contentsOf: recentResults)
 
-		if landingResults.isEmpty {
+		if landingResults.isEmpty && !settings.compactMode {
+			let emptyIcon = NSImage(systemSymbolName: "square.stack.3d.up.slash", accessibilityDescription: "Empty")
 			landingResults.append(
 				CategoryResult(
 					id: "empty-state",
@@ -435,7 +564,7 @@ struct ContentView: View {
 					action: nil,
 					fullContent: nil,
 					clipboardEntry: nil,
-					icon: nil,
+					icon: emptyIcon,
 					score: 0
 				))
 		}
@@ -791,8 +920,176 @@ struct ContentView: View {
 		NSApp.keyWindow?.orderOut(nil)
 	}
 
+	private func handleTogglePin() {
+		guard !isClipboardMode, selectedIndex < results.count else { return }
+		let result = results[selectedIndex]
+
+		let isApp = result.category == "Applications" || result.category == "Pinned" || result.category == "Recent"
+		let isCommand = result.category == "Command"
+
+		guard isApp || isCommand else { return }
+
+		let identifier: String
+		if isCommand {
+			identifier = result.id
+		} else {
+			guard let path = result.path else { return }
+			identifier = path
+		}
+
+		if settings.pinnedApps.contains(where: { $0.path == identifier }) {
+			settings.pinnedApps.removeAll { $0.path == identifier }
+		} else {
+			let pinnedItem = RecentApp(name: result.name, path: identifier, timestamp: Date().timeIntervalSince1970)
+			settings.pinnedApps.append(pinnedItem)
+		}
+		settings.save()
+		performSearch(searchText)
+	}
+
+	private func handleShowInFinder() {
+		guard !isClipboardMode, selectedIndex < results.count else { return }
+		let result = results[selectedIndex]
+
+		let isApp = result.category == "Applications" || result.category == "Pinned" || result.category == "Recent"
+		guard isApp, let path = result.path else { return }
+
+		NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+	}
+
+	private func handleGetInfo() {
+		guard !isClipboardMode, selectedIndex < results.count else { return }
+		let result = results[selectedIndex]
+
+		let isApp = result.category == "Applications" || result.category == "Pinned" || result.category == "Recent"
+		guard isApp, let path = result.path else { return }
+
+		let fileManager = FileManager.default
+		var totalSize: UInt64 = 0
+
+		if let enumerator = fileManager.enumerator(at: URL(fileURLWithPath: path), includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]) {
+			for case let fileURL as URL in enumerator {
+				if let resourceValues = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+				   let isRegularFile = resourceValues.isRegularFile,
+				   isRegularFile,
+				   let fileSize = resourceValues.fileSize
+				{
+					totalSize += UInt64(fileSize)
+				}
+			}
+		}
+
+		let sizeStr = ByteCountFormatter.string(fromByteCount: Int64(totalSize), countStyle: .file)
+
+		var version: String?
+		if let bundle = Bundle(path: path),
+		   let ver = bundle.infoDictionary?["CFBundleShortVersionString"] as? String
+		{
+			version = ver
+		}
+
+		selectedAppInfo = AppInfo(name: result.name, path: path, size: sizeStr, version: version)
+	}
+
+	private func handleCopyPath() {
+		guard !isClipboardMode, selectedIndex < results.count else { return }
+		let result = results[selectedIndex]
+
+		let isApp = result.category == "Applications" || result.category == "Pinned" || result.category == "Recent"
+		guard isApp, let path = result.path else { return }
+
+		let pasteboard = NSPasteboard.general
+		pasteboard.clearContents()
+		pasteboard.setString(path, forType: .string)
+	}
+
+	private func handleQuitApp() {
+		guard !isClipboardMode, selectedIndex < results.count else { return }
+		let result = results[selectedIndex]
+
+		let isApp = result.category == "Applications" || result.category == "Pinned" || result.category == "Recent"
+		guard isApp, let path = result.path else { return }
+
+		if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleURL?.path == path }) {
+			app.terminate()
+		}
+	}
+
+	private func handleHideApp() {
+		guard !isClipboardMode, selectedIndex < results.count else { return }
+		let result = results[selectedIndex]
+
+		let isApp = result.category == "Applications" || result.category == "Pinned" || result.category == "Recent"
+		guard isApp, let path = result.path else { return }
+
+		if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleURL?.path == path }) {
+			app.hide()
+		}
+	}
+
+	private func loadAppIcon() {
+		if let icon = NSImage(named: "AppIcon") {
+			appIcon = icon
+		} else {
+			appIcon = NSImage(systemSymbolName: "app.badge", accessibilityDescription: "Summon")
+		}
+	}
+
+	private func handleSaveImage() {
+		guard isClipboardMode, selectedIndex < clipboardHistory.count else { return }
+		let entry = clipboardHistory[selectedIndex]
+
+		guard entry.type == .image, let imagePath = entry.imageFilePath else { return }
+
+		let saveDirectory: URL
+		if !settings.imageSavePath.isEmpty, FileManager.default.fileExists(atPath: settings.imageSavePath) {
+			saveDirectory = URL(fileURLWithPath: settings.imageSavePath)
+		} else {
+			saveDirectory = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first!
+		}
+
+		let timestamp = Int(Date().timeIntervalSince1970)
+		let fileName = "Screenshot_\(timestamp).png"
+		let fileURL = saveDirectory.appendingPathComponent(fileName)
+
+		do {
+			let sourceURL = URL(fileURLWithPath: imagePath)
+			try FileManager.default.copyItem(at: sourceURL, to: fileURL)
+			NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+		} catch {
+			print("Failed to save image: \(error)")
+		}
+
+		NSApp.keyWindow?.orderOut(nil)
+	}
+
+	private func matchesShortcut(_ event: NSEvent, _ shortcut: KeyboardShortcut) -> Bool {
+		guard event.keyCode == UInt16(shortcut.keyCode) else { return false }
+
+		let flags = event.modifierFlags
+		let hasCmd = flags.contains(.command)
+		let hasOpt = flags.contains(.option)
+		let hasShift = flags.contains(.shift)
+		let hasCtrl = flags.contains(.control)
+
+		let wantsCmd = shortcut.modifiers & UInt32(cmdKey) != 0
+		let wantsOpt = shortcut.modifiers & UInt32(optionKey) != 0
+		let wantsShift = shortcut.modifiers & UInt32(shiftKey) != 0
+		let wantsCtrl = shortcut.modifiers & UInt32(controlKey) != 0
+
+		return hasCmd == wantsCmd && hasOpt == wantsOpt && hasShift == wantsShift && hasCtrl == wantsCtrl
+	}
+
 	private func setupEventMonitor() {
-		eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+		eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [self] event in
+			if event.type == .flagsChanged {
+				let optionPressed = event.modifierFlags.contains(.option)
+				if showSecondaryHints != optionPressed {
+					showSecondaryHints = optionPressed
+				}
+				return event
+			}
+
 			if let keyWindow = NSApp.keyWindow,
 			   keyWindow.title == "Settings"
 			   || keyWindow.contentView?.subviews.first(where: {
@@ -802,11 +1099,39 @@ struct ContentView: View {
 				return event
 			}
 
-			if isClipboardMode, event.modifierFlags.contains(.command),
-			   event.charactersIgnoringModifiers?.lowercased() == "s"
-			{
-				handleSaveAsSnippet()
-				return nil
+			// Clipboard mode shortcuts
+			if isClipboardMode {
+				if matchesShortcut(event, settings.saveClipboardShortcut) {
+					if selectedIndex < clipboardHistory.count {
+						let entry = clipboardHistory[selectedIndex]
+						if entry.type == .text {
+							handleSaveAsSnippet()
+						} else if entry.type == .image {
+							handleSaveImage()
+						}
+					}
+					return nil
+				}
+			}
+
+			// App action shortcuts
+			if !isClipboardMode {
+				if matchesShortcut(event, settings.pinAppShortcut) {
+					handleTogglePin()
+					return nil
+				} else if matchesShortcut(event, settings.revealAppShortcut) {
+					handleShowInFinder()
+					return nil
+				} else if matchesShortcut(event, settings.copyPathShortcut) {
+					handleCopyPath()
+					return nil
+				} else if matchesShortcut(event, settings.quitAppShortcut) {
+					handleQuitApp()
+					return nil
+				} else if matchesShortcut(event, settings.hideAppShortcut) {
+					handleHideApp()
+					return nil
+				}
 			}
 
 			if let char = event.charactersIgnoringModifiers?.first,
