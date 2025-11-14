@@ -2,6 +2,7 @@
 name = "ffi"
 version.workspace = true
 edition.workspace = true
+publish.workspace = true
 
 [dependencies]
 search_engine = { path = "../search_engine" }
@@ -24,6 +25,9 @@ paste.workspace = true
 [lib]
 name = "ffi"
 crate-type = ["staticlib", "cdylib"]
+
+[package.metadata.cargo-machete]
+ignored = ["serde"]
 
 [lints]
 workspace = true

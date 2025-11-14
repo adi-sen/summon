@@ -1,4 +1,7 @@
-use nucleo_matcher::{Config, Matcher, Utf32String, pattern::{CaseMatching, Normalization, Pattern}};
+use nucleo_matcher::{
+	Config, Matcher, Utf32String,
+	pattern::{CaseMatching, Normalization, Pattern},
+};
 use parking_lot::Mutex;
 
 pub struct FuzzyMatcher {
@@ -8,11 +11,15 @@ pub struct FuzzyMatcher {
 impl FuzzyMatcher {
 	#[inline]
 	#[must_use]
-	pub fn new() -> Self { Self { matcher: Mutex::new(Matcher::new(Config::DEFAULT)) } }
+	pub fn new() -> Self {
+		Self { matcher: Mutex::new(Matcher::new(Config::DEFAULT)) }
+	}
 
 	#[inline]
 	#[must_use]
-	pub fn parse_pattern(query: &str) -> Pattern { Pattern::parse(query, CaseMatching::Smart, Normalization::Smart) }
+	pub fn parse_pattern(query: &str) -> Pattern {
+		Pattern::parse(query, CaseMatching::Smart, Normalization::Smart)
+	}
 
 	#[inline]
 	pub fn match_with_indices(&self, candidate: &str, query: &str) -> Option<(i64, Vec<usize>)> {
@@ -23,7 +30,7 @@ impl FuzzyMatcher {
 	#[inline]
 	pub fn match_with_pattern(&self, pattern: &Pattern, candidate: &str, query: &str) -> Option<(i64, Vec<usize>)> {
 		let haystack = Utf32String::from(candidate);
-		let mut indices = Vec::new();
+		let mut indices = Vec::with_capacity(query.len());
 
 		let score = pattern.indices(haystack.slice(..), &mut self.matcher.lock(), &mut indices)?;
 
@@ -77,7 +84,9 @@ impl FuzzyMatcher {
 }
 
 impl Default for FuzzyMatcher {
-	fn default() -> Self { Self::new() }
+	fn default() -> Self {
+		Self::new()
+	}
 }
 
 #[cfg(test)]

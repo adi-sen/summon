@@ -3,6 +3,7 @@ name = "app_storage"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
+publish.workspace = true
 
 [dependencies]
 rkyv.workspace = true

@@ -18,10 +18,13 @@ resolver = "2"
 version = "0.0.1"
 edition = "2024"
 authors = ["adi-sen"]
+publish = false
 
 [workspace.lints.rust]
 unsafe_code = "allow"
 missing_docs = "allow"
+unsafe_op_in_unsafe_fn = "deny"
+unused_unsafe = "deny"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
@@ -31,19 +34,31 @@ perf = { level = "warn", priority = -1 }
 style = { level = "warn", priority = -1 }
 suspicious = { level = "warn", priority = -1 }
 complexity = { level = "warn", priority = -1 }
-must_use_candidate = "warn"
-missing_errors_doc = "allow"
-missing_panics_doc = "allow"
+cargo = { level = "warn", priority = -1 }
+
+# Safety and correctness
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
 dbg_macro = "warn"
 todo = "warn"
 unimplemented = "warn"
-unwrap_used = "warn"
-expect_used = "warn"
+unreachable = "warn"
+unwrap_in_result = "warn"
+
+# Code quality
+must_use_candidate = "warn"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
 module_name_repetitions = "allow"
 struct_excessive_bools = "allow"
 fn_params_excessive_bools = "allow"
 similar_names = "allow"
 too_many_lines = "allow"
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -60,7 +75,7 @@ mimalloc = "0.1.47"
 rustc-hash = "2.0"
 smallvec = "1.13"
 compact_str = { version = "0.9", features = ["serde"] }
-paste = "1.0"
+paste = { package = "pastey", version = "0.1" }
 walkdir = "2.5"
 
 [profile.release]
@@ -68,3 +83,4 @@ opt-level = 3
 lto = true
 codegen-units = 1
 strip = true
+panic = "abort"

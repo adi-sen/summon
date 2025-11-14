@@ -8,20 +8,16 @@ version = "0.0.1"
 dependencies = [
  "aho-corasick",
  "bytecheck",
- "fuzzy-matcher",
  "lru",
  "parking_lot",
- "regex",
  "rkyv",
  "rustc-hash",
  "serde",
  "shared_utils",
  "sonic-rs",
  "storage_utils",
- "thiserror",
  "urlencoding",
  "wait-timeout",
- "walkdir",
 ]
 
 [[package]]
@@ -403,7 +399,7 @@ dependencies = [
  "libc",
  "mimalloc",
  "parking_lot",
- "paste",
+ "pastey",
  "rustc-hash",
  "search_engine",
  "serde",
@@ -424,15 +420,6 @@ name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
-
-[[package]]
-name = "fuzzy-matcher"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54614a3312934d066701a80f20f15fa3b56d67ac7722b39eea5b4c9dd1d66c94"
-dependencies = [
- "thread_local",
-]
 
 [[package]]
 name = "getrandom"
@@ -686,10 +673,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "paste"
-version = "1.0.15"
+name = "pastey"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+checksum = "35fb2e5f958ec131621fdd531e9fc186ed768cbe395337403ae56c17a74c68ec"
 
 [[package]]
 name = "phf"
@@ -1173,15 +1160,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "thread_local"
-version = "1.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f60246a4944f24f6e018aa17cdeffb7818b76356965d03b07d6a9886e8962185"
-dependencies = [
- "cfg-if",
 ]
 
 [[package]]

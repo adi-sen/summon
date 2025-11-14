@@ -29,7 +29,9 @@ impl fmt::Display for SearchError {
 impl std::error::Error for SearchError {}
 
 impl From<io::Error> for SearchError {
-	fn from(e: io::Error) -> Self { Self::Io(e) }
+	fn from(e: io::Error) -> Self {
+		Self::Io(e)
+	}
 }
 
 pub type Result<T> = std::result::Result<T, SearchError>;
@@ -39,13 +41,13 @@ const PARALLEL_THRESHOLD: usize = 500;
 const SMALL_VEC_SIZE: usize = 64;
 
 type ResultCache = Arc<Mutex<LruCache<String, Arc<Vec<SearchResult>>>>>;
-type MatchTuple = (Arc<indexer::IndexedItem>, i64, Vec<usize>);
+type MatchTuple = (indexer::IndexedItem, i64, Vec<usize>);
 type MatchVec = SmallVec<[MatchTuple; SMALL_VEC_SIZE]>;
 
 pub struct SearchEngine {
-	indexer:      Arc<RwLock<indexer::Indexer>>,
-	matcher:      fuzzy_matcher::FuzzyMatcher,
-	cache:        ResultCache,
+	indexer: Arc<RwLock<indexer::Indexer>>,
+	matcher: fuzzy_matcher::FuzzyMatcher,
+	cache: ResultCache,
 	file_scanner: Option<Arc<RwLock<file_scanner::FileScanner>>>,
 }
 
@@ -53,9 +55,9 @@ impl SearchEngine {
 	#[must_use]
 	pub fn new() -> Self {
 		Self {
-			indexer:      Arc::new(RwLock::new(indexer::Indexer::new())),
-			matcher:      fuzzy_matcher::FuzzyMatcher::new(),
-			cache:        Arc::new(Mutex::new(LruCache::new(unsafe { std::num::NonZeroUsize::new_unchecked(CACHE_SIZE) }))),
+			indexer: Arc::new(RwLock::new(indexer::Indexer::new())),
+			matcher: fuzzy_matcher::FuzzyMatcher::new(),
+			cache: Arc::new(Mutex::new(LruCache::new(unsafe { std::num::NonZeroUsize::new_unchecked(CACHE_SIZE) }))),
 			file_scanner: None,
 		}
 	}
@@ -64,7 +66,9 @@ impl SearchEngine {
 		self.file_scanner = Some(Arc::new(RwLock::new(file_scanner::FileScanner::new(directories, extensions))));
 	}
 
-	pub fn disable_file_search(&mut self) { self.file_scanner = None; }
+	pub fn disable_file_search(&mut self) {
+		self.file_scanner = None;
+	}
 
 	#[inline]
 	pub fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
@@ -90,7 +94,7 @@ impl SearchEngine {
 				.par_bridge()
 				.filter_map(|item| {
 					let (score, indices) = self.matcher.match_with_pattern(&pattern, &item.name, query)?;
-					Some((item, score, indices))
+					Some((item.clone(), score, indices))
 				})
 				.collect();
 			SmallVec::from_vec(vec)
@@ -98,18 +102,18 @@ impl SearchEngine {
 			let mut m = SmallVec::with_capacity(items_count.min(SMALL_VEC_SIZE));
 			for item in indexer.items_iter() {
 				if let Some((score, indices)) = self.matcher.match_with_pattern(&pattern, &item.name, query) {
-					m.push((item, score, indices));
+					m.push((item.clone(), score, indices));
 				}
 			}
 			m
 		};
 
 		if let Some(ref scanner) = self.file_scanner {
-			let file_items = scanner.read().scan();
+			let file_items = scanner.write().scan();
 			matches.reserve(file_items.len());
-			for item in file_items.iter() {
+			for item in file_items {
 				if let Some((score, indices)) = self.matcher.match_with_pattern(&pattern, &item.name, query) {
-					matches.push((Arc::clone(item), score, indices));
+					matches.push((item, score, indices));
 				}
 			}
 		}
@@ -129,19 +133,25 @@ impl SearchEngine {
 		Ok(Arc::try_unwrap(results).unwrap_or_else(|arc| (*arc).clone()))
 	}
 
-	pub fn clear_cache(&self) { self.cache.lock().clear(); }
+	pub fn clear_cache(&self) {
+		self.cache.lock().clear();
+	}
 
-	pub fn indexer(&self) -> Arc<RwLock<indexer::Indexer>> { Arc::clone(&self.indexer) }
+	pub fn indexer(&self) -> Arc<RwLock<indexer::Indexer>> {
+		Arc::clone(&self.indexer)
+	}
 }
 
 impl Default for SearchEngine {
-	fn default() -> Self { Self::new() }
+	fn default() -> Self {
+		Self::new()
+	}
 }
 
 #[derive(Debug, Clone)]
 pub struct SearchResult {
-	pub item:          Arc<indexer::IndexedItem>,
-	pub score:         i64,
+	pub item: indexer::IndexedItem,
+	pub score: i64,
 	pub match_indices: Vec<usize>,
 }
 
@@ -152,7 +162,7 @@ impl serde::Serialize for SearchResult {
 	{
 		use serde::ser::SerializeStruct;
 		let mut state = serializer.serialize_struct("SearchResult", 3)?;
-		state.serialize_field("item", &*self.item)?;
+		state.serialize_field("item", &self.item)?;
 		state.serialize_field("score", &self.score)?;
 		state.serialize_field("match_indices", &self.match_indices)?;
 		state.end()
@@ -166,17 +176,13 @@ impl<'de> serde::Deserialize<'de> for SearchResult {
 	{
 		#[derive(serde::Deserialize)]
 		struct SearchResultHelper {
-			item:          indexer::IndexedItem,
-			score:         i64,
+			item: indexer::IndexedItem,
+			score: i64,
 			match_indices: Vec<usize>,
 		}
 
 		let helper = SearchResultHelper::deserialize(deserializer)?;
-		Ok(SearchResult {
-			item:          Arc::new(helper.item),
-			score:         helper.score,
-			match_indices: helper.match_indices,
-		})
+		Ok(SearchResult { item: helper.item, score: helper.score, match_indices: helper.match_indices })
 	}
 }
 
@@ -193,18 +199,18 @@ mod tests {
 		{
 			let mut indexer = engine.indexer.write();
 			indexer.add_item(indexer::IndexedItem {
-				id:        "1".into(),
-				name:      "Visual Studio Code".into(),
+				id: "1".into(),
+				name: "Visual Studio Code".into(),
 				item_type: indexer::ItemType::Application,
-				path:      Some("/Applications/Visual Studio Code.app".into()),
-				metadata:  HashMap::default(),
+				path: Some("/Applications/Visual Studio Code.app".into()),
+				metadata: HashMap::default(),
 			});
 			indexer.add_item(indexer::IndexedItem {
-				id:        "2".into(),
-				name:      "Safari".into(),
+				id: "2".into(),
+				name: "Safari".into(),
 				item_type: indexer::ItemType::Application,
-				path:      Some("/Applications/Safari.app".into()),
-				metadata:  HashMap::default(),
+				path: Some("/Applications/Safari.app".into()),
+				metadata: HashMap::default(),
 			});
 		}
 
