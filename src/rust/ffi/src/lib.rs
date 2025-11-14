@@ -182,7 +182,13 @@ pub unsafe extern "C" fn search_engine_search(
 		.map(|r| CSearchResult {
 			id:    to_cstring_ptr(r.item.id.as_str()),
 			name:  to_cstring_ptr(r.item.name.as_str()),
-			path:  r.item.path.and_then(|p| CString::new(p.as_str()).ok()).map(CString::into_raw).unwrap_or(ptr::null_mut()),
+			path:  r
+				.item
+				.path
+				.clone()
+				.and_then(|p| CString::new(p.as_str()).ok())
+				.map(CString::into_raw)
+				.unwrap_or(ptr::null_mut()),
 			score: r.score,
 		})
 		.collect();
@@ -370,10 +376,7 @@ pub unsafe extern "C" fn search_engine_get_apps(
 
 	let c_apps: Vec<CIndexedApp> = apps
 		.into_iter()
-		.map(|(name, path)| CIndexedApp {
-			name: to_cstring_ptr(name),
-			path: to_cstring_ptr(path),
-		})
+		.map(|(name, path)| CIndexedApp { name: to_cstring_ptr(name), path: to_cstring_ptr(path) })
 		.collect();
 
 	unsafe { *out_count = c_apps.len() };
@@ -700,10 +703,9 @@ pub unsafe extern "C" fn snippet_matcher_find(
 		return ptr::null_mut();
 	}
 	match unsafe { (*handle).matcher.find_match(cstr!(text)) } {
-		Some((trigger, content, _)) => Box::into_raw(Box::new(CSnippetMatch {
-			trigger: to_cstring_ptr(trigger),
-			content: to_cstring_ptr(content),
-		})),
+		Some((trigger, content, _)) => {
+			Box::into_raw(Box::new(CSnippetMatch { trigger: to_cstring_ptr(trigger), content: to_cstring_ptr(content) }))
+		}
 		None => ptr::null_mut(),
 	}
 }
@@ -907,13 +909,8 @@ pub unsafe extern "C" fn app_storage_get_all(handle: *mut AppStorageHandle, out_
 		return ptr::null_mut();
 	}
 
-	let c_entries: Vec<CAppEntry> = entries
-		.into_iter()
-		.map(|e| CAppEntry {
-			name: to_cstring_ptr(e.name),
-			path: to_cstring_ptr(e.path),
-		})
-		.collect();
+	let c_entries: Vec<CAppEntry> =
+		entries.into_iter().map(|e| CAppEntry { name: to_cstring_ptr(e.name), path: to_cstring_ptr(e.path) }).collect();
 
 	unsafe { *out_count = c_entries.len() };
 	Box::into_raw(c_entries.into_boxed_slice()) as *mut CAppEntry

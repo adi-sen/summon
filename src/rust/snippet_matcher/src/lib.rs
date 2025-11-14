@@ -1,4 +1,4 @@
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
+use aho_corasick::AhoCorasick;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
@@ -23,12 +23,7 @@ impl SnippetMatcher {
 		let enabled_snippets: Vec<Snippet> = snippets.into_iter().filter(|s| s.enabled).collect();
 
 		let patterns: Vec<&str> = enabled_snippets.iter().map(|s| s.trigger.as_str()).collect();
-
-		let automaton = if patterns.is_empty() {
-			None
-		} else {
-			AhoCorasickBuilder::new().match_kind(aho_corasick::MatchKind::LeftmostLongest).build(&patterns).ok()
-		};
+		let automaton = shared_utils::build_automaton_leftmost_longest(&patterns);
 
 		*self.snippets.write() = enabled_snippets;
 		*self.automaton.write() = automaton;

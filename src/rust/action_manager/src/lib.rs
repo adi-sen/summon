@@ -215,15 +215,6 @@ impl ActionManager {
 			keywords.push(keyword);
 		}
 
-		if keywords.is_empty() {
-			*self.keyword_matcher.write() = None;
-			return;
-		}
-
-		if let Ok(ac) = AhoCorasick::new(&keywords) {
-			*self.keyword_matcher.write() = Some(ac);
-		} else {
-			*self.keyword_matcher.write() = None;
-		}
+		*self.keyword_matcher.write() = shared_utils::build_automaton_leftmost_longest(&keywords);
 	}
 }

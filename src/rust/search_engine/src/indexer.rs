@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use compact_str::CompactString;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use serde::{Deserialize, Serialize};
@@ -21,7 +23,7 @@ pub struct IndexedItem {
 }
 
 pub struct Indexer {
-	items: FxHashMap<CompactString, IndexedItem>,
+	items: FxHashMap<CompactString, Arc<IndexedItem>>,
 	stats: IndexStats,
 }
 
@@ -46,7 +48,8 @@ impl Indexer {
 		if is_new {
 			self.update_stats(&item.item_type, 1);
 		}
-		self.items.insert(item.id.clone(), item);
+		let id = item.id.clone();
+		self.items.insert(id, Arc::new(item));
 	}
 
 	pub fn add_items(&mut self, items: Vec<IndexedItem>) {
@@ -57,12 +60,13 @@ impl Indexer {
 			if is_new {
 				self.update_stats(&item.item_type, 1);
 			}
-			self.items.insert(item.id.clone(), item);
+			let id = item.id.clone();
+			self.items.insert(id, Arc::new(item));
 		}
 	}
 
 	#[inline]
-	pub fn remove_item(&mut self, id: &str) -> Option<IndexedItem> {
+	pub fn remove_item(&mut self, id: &str) -> Option<Arc<IndexedItem>> {
 		self.items.remove(id).inspect(|item| self.update_stats(&item.item_type, -1))
 	}
 
@@ -79,16 +83,16 @@ impl Indexer {
 	}
 
 	#[inline]
-	pub fn items_iter(&self) -> impl Iterator<Item = &IndexedItem> { self.items.values() }
+	pub fn items_iter(&self) -> impl Iterator<Item = Arc<IndexedItem>> + '_ { self.items.values().map(Arc::clone) }
 
 	#[inline]
 	#[must_use]
-	pub fn get_item(&self, id: &str) -> Option<&IndexedItem> { self.items.get(id) }
+	pub fn get_item(&self, id: &str) -> Option<Arc<IndexedItem>> { self.items.get(id).map(Arc::clone) }
 
 	#[inline]
 	#[must_use]
-	pub fn get_items_by_type(&self, item_type: &ItemType) -> Vec<&IndexedItem> {
-		self.items.values().filter(|item| &item.item_type == item_type).collect()
+	pub fn get_items_by_type(&self, item_type: &ItemType) -> Vec<Arc<IndexedItem>> {
+		self.items.values().filter(|item| &item.item_type == item_type).map(Arc::clone).collect()
 	}
 
 	#[inline]

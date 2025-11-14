@@ -6,6 +6,8 @@ use std::{fmt, io, sync::Arc};
 
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
+use rayon::prelude::*;
+use smallvec::SmallVec;
 
 #[derive(Debug)]
 pub enum SearchError {
@@ -33,11 +35,17 @@ impl From<io::Error> for SearchError {
 pub type Result<T> = std::result::Result<T, SearchError>;
 
 const CACHE_SIZE: usize = 20;
+const PARALLEL_THRESHOLD: usize = 500;
+const SMALL_VEC_SIZE: usize = 64;
+
+type ResultCache = Arc<Mutex<LruCache<String, Arc<Vec<SearchResult>>>>>;
+type MatchTuple = (Arc<indexer::IndexedItem>, i64, Vec<usize>);
+type MatchVec = SmallVec<[MatchTuple; SMALL_VEC_SIZE]>;
 
 pub struct SearchEngine {
 	indexer:      Arc<RwLock<indexer::Indexer>>,
 	matcher:      fuzzy_matcher::FuzzyMatcher,
-	cache:        Arc<Mutex<LruCache<String, Vec<SearchResult>>>>,
+	cache:        ResultCache,
 	file_scanner: Option<Arc<RwLock<file_scanner::FileScanner>>>,
 }
 
@@ -58,33 +66,57 @@ impl SearchEngine {
 
 	pub fn disable_file_search(&mut self) { self.file_scanner = None; }
 
+	#[inline]
 	pub fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
 		if query.is_empty() {
 			return Err(SearchError::QueryTooShort);
 		}
 
 		let cache_key = query.to_string();
-		if let Some(cached) = self.cache.lock().get(&cache_key) {
-			return Ok(cached.iter().take(limit).cloned().collect());
+		{
+			let mut cache = self.cache.lock();
+			if let Some(cached) = cache.get(&cache_key) {
+				return Ok(cached.iter().take(limit).cloned().collect());
+			}
 		}
 
+		let pattern = fuzzy_matcher::FuzzyMatcher::parse_pattern(query);
 		let indexer = self.indexer.read();
+		let items_count = indexer.items_iter().size_hint().0;
 
-		let mut matches: Vec<_> = indexer
-			.items_iter()
-			.filter_map(|item| {
-				let (score, indices) = self.matcher.match_with_indices(&item.name, query)?;
-				Some((item.clone(), score, indices))
-			})
-			.collect();
+		let mut matches: MatchVec = if items_count >= PARALLEL_THRESHOLD {
+			let vec: Vec<_> = indexer
+				.items_iter()
+				.par_bridge()
+				.filter_map(|item| {
+					let (score, indices) = self.matcher.match_with_pattern(&pattern, &item.name, query)?;
+					Some((item, score, indices))
+				})
+				.collect();
+			SmallVec::from_vec(vec)
+		} else {
+			let mut m = SmallVec::with_capacity(items_count.min(SMALL_VEC_SIZE));
+			for item in indexer.items_iter() {
+				if let Some((score, indices)) = self.matcher.match_with_pattern(&pattern, &item.name, query) {
+					m.push((item, score, indices));
+				}
+			}
+			m
+		};
 
 		if let Some(ref scanner) = self.file_scanner {
 			let file_items = scanner.read().scan();
-			for item in file_items {
-				if let Some((score, indices)) = self.matcher.match_with_indices(&item.name, query) {
-					matches.push((item, score, indices));
+			matches.reserve(file_items.len());
+			for item in file_items.iter() {
+				if let Some((score, indices)) = self.matcher.match_with_pattern(&pattern, &item.name, query) {
+					matches.push((Arc::clone(item), score, indices));
 				}
 			}
+		}
+
+		if limit < matches.len() {
+			matches.select_nth_unstable_by(limit, |a, b| b.1.cmp(&a.1).then_with(|| a.0.name.cmp(&b.0.name)));
+			matches.truncate(limit);
 		}
 
 		matches.sort_unstable_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.name.cmp(&b.0.name)));
@@ -92,8 +124,9 @@ impl SearchEngine {
 		let results: Vec<_> =
 			matches.into_iter().map(|(item, score, match_indices)| SearchResult { item, score, match_indices }).collect();
 
-		self.cache.lock().put(cache_key, results.clone());
-		Ok(results.into_iter().take(limit).collect())
+		let results = Arc::new(results);
+		self.cache.lock().put(cache_key, Arc::clone(&results));
+		Ok(Arc::try_unwrap(results).unwrap_or_else(|arc| (*arc).clone()))
 	}
 
 	pub fn clear_cache(&self) { self.cache.lock().clear(); }
@@ -105,11 +138,46 @@ impl Default for SearchEngine {
 	fn default() -> Self { Self::new() }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct SearchResult {
-	pub item:          indexer::IndexedItem,
+	pub item:          Arc<indexer::IndexedItem>,
 	pub score:         i64,
 	pub match_indices: Vec<usize>,
+}
+
+impl serde::Serialize for SearchResult {
+	fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		use serde::ser::SerializeStruct;
+		let mut state = serializer.serialize_struct("SearchResult", 3)?;
+		state.serialize_field("item", &*self.item)?;
+		state.serialize_field("score", &self.score)?;
+		state.serialize_field("match_indices", &self.match_indices)?;
+		state.end()
+	}
+}
+
+impl<'de> serde::Deserialize<'de> for SearchResult {
+	fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		#[derive(serde::Deserialize)]
+		struct SearchResultHelper {
+			item:          indexer::IndexedItem,
+			score:         i64,
+			match_indices: Vec<usize>,
+		}
+
+		let helper = SearchResultHelper::deserialize(deserializer)?;
+		Ok(SearchResult {
+			item:          Arc::new(helper.item),
+			score:         helper.score,
+			match_indices: helper.match_indices,
+		})
+	}
 }
 
 #[cfg(test)]

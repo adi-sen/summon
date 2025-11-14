@@ -20,6 +20,7 @@ walkdir = "2.5"
 fuzzy-matcher = { workspace = true }
 
 storage_utils = { path = "../storage_utils" }
+shared_utils = { path = "../shared_utils" }
 
 [lints]
 workspace = true

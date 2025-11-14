@@ -1,4 +1,4 @@
-use std::{path::{Path, PathBuf}, time::SystemTime};
+use std::{path::{Path, PathBuf}, sync::Arc, time::SystemTime};
 
 use compact_str::CompactString;
 use lru::LruCache;
@@ -17,8 +17,10 @@ static DEFAULT_EXTENSIONS: &[&str] = &[
 	"py", "rs", "go", "java", "c", "cpp", "h", "hpp", "swift",
 ];
 
+type FileCache = Mutex<LruCache<Vec<PathBuf>, Arc<Vec<Arc<IndexedItem>>>>>;
+
 pub struct FileScanner {
-	cache:            Mutex<LruCache<Vec<PathBuf>, Vec<IndexedItem>>>,
+	cache:            FileCache,
 	allowed_exts:     Vec<String>,
 	scan_directories: Vec<PathBuf>,
 }
@@ -35,11 +37,11 @@ impl FileScanner {
 		}
 	}
 
-	pub fn scan(&self) -> Vec<IndexedItem> {
+	pub fn scan(&self) -> Arc<Vec<Arc<IndexedItem>>> {
 		let cache_key = self.scan_directories.clone();
 
 		if let Some(cached) = self.cache.lock().get(&cache_key) {
-			return cached.clone();
+			return Arc::clone(cached);
 		}
 
 		let mut files = Vec::with_capacity(MAX_FILES_PER_DIR * self.scan_directories.len());
@@ -53,11 +55,12 @@ impl FileScanner {
 			files.extend(dir_files);
 		}
 
-		self.cache.lock().put(cache_key, files.clone());
+		let files = Arc::new(files);
+		self.cache.lock().put(cache_key, Arc::clone(&files));
 		files
 	}
 
-	fn scan_directory(dir: &Path, allowed_exts: &[String], max_depth: usize, max_files: usize) -> Vec<IndexedItem> {
+	fn scan_directory(dir: &Path, allowed_exts: &[String], max_depth: usize, max_files: usize) -> Vec<Arc<IndexedItem>> {
 		WalkDir::new(dir)
 			.max_depth(max_depth)
 			.follow_links(false)
@@ -82,13 +85,13 @@ impl FileScanner {
 				let mut metadata = FxHashMap::default();
 				metadata.insert(CompactString::new("modified"), CompactString::new(timestamp.to_string()));
 
-				Some(IndexedItem {
+				Some(Arc::new(IndexedItem {
 					id: CompactString::new(full_path),
 					name: CompactString::new(name),
 					item_type: ItemType::File,
 					path: Some(CompactString::new(full_path)),
 					metadata,
-				})
+				}))
 			})
 			.collect()
 	}

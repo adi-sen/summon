@@ -8,6 +8,7 @@ members = [
     "src/rust/app_storage",
     "src/rust/settings_storage",
     "src/rust/storage_utils",
+    "src/rust/shared_utils",
     "src/rust/action_manager",
     "src/rust/ffi",
 ]

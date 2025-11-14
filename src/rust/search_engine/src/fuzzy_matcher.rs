@@ -1,23 +1,31 @@
-use std::cell::RefCell;
-
-use nucleo_matcher::{Config, Matcher, pattern::{CaseMatching, Normalization, Pattern}};
+use nucleo_matcher::{Config, Matcher, Utf32String, pattern::{CaseMatching, Normalization, Pattern}};
+use parking_lot::Mutex;
 
 pub struct FuzzyMatcher {
-	matcher: RefCell<Matcher>,
+	matcher: Mutex<Matcher>,
 }
 
 impl FuzzyMatcher {
 	#[inline]
 	#[must_use]
-	pub fn new() -> Self { Self { matcher: RefCell::new(Matcher::new(Config::DEFAULT)) } }
+	pub fn new() -> Self { Self { matcher: Mutex::new(Matcher::new(Config::DEFAULT)) } }
+
+	#[inline]
+	#[must_use]
+	pub fn parse_pattern(query: &str) -> Pattern { Pattern::parse(query, CaseMatching::Smart, Normalization::Smart) }
 
 	#[inline]
 	pub fn match_with_indices(&self, candidate: &str, query: &str) -> Option<(i64, Vec<usize>)> {
-		let pattern = Pattern::parse(query, CaseMatching::Smart, Normalization::Smart);
-		let haystack = nucleo_matcher::Utf32String::from(candidate);
+		let pattern = Self::parse_pattern(query);
+		self.match_with_pattern(&pattern, candidate, query)
+	}
+
+	#[inline]
+	pub fn match_with_pattern(&self, pattern: &Pattern, candidate: &str, query: &str) -> Option<(i64, Vec<usize>)> {
+		let haystack = Utf32String::from(candidate);
 		let mut indices = Vec::new();
 
-		let score = pattern.indices(haystack.slice(..), &mut self.matcher.borrow_mut(), &mut indices)?;
+		let score = pattern.indices(haystack.slice(..), &mut self.matcher.lock(), &mut indices)?;
 
 		let bonus_score = Self::calculate_bonus(candidate, query, i64::from(score), &indices);
 
@@ -33,7 +41,8 @@ impl FuzzyMatcher {
 			bonus += 10000;
 		}
 
-		if candidate.to_lowercase().starts_with(&query.to_lowercase()) {
+		let query_lower = query.to_lowercase();
+		if candidate.to_lowercase().starts_with(&query_lower) {
 			bonus += 5000;
 		}
 
