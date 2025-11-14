@@ -12,7 +12,7 @@ serde.workspace = true
 shared_utils = { path = "../shared_utils" }
 
 [lib]
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["staticlib", "rlib"]
 
 [lints]
 workspace = true

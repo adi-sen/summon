@@ -9,49 +9,38 @@ CONTENTS_DIR="${APP_BUNDLE}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 
-echo "Packaging ${APP_NAME} v${VERSION}..."
+echo "Packaging ${APP_NAME} v${VERSION}"
 
 rm -rf "${APP_BUNDLE}"
 ./scripts/build-release.sh
 
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 cp "${BUILD_DIR}/${APP_NAME}" "${MACOS_DIR}/"
-cp target/release/libffi.dylib "${MACOS_DIR}/"
 
-install_name_tool -change \
-    "@rpath/libffi.dylib" \
-    "@executable_path/libffi.dylib" \
-    "${MACOS_DIR}/${APP_NAME}"
+[ -d "assets/Resources/web-icons" ] && cp -r "assets/Resources/web-icons" "${RESOURCES_DIR}/"
+
 if [ -f "assets/summon.icns" ]; then
     cp "assets/summon.icns" "${RESOURCES_DIR}/AppIcon.icns"
 elif [ -f "assets/summon-icon.svg" ]; then
-    if command -v rsvg-convert &> /dev/null; then
-        mkdir -p /tmp/summon-iconset.iconset
+    ICONSET="/tmp/summon-iconset.iconset"
+    mkdir -p "$ICONSET"
 
+    if command -v rsvg-convert &>/dev/null; then
         for size in 16 32 64 128 256 512 1024; do
-            rsvg-convert -w $size -h $size assets/summon-icon.svg -o /tmp/summon-iconset.iconset/icon_${size}x${size}.png
+            rsvg-convert -w $size -h $size assets/summon-icon.svg -o "$ICONSET/icon_${size}x${size}.png"
         done
-        for size in 16 32 64 128 256 512; do
-            cp /tmp/summon-iconset.iconset/icon_${size}x${size}.png /tmp/summon-iconset.iconset/icon_$((size/2))x$((size/2))@2x.png
-        done
-        iconutil -c icns /tmp/summon-iconset.iconset -o "${RESOURCES_DIR}/AppIcon.icns"
-        rm -rf /tmp/summon-iconset.iconset
     else
-        echo "Warning: rsvg-convert not available, falling back to sips"
-        mkdir -p /tmp/summon-iconset.iconset
-
         for size in 16 32 64 128 256 512 1024; do
-            sips -s format png -z $size $size assets/summon-icon.svg --out /tmp/summon-iconset.iconset/icon_${size}x${size}.png 2>/dev/null
+            sips -s format png -z $size $size assets/summon-icon.svg --out "$ICONSET/icon_${size}x${size}.png" 2>/dev/null
         done
-
-        for size in 16 32 128 256 512; do
-            double=$((size * 2))
-            cp /tmp/summon-iconset.iconset/icon_${double}x${double}.png /tmp/summon-iconset.iconset/icon_${size}x${size}@2x.png 2>/dev/null || true
-        done
-
-        iconutil -c icns /tmp/summon-iconset.iconset -o "${RESOURCES_DIR}/AppIcon.icns" 2>/dev/null || true
-        rm -rf /tmp/summon-iconset.iconset
     fi
+
+    for size in 16 32 64 128 256 512; do
+        [ -f "$ICONSET/icon_$((size*2))x$((size*2)).png" ] && cp "$ICONSET/icon_$((size*2))x$((size*2)).png" "$ICONSET/icon_${size}x${size}@2x.png"
+    done
+
+    iconutil -c icns "$ICONSET" -o "${RESOURCES_DIR}/AppIcon.icns" 2>/dev/null || true
+    rm -rf "$ICONSET"
 fi
 cat > "${CONTENTS_DIR}/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -87,4 +76,4 @@ cat > "${CONTENTS_DIR}/Info.plist" << EOF
 EOF
 
 echo "APPL????" > "${CONTENTS_DIR}/PkgInfo"
-echo "Package created: ${APP_BUNDLE}"
+echo "Created: ${APP_BUNDLE}"

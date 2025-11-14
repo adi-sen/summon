@@ -24,7 +24,7 @@ paste.workspace = true
 
 [lib]
 name = "ffi"
-crate-type = ["staticlib", "cdylib"]
+crate-type = ["staticlib"]
 
 [package.metadata.cargo-machete]
 ignored = ["serde"]
