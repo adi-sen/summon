@@ -10,15 +10,10 @@ where
 		for<'a> CheckBytes<HighValidator<'a, Error>> + Deserialize<T, rkyv::rancor::Strategy<rkyv::de::Pool, Error>>,
 {
 	let bytes = fs::read(path)?;
-
 	if bytes.is_empty() {
 		return Ok(Vec::new());
 	}
-
-	rkyv::from_bytes::<Vec<T>, Error>(&bytes).or_else(|_| {
-		eprintln!("Warning: Incompatible data format in {}. Starting fresh.", path.display());
-		Ok(Vec::new())
-	})
+	rkyv::from_bytes::<Vec<T>, Error>(&bytes).or_else(|_| Ok(Vec::new()))
 }
 
 pub fn save_to_disk<T>(path: &Path, items: &Vec<T>) -> io::Result<()>
@@ -27,17 +22,13 @@ where
 		rkyv::api::high::HighSerializer<rkyv::util::AlignedVec, rkyv::ser::allocator::ArenaHandle<'a>, Error>,
 	>,
 {
-	let bytes =
-		rkyv::to_bytes::<Error>(items).map_err(|e| io::Error::other(format!("rkyv serialization error: {e:?}")))?;
-
+	let bytes = rkyv::to_bytes::<Error>(items).map_err(|e| io::Error::other(format!("rkyv: {e:?}")))?;
 	let temp_path = path.with_extension("tmp");
 	let file = OpenOptions::new().write(true).create(true).truncate(true).open(&temp_path)?;
-
 	let mut writer = BufWriter::new(file);
 	writer.write_all(&bytes)?;
 	writer.flush()?;
 	drop(writer);
-
 	fs::rename(temp_path, path)?;
 	Ok(())
 }
