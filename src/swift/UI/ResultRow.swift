@@ -76,14 +76,14 @@ struct ResultRow: View {
 						.frame(width: iconSize, height: iconSize)
 				} else {
 					Image(systemName: iconName)
-						.font(.system(size: symbolFontSize))
+						.font(Font(settings.uiFont.withSize(symbolFontSize)))
 						.frame(width: iconSize, height: iconSize)
 						.foregroundColor(iconColor)
 				}
 
 				if result.category == "Pinned" {
 					Image(systemName: "pin.fill")
-						.font(.system(size: 8))
+						.font(Font(settings.uiFont.withSize(8)))
 						.foregroundColor(themeColor(settings.theme.accentColor))
 						.offset(x: 4, y: -4)
 				}
@@ -108,7 +108,7 @@ struct ResultRow: View {
 
 			if let number = quickSelectNumber, settings.showQuickSelect {
 				Text(settings.quickSelectModifier.displaySymbol + String(number))
-					.font(.system(size: DesignTokens.Typography.small, design: .monospaced))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 					.foregroundColor(.secondary.opacity(0.5))
 			}
 		}

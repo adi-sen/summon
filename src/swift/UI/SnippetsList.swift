@@ -31,10 +31,10 @@ struct SnippetsList: View {
 					)
 				}
 
-				Button(action: { showingAddSnippet = true }) {
+				SwiftUI.Button(action: { showingAddSnippet = true }) {
 					HStack(spacing: DesignTokens.Spacing.md) {
 						Image(systemName: "plus.circle.fill")
-							.font(.system(size: DesignTokens.Typography.title))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 						Text("Add Snippet")
 							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					}
@@ -125,12 +125,12 @@ struct InlineEditableSnippetCard: View {
 			.cornerRadius(DesignTokens.CornerRadius.md)
 
 			Image(systemName: "arrow.right")
-				.font(.system(size: DesignTokens.Spacing.md + 2))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md + 2)))
 				.foregroundColor(settings.secondaryTextColorUI)
 
 			if hasConflict, snippet.enabled {
 				Image(systemName: "exclamationmark.triangle.fill")
-					.font(.system(size: DesignTokens.Typography.small))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 					.foregroundColor(Color.orange)
 					.help("Duplicate trigger detected")
 			}
@@ -158,9 +158,9 @@ struct InlineEditableSnippetCard: View {
 
 			Spacer()
 
-			Button(action: onDelete) {
+			SwiftUI.Button(action: onDelete) {
 				Image(systemName: "trash")
-					.font(.system(size: DesignTokens.Typography.small))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 					.foregroundColor(Color.red.opacity(isHovered ? 0.8 : 0.4))
 					.frame(width: 24, height: 24)
 			}

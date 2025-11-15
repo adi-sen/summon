@@ -24,9 +24,9 @@ struct ExtensionTester: View {
 						.foregroundColor(settings.secondaryTextColorUI)
 				}
 				Spacer()
-				Button(action: { presentationMode.wrappedValue.dismiss() }) {
+				SwiftUI.Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
-						.font(.system(size: DesignTokens.Typography.large + 2))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large + 2)))
 						.foregroundColor(settings.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
@@ -51,7 +51,7 @@ struct ExtensionTester: View {
 							.background(settings.searchBarColorUI)
 							.cornerRadius(DesignTokens.CornerRadius.md)
 
-						Button(action: runTest) {
+						SwiftUI.Button(action: runTest) {
 							HStack(spacing: DesignTokens.Spacing.sm) {
 								if isRunning {
 									ProgressView()
@@ -59,7 +59,7 @@ struct ExtensionTester: View {
 										.frame(width: 12, height: 12)
 								} else {
 									Image(systemName: "play.fill")
-										.font(.system(size: DesignTokens.Typography.small))
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								}
 								Text(isRunning ? "Running..." : "Run Test")
 									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))

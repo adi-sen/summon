@@ -43,10 +43,10 @@ struct WebSearchesList: View {
 					)
 				}
 
-				Button(action: { showingAddSearch = true }) {
+				SwiftUI.Button(action: { showingAddSearch = true }) {
 					HStack(spacing: 8) {
 						Image(systemName: "plus.circle.fill")
-							.font(.system(size: DesignTokens.Typography.title))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 						Text("Add Web Search")
 							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					}
@@ -65,10 +65,10 @@ struct WebSearchesList: View {
 				.buttonStyle(PlainButtonStyle())
 				.newItemShortcut()
 
-				Button(action: { actionManager.importDefaults() }) {
+				SwiftUI.Button(action: { actionManager.importDefaults() }) {
 					HStack(spacing: 6) {
 						Image(systemName: "arrow.counterclockwise")
-							.font(.system(size: DesignTokens.Typography.small))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						Text("Reset to Defaults")
 							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 					}
@@ -127,7 +127,7 @@ struct InlineEditableWebSearchCard: View {
 						.opacity(action.enabled ? 1.0 : 0.5)
 				} else {
 					Image(systemName: action.icon.isEmpty ? "globe" : action.icon)
-						.font(.system(size: DesignTokens.Typography.title))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 						.foregroundColor(
 							action.enabled
 								? settings.accentColorUI : settings.secondaryTextColorUI.opacity(0.5)
@@ -162,12 +162,12 @@ struct InlineEditableWebSearchCard: View {
 				.cornerRadius(DesignTokens.CornerRadius.md)
 
 				Image(systemName: "arrow.right")
-					.font(.system(size: DesignTokens.Spacing.md + 2))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md + 2)))
 					.foregroundColor(settings.secondaryTextColorUI)
 
 				if hasConflict, action.enabled {
 					Image(systemName: "exclamationmark.triangle.fill")
-						.font(.system(size: DesignTokens.Typography.small))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(Color.orange)
 						.help("Duplicate keyword detected")
 				}
@@ -196,9 +196,9 @@ struct InlineEditableWebSearchCard: View {
 
 				Spacer()
 
-				Button(action: onDelete) {
+				SwiftUI.Button(action: onDelete) {
 					Image(systemName: "trash")
-						.font(.system(size: DesignTokens.Typography.small))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(Color.red.opacity(isHovered ? 0.8 : 0.4))
 						.frame(width: 24, height: 24)
 				}

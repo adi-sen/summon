@@ -60,9 +60,9 @@ struct ExtensionCreator: View {
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(settings.textColorUI)
 				Spacer()
-				Button(action: { presentationMode.wrappedValue.dismiss() }) {
+				SwiftUI.Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
-						.font(.system(size: DesignTokens.Typography.large + 2))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large + 2)))
 						.foregroundColor(settings.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
@@ -76,7 +76,7 @@ struct ExtensionCreator: View {
 				VStack(alignment: .leading, spacing: 20) {
 					HStack(spacing: DesignTokens.Spacing.lg) {
 						Image(systemName: "info.circle.fill")
-							.font(.system(size: DesignTokens.Typography.title))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 							.foregroundColor(settings.accentColorUI)
 						VStack(alignment: .leading, spacing: 4) {
 							Text("Script Filter Extensions")
@@ -152,7 +152,7 @@ struct ExtensionCreator: View {
 
 						HStack(spacing: DesignTokens.Spacing.md) {
 							ForEach(ScriptLanguage.allCases, id: \.self) { lang in
-								Button(action: { scriptLanguage = lang }) {
+								SwiftUI.Button(action: { scriptLanguage = lang }) {
 									Text(lang.rawValue)
 										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 										.foregroundColor(
@@ -197,13 +197,13 @@ struct ExtensionCreator: View {
 			Divider().background(Color.white.opacity(0.1))
 
 			HStack(spacing: DesignTokens.Spacing.lg) {
-				StyledButton("Cancel", style: .secondary) {
+				Button("Cancel", style: .secondary) {
 					presentationMode.wrappedValue.dismiss()
 				}
 
 				Spacer()
 
-				Button(action: createExtension) {
+				SwiftUI.Button(action: createExtension) {
 					Text("Create Extension")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(Color.white)
@@ -221,7 +221,7 @@ struct ExtensionCreator: View {
 		.frame(width: 520, height: 680)
 		.background(settings.backgroundColorUI)
 		.alert("Error", isPresented: $showError) {
-			Button("OK", role: .cancel) {}
+			SwiftUI.Button("OK", role: .cancel) {}
 		} message: {
 			Text(errorMessage)
 		}
@@ -578,7 +578,7 @@ struct TemplateButton: View {
 	let onSelect: () -> Void
 
 	var body: some View {
-		Button(action: onSelect) {
+		SwiftUI.Button(action: onSelect) {
 			HStack(spacing: DesignTokens.Spacing.lg) {
 				Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
 					.foregroundColor(

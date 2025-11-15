@@ -20,7 +20,7 @@ struct ExtensionInfoView: View {
 		VStack(spacing: 0) {
 			HStack(alignment: .top, spacing: 16) {
 				Image(systemName: editingIcon.isEmpty ? "puzzlepiece.extension" : editingIcon)
-					.font(.system(size: 40))
+					.font(Font(settings.uiFont.withSize(40)))
 					.foregroundColor(settings.accentColorUI)
 
 				VStack(alignment: .leading, spacing: 6) {
@@ -49,7 +49,7 @@ struct ExtensionInfoView: View {
 					if case .scriptFilter = action.kind {
 						HStack(spacing: DesignTokens.Spacing.xs) {
 							Image(systemName: "command")
-								.font(.system(size: DesignTokens.Spacing.md + 2))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md + 2)))
 							Text(editingKeyword)
 								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						}
@@ -142,7 +142,7 @@ struct ExtensionInfoView: View {
 									.background(settings.searchBarColorUI.opacity(0.5))
 									.cornerRadius(DesignTokens.CornerRadius.sm)
 
-									Button(action: {
+									SwiftUI.Button(action: {
 										editingEnv.removeValue(forKey: key)
 										hasChanges = true
 									}) {
@@ -171,7 +171,7 @@ struct ExtensionInfoView: View {
 									.background(settings.searchBarColorUI.opacity(0.3))
 									.cornerRadius(DesignTokens.CornerRadius.sm)
 
-								Button(action: {
+								SwiftUI.Button(action: {
 									if !newEnvKey.isEmpty {
 										editingEnv[newEnvKey] = newEnvValue
 										newEnvKey = ""
@@ -202,7 +202,7 @@ struct ExtensionInfoView: View {
 						Divider().background(Color.white.opacity(0.1))
 
 						HStack(spacing: DesignTokens.Spacing.lg) {
-							StyledButton(
+							Button(
 								"Show in Finder",
 								icon: "folder",
 								style: .secondary,
@@ -212,7 +212,7 @@ struct ExtensionInfoView: View {
 								NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: extensionDir)
 							}
 
-							StyledButton(
+							Button(
 								"Export",
 								icon: "square.and.arrow.up",
 								style: .secondary,
@@ -231,7 +231,7 @@ struct ExtensionInfoView: View {
 
 			HStack(spacing: DesignTokens.Spacing.lg) {
 				if hasChanges {
-					StyledButton("Save Changes", style: .primary) {
+					Button("Save Changes", style: .primary) {
 						if case let .scriptFilter(_, scriptPath, extensionDir) = action.kind {
 							saveManifest(extensionDir: extensionDir, scriptPath: scriptPath)
 						}
@@ -240,7 +240,7 @@ struct ExtensionInfoView: View {
 
 				Spacer()
 
-				StyledButton("Close", style: .secondary) {
+				Button("Close", style: .secondary) {
 					onClose()
 				}
 			}

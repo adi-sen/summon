@@ -33,10 +33,44 @@ enum DesignTokens {
 		static let buttonHeight: CGFloat = 32
 		static let minTouchTarget: CGFloat = 44
 	}
+
+	enum Dropdown {
+		static var maxHeight: CGFloat = 300
+		static var animationDuration: Double = 0.15
+		static var shadowRadius: CGFloat = 8
+		static var shadowOpacity: Double = 0.2
+	}
+
+	enum Opacity {
+		static let controlBackground: Double = 0.3
+		static let dropdownBackground: Double = 0.8
+		static let hover: Double = 0.5
+		static let selected: Double = 0.15
+		static let border: Double = 0.2
+		static let categoryText: Double = 0.7
+	}
 }
 
 extension View {
 	func styled(fontSize: CGFloat, settings: AppSettings) -> some View {
 		font(Font(settings.uiFont.withSize(fontSize)))
+	}
+
+	func styledText(_ size: CGFloat, color: Color) -> some View {
+		font(.system(size: size)).foregroundColor(color)
+	}
+
+	func controlBackground(_ settings: AppSettings) -> some View {
+		background(settings.searchBarColorUI.opacity(DesignTokens.Opacity.controlBackground))
+			.cornerRadius(DesignTokens.CornerRadius.sm)
+	}
+
+	func dropdownContainer(_ settings: AppSettings) -> some View {
+		background(settings.searchBarColorUI.opacity(DesignTokens.Opacity.dropdownBackground))
+			.cornerRadius(DesignTokens.CornerRadius.md)
+			.overlay(
+				RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
+					.stroke(settings.secondaryTextColorUI.opacity(DesignTokens.Opacity.border), lineWidth: 1)
+			)
 	}
 }

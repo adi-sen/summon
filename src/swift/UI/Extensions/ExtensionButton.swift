@@ -11,7 +11,7 @@ struct ExtensionButton: View {
 		case secondary
 		case success
 
-		var styledButtonStyle: StyledButton.ButtonStyle {
+		var buttonStyle: Button.Style {
 			switch self {
 			case .primary: .primary
 			case .secondary: .secondary
@@ -21,10 +21,10 @@ struct ExtensionButton: View {
 	}
 
 	var body: some View {
-		StyledButton(
+		Button(
 			title,
 			icon: icon,
-			style: style.styledButtonStyle,
+			style: style.buttonStyle,
 			fullWidth: true,
 			action: action
 		)

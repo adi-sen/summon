@@ -1,7 +1,10 @@
 import Cocoa
 import SwiftUI
+import Combine
 
 class FloatingPanel: NSPanel {
+	private var cancellables = Set<AnyCancellable>()
+
 	init(contentRect: NSRect, backing: NSWindow.BackingStoreType, defer flag: Bool) {
 		super.init(
 			contentRect: contentRect,
@@ -24,11 +27,22 @@ class FloatingPanel: NSPanel {
 
 		backgroundColor = .clear
 		isOpaque = false
-		hasShadow = true
 
 		animationBehavior = .utilityWindow
 
 		hidesOnDeactivate = false
+
+		updateShadow()
+
+		let settings = AppSettings.shared
+		Publishers.CombineLatest(
+			settings.$windowShadowOpacity,
+			settings.$windowShadowRadius
+		)
+		.sink { [weak self] _, _ in
+			self?.updateShadow()
+		}
+		.store(in: &cancellables)
 
 		NotificationCenter.default.addObserver(
 			forName: NSWindow.didResignKeyNotification,
@@ -36,6 +50,14 @@ class FloatingPanel: NSPanel {
 			queue: .main
 		) { [weak self] _ in
 			self?.orderOut(nil)
+		}
+	}
+
+	private func updateShadow() {
+		let settings = AppSettings.shared
+		hasShadow = settings.windowShadowOpacity > 0 && settings.windowShadowRadius > 0
+		if hasShadow {
+			invalidateShadow()
 		}
 	}
 

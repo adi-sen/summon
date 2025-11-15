@@ -212,28 +212,28 @@ struct ExtensionsSettingsTab: View {
 					Spacer()
 
 					HStack(spacing: DesignTokens.Spacing.lg) {
-						Button(action: {
+						SwiftUI.Button(action: {
 							let extensionsDir = StoragePathManager.shared.getExtensionsDir()
 							NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: extensionsDir)
 						}) {
 							Image(systemName: "folder")
-								.font(.system(size: DesignTokens.Typography.body))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 								.foregroundColor(settings.secondaryTextColorUI)
 						}
 						.buttonStyle(PlainButtonStyle())
 						.help("Open extensions folder")
 
-						Button(action: importExtension) {
+						SwiftUI.Button(action: importExtension) {
 							Image(systemName: "square.and.arrow.down")
-								.font(.system(size: DesignTokens.Typography.body))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 								.foregroundColor(settings.secondaryTextColorUI)
 						}
 						.buttonStyle(PlainButtonStyle())
 						.help("Import extension")
 
-						Button(action: { showingCreateExtension = true }) {
+						SwiftUI.Button(action: { showingCreateExtension = true }) {
 							Image(systemName: "plus")
-								.font(.system(size: DesignTokens.Typography.body))
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 								.foregroundColor(settings.accentColorUI)
 						}
 						.buttonStyle(PlainButtonStyle())
@@ -250,17 +250,17 @@ struct ExtensionsSettingsTab: View {
 					VStack(spacing: DesignTokens.Spacing.lg) {
 						Spacer()
 						Image(systemName: "puzzlepiece.extension")
-							.font(.system(size: 32))
+							.font(Font(settings.uiFont.withSize(32)))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
 						Text("No extensions yet")
 							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.secondaryTextColorUI)
-						Button(action: {
+						SwiftUI.Button(action: {
 							showingCreateExtension = true
 						}) {
 							HStack(spacing: DesignTokens.Spacing.sm) {
 								Image(systemName: "plus.circle.fill")
-									.font(.system(size: DesignTokens.Typography.title))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 								Text("Create Extension")
 									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							}
@@ -312,7 +312,7 @@ struct ExtensionsSettingsTab: View {
 				} else {
 					VStack(spacing: DesignTokens.Spacing.xl) {
 						Image(systemName: "puzzlepiece.extension")
-							.font(.system(size: 64))
+							.font(Font(settings.uiFont.withSize(64)))
 							.foregroundColor(settings.secondaryTextColorUI.opacity(0.3))
 						Text("Select an extension to view details")
 							.font(Font(settings.uiFont.withSize(15)))
@@ -349,11 +349,11 @@ struct ExtensionListItem: View {
 	var body: some View {
 		HStack(spacing: DesignTokens.Spacing.md + 2) {
 			Image(systemName: action.icon.isEmpty ? "puzzlepiece.extension" : action.icon)
-				.font(.system(size: DesignTokens.Typography.title))
+				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 				.foregroundColor(isSelected ? settings.accentColorUI : settings.textColorUI)
 				.frame(width: 20)
 
-			Button(action: {
+			SwiftUI.Button(action: {
 				onSelect()
 			}) {
 				VStack(alignment: .leading, spacing: 2) {
@@ -368,11 +368,11 @@ struct ExtensionListItem: View {
 			Spacer()
 
 			if isHovered {
-				Button(action: {
+				SwiftUI.Button(action: {
 					onDelete()
 				}) {
 					Image(systemName: "trash")
-						.font(.system(size: DesignTokens.Typography.small))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(.red.opacity(0.7))
 				}
 				.buttonStyle(PlainButtonStyle())

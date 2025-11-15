@@ -60,10 +60,10 @@ struct ActionsList: View {
 
 				HStack(spacing: 8) {
 					if filterType == .quickLink {
-						Button(action: { showingAddAction = true }) {
+						SwiftUI.Button(action: { showingAddAction = true }) {
 							HStack(spacing: 8) {
 								Image(systemName: "plus.circle.fill")
-									.font(.system(size: DesignTokens.Typography.title))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 								Text("Add Web Search")
 									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							}
@@ -82,10 +82,10 @@ struct ActionsList: View {
 						.buttonStyle(PlainButtonStyle())
 						.newItemShortcut()
 
-						Button(action: { actionManager.importDefaults() }) {
+						SwiftUI.Button(action: { actionManager.importDefaults() }) {
 							HStack(spacing: 6) {
 								Image(systemName: "arrow.counterclockwise")
-									.font(.system(size: DesignTokens.Typography.small))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								Text("Reset to Defaults")
 									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							}
@@ -97,10 +97,10 @@ struct ActionsList: View {
 						}
 						.buttonStyle(PlainButtonStyle())
 					} else if filterType == .extensions {
-						Button(action: { showingAddAction = true }) {
+						SwiftUI.Button(action: { showingAddAction = true }) {
 							HStack(spacing: 8) {
 								Image(systemName: "square.and.pencil")
-									.font(.system(size: DesignTokens.Typography.title))
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 								Text("Create Extension")
 									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 							}
@@ -160,7 +160,7 @@ struct InlineEditableActionCard: View {
 				.frame(width: 36)
 
 				Image(systemName: action.icon.isEmpty ? "bolt.circle" : action.icon)
-					.font(.system(size: DesignTokens.Typography.body))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					.foregroundColor(action.enabled ? settings.accentColorUI : settings.secondaryTextColorUI)
 					.frame(width: 18)
 
@@ -182,9 +182,9 @@ struct InlineEditableActionCard: View {
 
 				Spacer()
 
-				Button(action: onDelete) {
+				SwiftUI.Button(action: onDelete) {
 					Image(systemName: "trash")
-						.font(.system(size: DesignTokens.Typography.small))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(Color.red.opacity(isHovered ? 0.8 : 0.4))
 						.frame(width: 20, height: 20)
 				}
@@ -217,7 +217,7 @@ struct InlineEditableActionCard: View {
 					.cornerRadius(DesignTokens.CornerRadius.sm - 1)
 
 					Image(systemName: "arrow.right")
-						.font(.system(size: DesignTokens.Spacing.md))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md)))
 						.foregroundColor(settings.secondaryTextColorUI)
 
 					Group {
@@ -252,7 +252,7 @@ struct InlineEditableActionCard: View {
 						.cornerRadius(DesignTokens.CornerRadius.sm - 1)
 
 					Image(systemName: "arrow.right")
-						.font(.system(size: DesignTokens.Spacing.md))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md)))
 						.foregroundColor(settings.secondaryTextColorUI)
 
 					Text(url)
@@ -274,7 +274,7 @@ struct InlineEditableActionCard: View {
 						.cornerRadius(DesignTokens.CornerRadius.sm - 1)
 
 					Image(systemName: "arrow.right")
-						.font(.system(size: DesignTokens.Spacing.md))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md)))
 						.foregroundColor(settings.secondaryTextColorUI)
 
 					Text(scriptPath.split(separator: "/").last.map(String.init) ?? scriptPath)
@@ -363,9 +363,9 @@ struct AddActionView: View {
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(settings.textColorUI)
 				Spacer()
-				Button(action: { presentationMode.wrappedValue.dismiss() }) {
+				SwiftUI.Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
-						.font(.system(size: 18))
+						.font(Font(settings.uiFont.withSize(18)))
 						.foregroundColor(settings.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
@@ -422,10 +422,10 @@ struct AddActionView: View {
 							.foregroundColor(settings.textColorUI)
 
 						HStack(spacing: 12) {
-							Button(action: { useCustomIcon = false }) {
+							SwiftUI.Button(action: { useCustomIcon = false }) {
 								HStack(spacing: 8) {
 									Image(systemName: useCustomIcon ? "circle" : "circle.fill")
-										.font(.system(size: DesignTokens.Typography.small))
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 									Text("SF Symbol")
 										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								}
@@ -441,10 +441,10 @@ struct AddActionView: View {
 							}
 							.buttonStyle(PlainButtonStyle())
 
-							Button(action: { useCustomIcon = true }) {
+							SwiftUI.Button(action: { useCustomIcon = true }) {
 								HStack(spacing: 8) {
 									Image(systemName: useCustomIcon ? "circle.fill" : "circle")
-										.font(.system(size: DesignTokens.Typography.small))
+										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 									Text("Upload Image")
 										.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 								}
@@ -477,15 +477,15 @@ struct AddActionView: View {
 											.frame(width: 32, height: 32)
 											.overlay(
 												Image(systemName: "photo.badge.plus")
-													.font(.system(size: DesignTokens.Typography.title))
+													.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
 													.foregroundColor(settings.secondaryTextColorUI)
 											)
 									}
 
-									Button(action: { selectImage() }) {
+									SwiftUI.Button(action: { selectImage() }) {
 										HStack(spacing: 6) {
 											Image(systemName: "photo")
-												.font(.system(size: DesignTokens.Typography.small))
+												.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 											Text(customIconImage == nil ? "Choose Image" : "Change Image")
 												.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 										}
@@ -498,7 +498,7 @@ struct AddActionView: View {
 									.buttonStyle(PlainButtonStyle())
 
 									if customIconImage != nil {
-										Button(action: { clearCustomIcon() }) {
+										SwiftUI.Button(action: { clearCustomIcon() }) {
 											Text("Remove")
 												.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 												.foregroundColor(Color.red)
@@ -521,7 +521,7 @@ struct AddActionView: View {
 						} else {
 							HStack(spacing: 12) {
 								Image(systemName: icon.isEmpty ? "globe" : icon)
-									.font(.system(size: 20))
+									.font(Font(settings.uiFont.withSize(20)))
 									.foregroundColor(settings.accentColorUI)
 									.frame(width: 32, height: 32)
 									.background(settings.searchBarColorUI.opacity(0.3))

@@ -5,6 +5,7 @@ struct ClipboardPreview: View {
 	@State private var thumbnail: NSImage?
 	@State private var isLoading = false
 	@State private var loadedTimestamp: TimeInterval?
+	@ObservedObject var settings = AppSettings.shared
 
 	var body: some View {
 		Group {
@@ -28,7 +29,7 @@ struct ClipboardPreview: View {
 				}
 			} else if entry.type == .text {
 				Text(entry.content)
-					.font(.system(size: 13))
+					.font(Font(settings.uiFont.withSize(13)))
 					.foregroundColor(.primary)
 					.frame(maxWidth: .infinity, alignment: .leading)
 			}
