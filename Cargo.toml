@@ -59,6 +59,7 @@ cast_possible_truncation = "allow"
 cast_precision_loss = "allow"
 cast_sign_loss = "allow"
 cast_possible_wrap = "allow"
+multiple_crate_versions = "allow"
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
