@@ -16,7 +16,7 @@ let package = Package(
             ],
             linkerSettings: [
                 .unsafeFlags(["-L", "target/release", "-L", "target/debug"]),
-                .unsafeFlags(["-Xlinker", "-force_load", "-Xlinker", "target/release/libffi.a"]),
+                .linkedLibrary("ffi"),
             ]
         )
     ]
