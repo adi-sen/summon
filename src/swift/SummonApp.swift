@@ -59,6 +59,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 	func applicationDidFinishLaunching(_: Notification) {
 		AppDelegate.shared = self
 		updateActivationPolicy()
+		setupCrashHandler()
 
 		searchEngine = SearchEngine()
 
@@ -130,6 +131,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 		indexApplications()
 		indexCommands()
+		initializeFileSearchIfEnabled()
 
 		Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
 			self?.performMemoryCleanup()
@@ -334,9 +336,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 	@objc private func handleRefreshAppIndex() {
 		print("Refreshing app index...")
+
+		guard Thread.isMainThread else {
+			DispatchQueue.main.async { [weak self] in
+				self?.handleRefreshAppIndex()
+			}
+			return
+		}
+
 		clearAppCache()
-		indexApplications()
-		indexCommands()
+
+		DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+			guard let self else { return }
+
+			self.rebuildAppIndex()
+
+			DispatchQueue.main.async {
+				self.indexCommands()
+				self.initializeFileSearchIfEnabled()
+			}
+		}
 	}
 
 	private func checkForNewApps() {
@@ -525,6 +544,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 		print("Indexed \(CommandRegistry.shared.commands.count) commands")
 	}
 
+	private func initializeFileSearchIfEnabled() {
+		let settings = AppSettings.shared
+		guard settings.enableFileSearch else { return }
+		guard let searchEngine else { return }
+
+		print("Initializing file search...")
+		searchEngine.enableFileSearch(
+			directories: settings.fileSearchDirectories,
+			extensions: settings.fileSearchExtensions
+		)
+		print("File search initialized with \(settings.fileSearchDirectories.count) directories")
+	}
+
 	private func getAppStoragePath() -> String {
 		let appSupportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
 		let invokeDir = appSupportDir.appendingPathComponent("Summon")
@@ -582,4 +614,52 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 			updateActivationPolicy()
 		}
 	}
+
+	private func setupCrashHandler() {
+		NSSetUncaughtExceptionHandler(handleUncaughtException)
+	}
+}
+
+private func handleUncaughtException(_ exception: NSException) {
+	let message = """
+	Summon encountered an unexpected error and needs to restart.
+
+	Error: \(exception.name.rawValue)
+	Reason: \(exception.reason ?? "Unknown")
+
+	Stack trace:
+	\(exception.callStackSymbols.joined(separator: "\n"))
+	"""
+
+	DispatchQueue.main.async {
+		showCrashAlert(message: message)
+	}
+}
+
+private func showCrashAlert(message: String) {
+	let alert = NSAlert()
+	alert.messageText = "Unexpected Error"
+	alert.informativeText = "Summon encountered an error. You can copy the details below to report this issue."
+	alert.alertStyle = .critical
+	alert.addButton(withTitle: "Copy & Quit")
+	alert.addButton(withTitle: "Quit")
+
+	let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 200))
+	textView.string = message
+	textView.isEditable = false
+	textView.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+
+	let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 500, height: 200))
+	scrollView.documentView = textView
+	scrollView.hasVerticalScroller = true
+
+	alert.accessoryView = scrollView
+
+	let response = alert.runModal()
+	if response == .alertFirstButtonReturn {
+		NSPasteboard.general.clearContents()
+		NSPasteboard.general.setString(message, forType: .string)
+	}
+
+	NSApp.terminate(nil)
 }

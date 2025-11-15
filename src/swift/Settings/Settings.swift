@@ -109,11 +109,13 @@ enum FallbackSearchBehavior: String, Codable, CaseIterable {
 }
 
 class AppSettings: ObservableObject {
-	static let shared = AppSettings()
+	@MainActor static let shared = AppSettings()
 
 	@Published var theme: Theme = .dark
 	@Published var customFontName: String = ""
 	@Published var fontSize: FontSize = .medium
+	@Published var windowShadowRadius: Double = 12.0
+	@Published var windowShadowOpacity: Double = 0.3
 	@Published var maxResults: Int = 7
 	@Published var maxClipboardItems: Int = 30
 	@Published var clipboardRetentionDays: Int = 7
@@ -144,7 +146,7 @@ class AppSettings: ObservableObject {
 		"/System/Applications",
 		"/System/Applications/Utilities"
 	]
-	@Published var enableFileSearch: Bool = false
+	@Published var enableFileSearch: Bool = true
 	@Published var fileSearchDirectories: [String] = [
 		NSHomeDirectory() + "/Documents",
 		NSHomeDirectory() + "/Desktop"
@@ -444,6 +446,13 @@ class AppSettings: ObservableObject {
 	}
 
 	func scheduleSave() {
+		guard Thread.isMainThread else {
+			DispatchQueue.main.async { [weak self] in
+				self?.scheduleSave()
+			}
+			return
+		}
+
 		saveWorkItem?.cancel()
 		saveWorkItem = DispatchWorkItem { [weak self] in
 			self?.saveNow()
@@ -574,13 +583,40 @@ class AppSettings: ObservableObject {
 		scheduleSave()
 	}
 
+	func updateFallbackEngine(id: String, name: String, urlTemplate: String, iconName: String) {
+		if let index = customFallbackEngines.firstIndex(where: { $0.id == id }) {
+			let oldIconName = customFallbackEngines[index].iconName.replacingOccurrences(of: "web:", with: "")
+			if oldIconName != iconName.replacingOccurrences(of: "web:", with: ""),
+			   oldIconName != "globe",
+			   !oldIconName.isEmpty {
+				WebIconDownloader.deleteIcon(forName: oldIconName)
+			}
+
+			customFallbackEngines[index] = WebSearchEngine(
+				id: id,
+				name: name,
+				urlTemplate: urlTemplate,
+				iconName: iconName
+			)
+			scheduleSave()
+		}
+	}
+
 	func removeFallbackEngine(id: String) {
+		let engine = customFallbackEngines.first { $0.id == id }
+		let iconName = engine?.iconName.replacingOccurrences(of: "web:", with: "")
+
 		if WebSearchEngine.defaults.contains(where: { $0.id == id }) {
 			disabledDefaultEngines.insert(id)
 		} else {
 			customFallbackEngines.removeAll { $0.id == id }
 		}
 		fallbackSearchEngines.removeAll { $0 == id }
+
+		if let iconName, iconName != "globe", !iconName.isEmpty {
+			WebIconDownloader.deleteIcon(forName: iconName)
+		}
+
 		scheduleSave()
 	}
 
