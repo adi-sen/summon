@@ -668,7 +668,6 @@ struct CSnippetMatch {
 	var matchEnd: Int
 }
 
-
 @_silgen_name("calculator_clear_history")
 func calculator_clear_history(_ handle: OpaquePointer?)
 

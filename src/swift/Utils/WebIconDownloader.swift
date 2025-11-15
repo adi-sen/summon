@@ -12,7 +12,7 @@ enum WebIconDownloader {
 		NSColor(red: 0.96, green: 0.50, blue: 0.09, alpha: 1.0), // Orange
 		NSColor(red: 0.00, green: 0.74, blue: 0.83, alpha: 1.0), // Cyan
 		NSColor(red: 0.91, green: 0.12, blue: 0.39, alpha: 1.0), // Pink
-		NSColor(red: 0.40, green: 0.23, blue: 0.72, alpha: 1.0)  // Indigo
+		NSColor(red: 0.40, green: 0.23, blue: 0.72, alpha: 1.0) // Indigo
 	]
 
 	static func getIcon(for name: String, size: NSSize, completion: @escaping (NSImage?) -> Void) {
@@ -37,7 +37,8 @@ enum WebIconDownloader {
 
 	private static func loadIcon(name: String, size: NSSize) -> NSImage? {
 		if let userIconPath = StoragePathManager.shared.getWebIconPath(forName: name),
-		   let image = NSImage(contentsOfFile: userIconPath) {
+		   let image = NSImage(contentsOfFile: userIconPath)
+		{
 			return compressAndResize(image: image, to: size)
 		}
 
@@ -80,9 +81,10 @@ enum WebIconDownloader {
 		guard let tiffData = newImage.tiffRepresentation,
 		      let bitmap = NSBitmapImageRep(data: tiffData),
 		      let compressedData = bitmap.representation(
-			using: .jpeg,
-			properties: [.compressionFactor: 0.8]
-		      ) else {
+		      	using: .jpeg,
+		      	properties: [.compressionFactor: 0.8]
+		      )
+		else {
 			return newImage
 		}
 

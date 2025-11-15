@@ -122,7 +122,6 @@ mod tests {
 	#[test]
 	fn test_case_insensitive() {
 		let matcher = FuzzyMatcher::new();
-		// Smart case: lowercase queries are case-insensitive
 		let score1 = matcher.fuzzy_match("Safari", "safari");
 		let score2 = matcher.fuzzy_match("Safari", "saf");
 		let score3 = matcher.fuzzy_match("Visual Studio Code", "code");

@@ -30,7 +30,9 @@ struct ThemeCard: View {
 			.background(
 				isSelected
 					? settings.searchBarColorUI.opacity(DesignTokens.Opacity.dropdownBackground)
-					: (isHovered ? settings.searchBarColorUI.opacity(DesignTokens.Opacity.hover) : settings.searchBarColorUI.opacity(DesignTokens.Opacity.controlBackground))
+					:
+					(isHovered ? settings.searchBarColorUI.opacity(DesignTokens.Opacity.hover) : settings
+						.searchBarColorUI.opacity(DesignTokens.Opacity.controlBackground))
 			)
 			.cornerRadius(DesignTokens.CornerRadius.md)
 			.overlay(

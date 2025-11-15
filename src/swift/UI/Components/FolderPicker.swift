@@ -14,20 +14,21 @@ struct FolderPicker: View {
 			return []
 		}
 
-		return contents
-			.filter { !$0.hasPrefix(".") }
-			.filter { item in
-				var isDir: ObjCBool = false
-				let fullPath = (path as NSString).appendingPathComponent(item)
-				fileManager.fileExists(atPath: fullPath, isDirectory: &isDir)
-				return isDir.boolValue
-			}
-			.sorted()
+		return
+			contents
+				.filter { !$0.hasPrefix(".") }
+				.filter { item in
+					var isDir: ObjCBool = false
+					let fullPath = (path as NSString).appendingPathComponent(item)
+					fileManager.fileExists(atPath: fullPath, isDirectory: &isDir)
+					return isDir.boolValue
+				}
+				.sorted()
 	}
 
 	private func navigateUp() {
 		let parent = (currentPath as NSString).deletingLastPathComponent
-		if parent != currentPath, parent != "" {
+		if parent != currentPath, !parent.isEmpty {
 			currentPath = parent
 			selectedFolder = nil
 		}
@@ -82,7 +83,8 @@ struct FolderPicker: View {
 								selectedFolder = folder
 							},
 							onOpen: {
-								let newPath = (currentPath as NSString).appendingPathComponent(folder)
+								let newPath = (currentPath as NSString).appendingPathComponent(
+									folder)
 								currentPath = newPath
 								selectedFolder = nil
 							}

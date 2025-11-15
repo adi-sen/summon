@@ -1,7 +1,4 @@
-use std::{
-	path::{Path, PathBuf},
-	time::SystemTime,
-};
+use std::{path::{Path, PathBuf}, time::SystemTime};
 
 use compact_str::CompactString;
 use lru::LruCache;
@@ -20,8 +17,8 @@ static DEFAULT_EXTENSIONS: &[&str] = &[
 ];
 
 pub struct FileScanner {
-	cache: LruCache<Vec<PathBuf>, Vec<IndexedItem>>,
-	allowed_exts: Vec<String>,
+	cache:            LruCache<Vec<PathBuf>, Vec<IndexedItem>>,
+	allowed_exts:     Vec<String>,
 	scan_directories: Vec<PathBuf>,
 }
 

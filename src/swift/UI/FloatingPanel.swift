@@ -1,6 +1,6 @@
 import Cocoa
-import SwiftUI
 import Combine
+import SwiftUI
 
 class FloatingPanel: NSPanel {
 	private var cancellables = Set<AnyCancellable>()

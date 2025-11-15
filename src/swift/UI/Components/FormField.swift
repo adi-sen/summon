@@ -30,7 +30,9 @@ struct FormField<Content: View>: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: spacing) {
 			Text(label)
-				.font(Font(settings.uiFont.withSize(labelStyle == .uppercase ? DesignTokens.Typography.small : DesignTokens.Typography.small + 1)))
+				.font(Font(settings.uiFont
+						.withSize(labelStyle == .uppercase ? DesignTokens.Typography.small : DesignTokens.Typography
+							.small + 1)))
 				.foregroundColor(
 					labelStyle == .uppercase ? settings.secondaryTextColorUI : settings.textColorUI
 				)
@@ -74,7 +76,8 @@ extension FormField where Content == AnyView {
 					.foregroundColor(settings.textColorUI)
 					.padding(DesignTokens.Spacing.md + 2)
 					.background(settings.searchBarColorUI.opacity(0.5))
-					.cornerRadius(labelStyle == .uppercase ? DesignTokens.CornerRadius.sm : DesignTokens.CornerRadius.md)
+					.cornerRadius(labelStyle == .uppercase ? DesignTokens.CornerRadius.sm : DesignTokens.CornerRadius
+						.md)
 					.onChange(of: text.wrappedValue) { _ in
 						onChange?()
 					}

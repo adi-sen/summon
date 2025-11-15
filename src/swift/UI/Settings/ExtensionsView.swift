@@ -81,7 +81,7 @@ struct ExtensionsSettingsTab: View {
 				pendingGKey = false
 			}
 
-			guard event.modifierFlags.intersection([.command, .option, .control]).isEmpty else {
+			guard event.modifierFlags.isDisjoint(with: [.command, .option, .control]) else {
 				return event
 			}
 
@@ -149,10 +149,13 @@ struct ExtensionsSettingsTab: View {
 			guard response == .OK, let url = openPanel.url else { return }
 
 			let extensionsDir = StoragePathManager.shared.getExtensionsDir()
-			let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+			let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+				UUID().uuidString)
 
 			do {
-				try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+				try FileManager.default.createDirectory(
+					at: tempDir, withIntermediateDirectories: true
+				)
 
 				let process = Process()
 				process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
@@ -167,7 +170,9 @@ struct ExtensionsSettingsTab: View {
 					return
 				}
 
-				let contents = try FileManager.default.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
+				let contents = try FileManager.default.contentsOfDirectory(
+					at: tempDir, includingPropertiesForKeys: nil
+				)
 
 				guard let extensionDir = contents.first(where: { $0.hasDirectoryPath }) else {
 					try? FileManager.default.removeItem(at: tempDir)
@@ -182,7 +187,8 @@ struct ExtensionsSettingsTab: View {
 					return
 				}
 
-				let destURL = URL(fileURLWithPath: extensionsDir).appendingPathComponent(extensionDir.lastPathComponent)
+				let destURL = URL(fileURLWithPath: extensionsDir).appendingPathComponent(
+					extensionDir.lastPathComponent)
 
 				if FileManager.default.fileExists(atPath: destURL.path) {
 					try FileManager.default.removeItem(at: destURL)
@@ -214,7 +220,9 @@ struct ExtensionsSettingsTab: View {
 					HStack(spacing: DesignTokens.Spacing.lg) {
 						SwiftUI.Button(action: {
 							let extensionsDir = StoragePathManager.shared.getExtensionsDir()
-							NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: extensionsDir)
+							NSWorkspace.shared.selectFile(
+								nil, inFileViewerRootedAtPath: extensionsDir
+							)
 						}) {
 							Image(systemName: "folder")
 								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
@@ -260,9 +268,15 @@ struct ExtensionsSettingsTab: View {
 						}) {
 							HStack(spacing: DesignTokens.Spacing.sm) {
 								Image(systemName: "plus.circle.fill")
-									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.title)))
+									.font(
+										Font(
+											settings.uiFont.withSize(DesignTokens.Typography.title))
+									)
 								Text("Create Extension")
-									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+									.font(
+										Font(
+											settings.uiFont.withSize(DesignTokens.Typography.small))
+									)
 							}
 							.foregroundColor(settings.accentColorUI)
 							.padding(.horizontal, DesignTokens.Spacing.xl)
@@ -380,8 +394,12 @@ struct ExtensionListItem: View {
 		}
 		.padding(.horizontal, DesignTokens.Spacing.lg)
 		.padding(.vertical, DesignTokens.Spacing.md)
-		.background(isSelected ? settings.accentColorUI
-			.opacity(0.15) : (isHovered ? settings.searchBarColorUI.opacity(0.5) : Color.clear))
+		.background(
+			isSelected
+				? settings.accentColorUI
+				.opacity(0.15)
+				: (isHovered ? settings.searchBarColorUI.opacity(0.5) : Color.clear)
+		)
 		.cornerRadius(DesignTokens.CornerRadius.md)
 		.onHover { hovering in
 			isHovered = hovering

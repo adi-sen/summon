@@ -22,6 +22,9 @@ struct SearchField: NSViewRepresentable {
 		textField.coordinator = context.coordinator
 		textField.quickSelectModifier = quickSelectModifier
 		textField.isAutomaticTextCompletionEnabled = false
+		textField.alignment = .left
+		textField.usesSingleLineMode = true
+		textField.lineBreakMode = .byTruncatingTail
 		return textField
 	}
 

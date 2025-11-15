@@ -13,7 +13,8 @@ class StatusBarManager {
 
 		if let button = statusItem?.button {
 			if let resourcePath = Bundle.main.resourcePath,
-			   let icon = NSImage(contentsOfFile: resourcePath + "/AppIcon.icns") {
+			   let icon = NSImage(contentsOfFile: resourcePath + "/AppIcon.icns")
+			{
 				let resizedIcon = NSImage(size: NSSize(width: 18, height: 18))
 				resizedIcon.lockFocus()
 				icon.draw(in: NSRect(x: 0, y: 0, width: 18, height: 18))
@@ -53,7 +54,11 @@ class StatusBarManager {
 		let extensionsItem = NSMenuItem(title: "Extensions", action: #selector(openExtensions), keyEquivalent: "")
 		extensionsItem.target = self
 
-		let clearClipboardItem = NSMenuItem(title: "Clear Clipboard History", action: #selector(clearClipboard), keyEquivalent: "")
+		let clearClipboardItem = NSMenuItem(
+			title: "Clear Clipboard History",
+			action: #selector(clearClipboard),
+			keyEquivalent: ""
+		)
 		clearClipboardItem.target = self
 
 		let quitItem = NSMenuItem(title: "Quit Summon", action: #selector(quitApp), keyEquivalent: "")

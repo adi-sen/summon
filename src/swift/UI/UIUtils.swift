@@ -13,7 +13,7 @@ enum UIUtils {
 
 extension View {
 	@ViewBuilder
-	func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+	func `if`(_ condition: Bool, transform: (Self) -> some View) -> some View {
 		if condition {
 			transform(self)
 		} else {

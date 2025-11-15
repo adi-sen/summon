@@ -5,6 +5,7 @@ import SwiftUI
 class SearchCoordinator: ObservableObject {
     @Published var results: [CategoryResult] = []
     @Published var searchTimeMs: Double?
+    @Published var isSearching: Bool = false
 
     private let searchEngine: SearchEngine
     private let settings: AppSettings
@@ -25,9 +26,11 @@ class SearchCoordinator: ObservableObject {
         if query.isEmpty {
             results = []
             searchTimeMs = nil
+            isSearching = false
             return
         }
 
+        isSearching = true
         performActiveSearch(query: query, generation: searchGeneration)
     }
 
@@ -39,6 +42,7 @@ class SearchCoordinator: ObservableObject {
     func resetResults() {
         results = []
         searchTimeMs = nil
+        isSearching = false
     }
 
     private func performActiveSearch(query: String, generation: Int) {
@@ -53,25 +57,22 @@ class SearchCoordinator: ObservableObject {
                 var allResults: [CategoryResult] = []
                 let maxResults = self.settings.maxResults
 
-                // Calculator results
                 if let calcResult = self.evaluateCalculator(query) {
                     allResults.append(self.createCalculatorResult(calcResult, query: query))
                 }
 
-                // App and command results
                 let appResults = self.searchEngine.search(query, limit: maxResults)
                 let validAppResults = self.filterValidApps(appResults)
                 allResults.append(contentsOf: self.createAppResults(validAppResults))
 
-                // Action results
                 let actionResults = ActionManager.shared.search(query: query)
                 allResults.append(contentsOf: self.createActionResults(actionResults))
 
-                // Fallback web search results
                 if self.shouldShowFallback(query: query, currentResults: allResults) {
                     allResults.append(
                         contentsOf: self.createFallbackResults(
-                            query: query, currentResults: allResults))
+                            query: query, currentResults: allResults
+                        ))
                 }
 
                 allResults.sort { $0.score > $1.score }
@@ -86,6 +87,7 @@ class SearchCoordinator: ObservableObject {
                     autoreleasepool {
                         self.results = allResults
                         self.searchTimeMs = elapsedMs
+                        self.isSearching = false
                     }
 
                     malloc_zone_pressure_relief(nil, 0)
@@ -96,8 +98,6 @@ class SearchCoordinator: ObservableObject {
         searchTask = task
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.05, execute: task)
     }
-
-    // MARK: - Result Creation
 
     private func createCalculatorResult(_ result: String, query: String) -> CategoryResult {
         let resultCopy = result
@@ -194,7 +194,8 @@ class SearchCoordinator: ObservableObject {
             let encodedQuery =
                 query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
             let searchURL = engine.urlTemplate.replacingOccurrences(
-                of: "{query}", with: encodedQuery)
+                of: "{query}", with: encodedQuery
+            )
 
             var icon: NSImage?
             if engine.iconName.hasPrefix("web:") {
@@ -235,8 +236,6 @@ class SearchCoordinator: ObservableObject {
 
         return fallbackResults
     }
-
-    // MARK: - Helper Methods
 
     private func filterValidApps(_ appResults: [SearchResult]) -> [SearchResult] {
         let fileManager = FileManager.default

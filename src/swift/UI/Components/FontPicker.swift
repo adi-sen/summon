@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct FontPicker: View {
 	@Binding var selectedFont: String
@@ -126,7 +126,8 @@ struct FontPicker: View {
 						if !searchText.isEmpty || groupedFonts.count > 1 {
 							Text(category.uppercased())
 								.font(.system(size: DesignTokens.Typography.small - 1))
-								.foregroundColor(settings.secondaryTextColorUI.opacity(DesignTokens.Opacity.categoryText))
+								.foregroundColor(settings.secondaryTextColorUI
+									.opacity(DesignTokens.Opacity.categoryText))
 								.padding(.horizontal, DesignTokens.Spacing.sm)
 								.padding(.top, category == groupedFonts.first?.0 ? 0 : DesignTokens.Spacing.xs)
 						}
