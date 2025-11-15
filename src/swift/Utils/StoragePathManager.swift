@@ -65,4 +65,28 @@ struct StoragePathManager {
 		let extensionsDir = URL(fileURLWithPath: getExtensionsDir())
 		return extensionsDir.appendingPathComponent("\(id).lua").path
 	}
+
+	func getWebIconsDir() -> String {
+		let iconsDir = appSupportDir.appendingPathComponent("web-icons")
+		try? FileManager.default.createDirectory(
+			at: iconsDir,
+			withIntermediateDirectories: true,
+			attributes: nil
+		)
+		return iconsDir.path
+	}
+
+	func getWebIconPath(forName name: String) -> String? {
+		let iconsDir = URL(fileURLWithPath: getWebIconsDir())
+		let fileManager = FileManager.default
+
+		let formats = ["png", "jpg", "jpeg", "webp", "heic", "gif", "tiff", "bmp"]
+		for format in formats {
+			let iconPath = iconsDir.appendingPathComponent("\(name).\(format)")
+			if fileManager.fileExists(atPath: iconPath.path) {
+				return iconPath.path
+			}
+		}
+		return nil
+	}
 }

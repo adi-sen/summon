@@ -3,19 +3,16 @@ import Foundation
 
 enum WebIconDownloader {
 	private static let iconCache = NSCache<NSString, NSImage>()
-	private static let webIconsDir = "\(NSHomeDirectory())/Library/Application Support/Summon/WebIcons"
 
-	private static let iconURLs: [String: String] = [
-		"google": "https://www.google.com/favicon.ico",
-		"duckduckgo": "https://duckduckgo.com/favicon.ico",
-		"startpage": "https://www.startpage.com/favicon.ico",
-		"ecosia": "https://www.ecosia.org/favicon.ico",
-		"brave": "https://brave.com/static-assets/images/brave-favicon.png",
-		"kagi": "https://kagi.com/favicon.ico",
-		"github": "https://github.com/favicon.ico",
-		"stackoverflow": "https://stackoverflow.com/favicon.ico",
-		"wikipedia": "https://en.wikipedia.org/favicon.ico",
-		"youtube": "https://www.youtube.com/favicon.ico"
+	private static let fallbackColors: [NSColor] = [
+		NSColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1.0), // Blue
+		NSColor(red: 0.95, green: 0.26, blue: 0.21, alpha: 1.0), // Red
+		NSColor(red: 0.30, green: 0.69, blue: 0.31, alpha: 1.0), // Green
+		NSColor(red: 0.61, green: 0.15, blue: 0.69, alpha: 1.0), // Purple
+		NSColor(red: 0.96, green: 0.50, blue: 0.09, alpha: 1.0), // Orange
+		NSColor(red: 0.00, green: 0.74, blue: 0.83, alpha: 1.0), // Cyan
+		NSColor(red: 0.91, green: 0.12, blue: 0.39, alpha: 1.0), // Pink
+		NSColor(red: 0.40, green: 0.23, blue: 0.72, alpha: 1.0)  // Indigo
 	]
 
 	static func getIcon(for name: String, size: NSSize, completion: @escaping (NSImage?) -> Void) {
@@ -25,108 +22,125 @@ enum WebIconDownloader {
 			return
 		}
 
-		let iconPath = "\(webIconsDir)/\(name).png"
-		if FileManager.default.fileExists(atPath: iconPath),
-		   let image = NSImage(contentsOfFile: iconPath)
-		{
-			let resized = resizeIcon(image, targetSize: size)
-			iconCache.setObject(resized, forKey: cacheKey)
-			completion(resized)
+		if let icon = loadIcon(name: name, size: size) {
+			iconCache.setObject(icon, forKey: cacheKey)
+			completion(icon)
 			return
 		}
 
-		guard let urlString = iconURLs[name],
-		      let url = URL(string: urlString)
-		else {
-			completion(nil)
-			return
+		let fallbackIcon = generateFallbackIcon(name: name, size: size)
+		if let fallbackIcon {
+			iconCache.setObject(fallbackIcon, forKey: cacheKey)
+		}
+		completion(fallbackIcon)
+	}
+
+	private static func loadIcon(name: String, size: NSSize) -> NSImage? {
+		if let userIconPath = StoragePathManager.shared.getWebIconPath(forName: name),
+		   let image = NSImage(contentsOfFile: userIconPath) {
+			return compressAndResize(image: image, to: size)
 		}
 
-		DispatchQueue.global(qos: .userInitiated).async {
-			downloadAndCacheIcon(url: url, name: name, size: size) { image in
-				DispatchQueue.main.async {
-					if let image {
-						iconCache.setObject(image, forKey: cacheKey)
-					}
-					completion(image)
-				}
+		if let bundledIcon = loadBundledIcon(name: name, size: size) {
+			return bundledIcon
+		}
+
+		return nil
+	}
+
+	private static func loadBundledIcon(name: String, size: NSSize) -> NSImage? {
+		guard let resourcePath = Bundle.main.resourcePath else { return nil }
+		let iconsDir = "\(resourcePath)/web-icons"
+
+		let formats = ["png", "jpg", "jpeg", "webp", "heic", "gif", "tiff", "bmp", "ico"]
+		for format in formats {
+			let iconPath = "\(iconsDir)/\(name).\(format)"
+			if let image = NSImage(contentsOfFile: iconPath) {
+				return compressAndResize(image: image, to: size)
 			}
 		}
+
+		return nil
 	}
 
-	private static func downloadAndCacheIcon(
-		url: URL,
-		name: String,
-		size: NSSize,
-		completion: @escaping (NSImage?) -> Void
-	) {
-		guard let data = try? Data(contentsOf: url),
-		      let image = NSImage(data: data)
-		else {
-			completion(nil)
-			return
-		}
-
-		try? FileManager.default.createDirectory(
-			atPath: webIconsDir,
-			withIntermediateDirectories: true,
-			attributes: nil
-		)
-
-		let iconPath = "\(webIconsDir)/\(name).png"
-		if let tiffData = image.tiffRepresentation,
-		   let bitmap = NSBitmapImageRep(data: tiffData),
-		   let pngData = bitmap.representation(using: .png, properties: [:])
-		{
-			try? pngData.write(to: URL(fileURLWithPath: iconPath))
-		}
-
-		let resized = resizeIcon(image, targetSize: size)
-		completion(resized)
-	}
-
-	private static func resizeIcon(_ image: NSImage, targetSize: NSSize) -> NSImage {
-		guard
-			let imageData = image.tiffRepresentation,
-			let bitmap = NSBitmapImageRep(data: imageData)
-		else {
-			return image
-		}
-
-		let sourceSize = NSSize(width: bitmap.pixelsWide, height: bitmap.pixelsHigh)
-		let widthRatio = targetSize.width / sourceSize.width
-		let heightRatio = targetSize.height / sourceSize.height
-		let scaleFactor = min(widthRatio, heightRatio)
-
-		let scaledSize = NSSize(
-			width: sourceSize.width * scaleFactor,
-			height: sourceSize.height * scaleFactor
-		)
-
-		let resized = NSImage(size: targetSize)
-		resized.lockFocus()
-
-		NSColor.clear.setFill()
-		NSRect(origin: .zero, size: targetSize).fill()
+	private static func compressAndResize(image: NSImage, to size: NSSize) -> NSImage? {
+		let newImage = NSImage(size: size)
+		newImage.lockFocus()
 
 		NSGraphicsContext.current?.imageInterpolation = .high
-
-		let xOffset = (targetSize.width - scaledSize.width) / 2
-		let yOffset = (targetSize.height - scaledSize.height) / 2
-
 		image.draw(
-			in: NSRect(x: xOffset, y: yOffset, width: scaledSize.width, height: scaledSize.height),
+			in: NSRect(origin: .zero, size: size),
 			from: NSRect(origin: .zero, size: image.size),
-			operation: .sourceOver,
+			operation: .copy,
 			fraction: 1.0
 		)
 
-		resized.unlockFocus()
-		return resized
+		newImage.unlockFocus()
+
+		guard let tiffData = newImage.tiffRepresentation,
+		      let bitmap = NSBitmapImageRep(data: tiffData),
+		      let compressedData = bitmap.representation(
+			using: .jpeg,
+			properties: [.compressionFactor: 0.8]
+		      ) else {
+			return newImage
+		}
+
+		return NSImage(data: compressedData) ?? newImage
+	}
+
+	private static func generateFallbackIcon(name: String, size: NSSize) -> NSImage? {
+		let colorIndex = abs(name.hashValue) % fallbackColors.count
+		let color = fallbackColors[colorIndex]
+
+		let image = NSImage(size: size)
+		image.lockFocus()
+
+		let rect = NSRect(origin: .zero, size: size)
+		let circlePath = NSBezierPath(ovalIn: rect.insetBy(dx: 2, dy: 2))
+
+		color.setFill()
+		circlePath.fill()
+
+		let letter = name.prefix(1).uppercased()
+		let fontSize = size.height * 0.5
+		let font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
+		let attributes: [NSAttributedString.Key: Any] = [
+			.font: font,
+			.foregroundColor: NSColor.white
+		]
+
+		let letterSize = letter.size(withAttributes: attributes)
+		let letterRect = NSRect(
+			x: (size.width - letterSize.width) / 2,
+			y: (size.height - letterSize.height) / 2,
+			width: letterSize.width,
+			height: letterSize.height
+		)
+
+		letter.draw(in: letterRect, withAttributes: attributes)
+
+		image.unlockFocus()
+		return image
 	}
 
 	static func clearCache() {
 		iconCache.removeAllObjects()
-		try? FileManager.default.removeItem(atPath: webIconsDir)
+	}
+
+	static func deleteIcon(forName name: String) {
+		let sizes = [28, 32, 48, 64] // Common icon sizes
+		for size in sizes {
+			let cacheKey = "\(name)-\(size)x\(size)" as NSString
+			iconCache.removeObject(forKey: cacheKey)
+		}
+
+		if let iconPath = StoragePathManager.shared.getWebIconPath(forName: name) {
+			try? FileManager.default.removeItem(atPath: iconPath)
+		}
+	}
+
+	static func getIconsDirectory() -> String {
+		StoragePathManager.shared.getWebIconsDir()
 	}
 }
