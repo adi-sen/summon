@@ -1,7 +1,7 @@
 import Foundation
 
 enum AppConstants {
-	enum UI {
+	enum UserInterface {
 		static let appIconSize: CGFloat = 28
 		static let smallIconSize: CGFloat = 16
 		static let symbolFontSize: CGFloat = 20

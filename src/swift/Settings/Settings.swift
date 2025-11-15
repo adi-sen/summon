@@ -13,7 +13,10 @@ struct KeyboardShortcut: Codable, Equatable {
 	]
 
 	var displayString: String {
-		let parts = Self.modifierMap.compactMap { modifiers & $0.0 != 0 ? $0.1 : nil } + [keyCodeToString(keyCode)]
+		let parts =
+			Self.modifierMap.compactMap { modifiers & $0.0 != 0 ? $0.1 : nil } + [
+				keyCodeToString(keyCode)
+			]
 		return parts.joined(separator: " ")
 	}
 
@@ -87,12 +90,32 @@ struct WebSearchEngine: Codable, Identifiable, Hashable {
 	var keyword: String?
 
 	static let defaults: [WebSearchEngine] = [
-		WebSearchEngine(id: "google", name: "Google", urlTemplate: "https://www.google.com/search?q={query}", iconName: "web:google", keyword: "g"),
-		WebSearchEngine(id: "duckduckgo", name: "DuckDuckGo", urlTemplate: "https://duckduckgo.com/?q={query}", iconName: "web:duckduckgo", keyword: "ddg"),
-		WebSearchEngine(id: "startpage", name: "Startpage", urlTemplate: "https://www.startpage.com/do/search?q={query}", iconName: "web:startpage", keyword: "sp"),
-		WebSearchEngine(id: "ecosia", name: "Ecosia", urlTemplate: "https://www.ecosia.org/search?q={query}", iconName: "web:ecosia", keyword: "eco"),
-		WebSearchEngine(id: "brave", name: "Brave Search", urlTemplate: "https://search.brave.com/search?q={query}", iconName: "web:brave", keyword: "brave"),
-		WebSearchEngine(id: "kagi", name: "Kagi", urlTemplate: "https://kagi.com/search?q={query}", iconName: "web:kagi", keyword: "kagi"),
+		WebSearchEngine(
+			id: "google", name: "Google", urlTemplate: "https://www.google.com/search?q={query}",
+			iconName: "web:google", keyword: "g"
+		),
+		WebSearchEngine(
+			id: "duckduckgo", name: "DuckDuckGo", urlTemplate: "https://duckduckgo.com/?q={query}",
+			iconName: "web:duckduckgo", keyword: "ddg"
+		),
+		WebSearchEngine(
+			id: "startpage", name: "Startpage",
+			urlTemplate: "https://www.startpage.com/do/search?q={query}", iconName: "web:startpage",
+			keyword: "sp"
+		),
+		WebSearchEngine(
+			id: "ecosia", name: "Ecosia", urlTemplate: "https://www.ecosia.org/search?q={query}",
+			iconName: "web:ecosia", keyword: "eco"
+		),
+		WebSearchEngine(
+			id: "brave", name: "Brave Search",
+			urlTemplate: "https://search.brave.com/search?q={query}", iconName: "web:brave",
+			keyword: "brave"
+		),
+		WebSearchEngine(
+			id: "kagi", name: "Kagi", urlTemplate: "https://kagi.com/search?q={query}",
+			iconName: "web:kagi", keyword: "kagi"
+		)
 	]
 }
 
@@ -102,14 +125,14 @@ enum FallbackSearchBehavior: String, Codable, CaseIterable {
 
 	var displayName: String {
 		switch self {
-		case .onlyWhenEmpty: return "Only when no results"
-		case .appendToResults: return "Append to results"
+		case .onlyWhenEmpty: "Only when no results"
+		case .appendToResults: "Append to results"
 		}
 	}
 }
 
 class AppSettings: ObservableObject {
-	@MainActor static let shared = AppSettings()
+	static let shared = AppSettings()
 
 	@Published var theme: Theme = .dark
 	@Published var customFontName: String = ""
@@ -193,7 +216,9 @@ class AppSettings: ObservableObject {
 	var uiFont: NSFont {
 		let size = fontSize.size
 		return customFontName
-			.isEmpty ? .systemFont(ofSize: size) : NSFont(name: customFontName, size: size) ?? .systemFont(ofSize: size)
+			.isEmpty
+			? .systemFont(ofSize: size)
+			: NSFont(name: customFontName, size: size) ?? .systemFont(ofSize: size)
 	}
 
 	private func font(size: CGFloat, weight: Font.Weight? = nil) -> Font {
@@ -209,7 +234,9 @@ class AppSettings: ObservableObject {
 	var resultCategoryFont: Font { font(size: fontSize.resultCategorySize) }
 
 	init() {
-		let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+		let appSupport = FileManager.default.urls(
+			for: .applicationSupportDirectory, in: .userDomainMask
+		).first!
 		let invokeDir = appSupport.appendingPathComponent("Summon", isDirectory: true)
 		try? FileManager.default.createDirectory(at: invokeDir, withIntermediateDirectories: true)
 		let storagePath = invokeDir.appendingPathComponent("settings.rkyv").path
@@ -226,26 +253,31 @@ class AppSettings: ObservableObject {
 			maxResults = swiftSettings.maxResults
 			maxClipboardItems = swiftSettings.maxClipboardItems
 			clipboardRetentionDays = swiftSettings.clipboardRetentionDays
-			quickSelectModifier = QuickSelectModifier(rawValue: swiftSettings.quickSelectModifier) ?? .command
+			quickSelectModifier =
+				QuickSelectModifier(rawValue: swiftSettings.quickSelectModifier) ?? .command
 			enableCommands = swiftSettings.enableCommands
 			showTrayIcon = swiftSettings.showTrayIcon
 			showDockIcon = swiftSettings.showDockIcon
 			hideTrafficLights = swiftSettings.hideTrafficLights
-			searchFolders = swiftSettings.searchFolders.isEmpty ? [
-				"/Applications",
-				"/System/Applications",
-				"/System/Applications/Utilities"
-			] : swiftSettings.searchFolders
+			searchFolders =
+				swiftSettings.searchFolders.isEmpty
+					? [
+						"/Applications",
+						"/System/Applications",
+						"/System/Applications/Utilities"
+					] : swiftSettings.searchFolders
 
-			launcherShortcut = keyboardShortcutFromStrings(
-				key: swiftSettings.launcherShortcutKey,
-				mods: swiftSettings.launcherShortcutMods
-			) ?? .defaultLauncher
+			launcherShortcut =
+				keyboardShortcutFromStrings(
+					key: swiftSettings.launcherShortcutKey,
+					mods: swiftSettings.launcherShortcutMods
+				) ?? .defaultLauncher
 
-			clipboardShortcut = keyboardShortcutFromStrings(
-				key: swiftSettings.clipboardShortcutKey,
-				mods: swiftSettings.clipboardShortcutMods
-			) ?? .defaultClipboard
+			clipboardShortcut =
+				keyboardShortcutFromStrings(
+					key: swiftSettings.clipboardShortcutKey,
+					mods: swiftSettings.clipboardShortcutMods
+				) ?? .defaultClipboard
 		}
 
 		if let data = userDefaults.data(forKey: recentAppsKey),
@@ -522,7 +554,9 @@ class AppSettings: ObservableObject {
 		}
 	}
 
-	private func keyboardShortcutToStrings(_ shortcut: KeyboardShortcut) -> (key: String, mods: [String]) {
+	private func keyboardShortcutToStrings(_ shortcut: KeyboardShortcut) -> (
+		key: String, mods: [String]
+	) {
 		let keyString = keyCodeToString(shortcut.keyCode)
 		var mods: [String] = []
 
@@ -571,13 +605,17 @@ class AppSettings: ObservableObject {
 	}
 
 	var allFallbackEngines: [WebSearchEngine] {
-		let enabledDefaults = WebSearchEngine.defaults.filter { !disabledDefaultEngines.contains($0.id) }
+		let enabledDefaults = WebSearchEngine.defaults.filter {
+			!disabledDefaultEngines.contains($0.id)
+		}
 		return enabledDefaults + customFallbackEngines
 	}
 
 	func addFallbackEngine(name: String, urlTemplate: String, iconName: String) {
 		let id = UUID().uuidString
-		let engine = WebSearchEngine(id: id, name: name, urlTemplate: urlTemplate, iconName: iconName)
+		let engine = WebSearchEngine(
+			id: id, name: name, urlTemplate: urlTemplate, iconName: iconName
+		)
 		customFallbackEngines.append(engine)
 		fallbackSearchEngines.append(id)
 		scheduleSave()
@@ -585,10 +623,13 @@ class AppSettings: ObservableObject {
 
 	func updateFallbackEngine(id: String, name: String, urlTemplate: String, iconName: String) {
 		if let index = customFallbackEngines.firstIndex(where: { $0.id == id }) {
-			let oldIconName = customFallbackEngines[index].iconName.replacingOccurrences(of: "web:", with: "")
+			let oldIconName = customFallbackEngines[index].iconName.replacingOccurrences(
+				of: "web:", with: ""
+			)
 			if oldIconName != iconName.replacingOccurrences(of: "web:", with: ""),
 			   oldIconName != "globe",
-			   !oldIconName.isEmpty {
+			   !oldIconName.isEmpty
+			{
 				WebIconDownloader.deleteIcon(forName: oldIconName)
 			}
 
@@ -647,97 +688,98 @@ enum Theme: String, CaseIterable {
 	case oneDark = "one-dark"
 	case gruvbox, nord, dracula, catppuccin
 
-	private static let themeData: [Theme: (
-		name: String,
-		bg: (Double, Double, Double),
-		searchBar: (Double, Double, Double),
-		preview: (Double, Double, Double),
-		metadata: (Double, Double, Double),
-		text: (Double, Double, Double),
-		secondaryText: (Double, Double, Double),
-		accent: (Double, Double, Double)
-	)] = [
-		.dark: (
-			"Dark",
-			(0.11, 0.11, 0.11),
-			(0.15, 0.15, 0.15),
-			(0.14, 0.14, 0.14),
-			(0.12, 0.12, 0.12),
-			(0.90, 0.90, 0.90),
-			(0.60, 0.60, 0.60),
-			(0.35, 0.60, 1.00)
-		),
-		.light: (
-			"Light",
-			(0.95, 0.95, 0.95),
-			(0.88, 0.88, 0.88),
-			(0.90, 0.90, 0.90),
-			(0.85, 0.85, 0.85),
-			(0.10, 0.10, 0.10),
-			(0.40, 0.40, 0.40),
-			(0.00, 0.48, 1.00)
-		),
-		.tokyoNight: (
-			"Tokyo Night",
-			(0.09, 0.10, 0.14),
-			(0.12, 0.13, 0.18),
-			(0.11, 0.12, 0.16),
-			(0.10, 0.11, 0.15),
-			(0.90, 0.90, 0.90),
-			(0.60, 0.60, 0.60),
-			(0.45, 0.68, 0.98)
-		),
-		.oneDark: (
-			"One Dark",
-			(0.16, 0.17, 0.21),
-			(0.19, 0.20, 0.24),
-			(0.18, 0.19, 0.23),
-			(0.17, 0.18, 0.22),
-			(0.90, 0.90, 0.90),
-			(0.60, 0.60, 0.60),
-			(0.38, 0.68, 0.98)
-		),
-		.gruvbox: (
-			"Gruvbox",
-			(0.16, 0.15, 0.13),
-			(0.20, 0.19, 0.17),
-			(0.19, 0.18, 0.16),
-			(0.18, 0.17, 0.15),
-			(0.90, 0.90, 0.90),
-			(0.60, 0.60, 0.60),
-			(0.98, 0.70, 0.38)
-		),
-		.nord: (
-			"Nord",
-			(0.18, 0.20, 0.25),
-			(0.22, 0.24, 0.29),
-			(0.21, 0.23, 0.28),
-			(0.20, 0.22, 0.27),
-			(0.90, 0.90, 0.90),
-			(0.60, 0.60, 0.60),
-			(0.53, 0.75, 0.82)
-		),
-		.dracula: (
-			"Dracula",
-			(0.16, 0.17, 0.21),
-			(0.20, 0.21, 0.26),
-			(0.19, 0.20, 0.25),
-			(0.18, 0.19, 0.24),
-			(0.90, 0.90, 0.90),
-			(0.60, 0.60, 0.60),
-			(1.00, 0.47, 0.78)
-		),
-		.catppuccin: (
-			"Catppuccin",
-			(0.11, 0.11, 0.16),
-			(0.14, 0.14, 0.19),
-			(0.13, 0.13, 0.18),
-			(0.12, 0.12, 0.17),
-			(0.90, 0.90, 0.90),
-			(0.60, 0.60, 0.60),
-			(0.75, 0.71, 0.99)
-		)
-	]
+	private static let themeData:
+		[Theme: (
+			name: String,
+			bg: (Double, Double, Double),
+			searchBar: (Double, Double, Double),
+			preview: (Double, Double, Double),
+			metadata: (Double, Double, Double),
+			text: (Double, Double, Double),
+			secondaryText: (Double, Double, Double),
+			accent: (Double, Double, Double)
+		)] = [
+			.dark: (
+				"Dark",
+				(0.11, 0.11, 0.11),
+				(0.15, 0.15, 0.15),
+				(0.14, 0.14, 0.14),
+				(0.12, 0.12, 0.12),
+				(0.90, 0.90, 0.90),
+				(0.60, 0.60, 0.60),
+				(0.35, 0.60, 1.00)
+			),
+			.light: (
+				"Light",
+				(0.95, 0.95, 0.95),
+				(0.88, 0.88, 0.88),
+				(0.90, 0.90, 0.90),
+				(0.85, 0.85, 0.85),
+				(0.10, 0.10, 0.10),
+				(0.40, 0.40, 0.40),
+				(0.00, 0.48, 1.00)
+			),
+			.tokyoNight: (
+				"Tokyo Night",
+				(0.09, 0.10, 0.14),
+				(0.12, 0.13, 0.18),
+				(0.11, 0.12, 0.16),
+				(0.10, 0.11, 0.15),
+				(0.90, 0.90, 0.90),
+				(0.60, 0.60, 0.60),
+				(0.45, 0.68, 0.98)
+			),
+			.oneDark: (
+				"One Dark",
+				(0.16, 0.17, 0.21),
+				(0.19, 0.20, 0.24),
+				(0.18, 0.19, 0.23),
+				(0.17, 0.18, 0.22),
+				(0.90, 0.90, 0.90),
+				(0.60, 0.60, 0.60),
+				(0.38, 0.68, 0.98)
+			),
+			.gruvbox: (
+				"Gruvbox",
+				(0.16, 0.15, 0.13),
+				(0.20, 0.19, 0.17),
+				(0.19, 0.18, 0.16),
+				(0.18, 0.17, 0.15),
+				(0.90, 0.90, 0.90),
+				(0.60, 0.60, 0.60),
+				(0.98, 0.70, 0.38)
+			),
+			.nord: (
+				"Nord",
+				(0.18, 0.20, 0.25),
+				(0.22, 0.24, 0.29),
+				(0.21, 0.23, 0.28),
+				(0.20, 0.22, 0.27),
+				(0.90, 0.90, 0.90),
+				(0.60, 0.60, 0.60),
+				(0.53, 0.75, 0.82)
+			),
+			.dracula: (
+				"Dracula",
+				(0.16, 0.17, 0.21),
+				(0.20, 0.21, 0.26),
+				(0.19, 0.20, 0.25),
+				(0.18, 0.19, 0.24),
+				(0.90, 0.90, 0.90),
+				(0.60, 0.60, 0.60),
+				(1.00, 0.47, 0.78)
+			),
+			.catppuccin: (
+				"Catppuccin",
+				(0.11, 0.11, 0.16),
+				(0.14, 0.14, 0.19),
+				(0.13, 0.13, 0.18),
+				(0.12, 0.12, 0.17),
+				(0.90, 0.90, 0.90),
+				(0.60, 0.60, 0.60),
+				(0.75, 0.71, 0.99)
+			)
+		]
 
 	var name: String { Self.themeData[self]!.name }
 	var backgroundColor: (Double, Double, Double) { Self.themeData[self]!.bg }
@@ -752,18 +794,19 @@ enum Theme: String, CaseIterable {
 enum FontSize: String, CaseIterable {
 	case small, medium, large
 
-	private static let sizeData: [FontSize: (
-		name: String,
-		searchField: CGFloat,
-		resultName: CGFloat,
-		resultCategory: CGFloat,
-		previewText: CGFloat,
-		size: CGFloat
-	)] = [
-		.small: ("Small", 18, 12, 10, 11, 13),
-		.medium: ("Medium", 20, 14, 12, 13, 15),
-		.large: ("Large", 22, 16, 14, 15, 17)
-	]
+	private static let sizeData:
+		[FontSize: (
+			name: String,
+			searchField: CGFloat,
+			resultName: CGFloat,
+			resultCategory: CGFloat,
+			previewText: CGFloat,
+			size: CGFloat
+		)] = [
+			.small: ("Small", 18, 12, 10, 11, 13),
+			.medium: ("Medium", 20, 14, 12, 13, 15),
+			.large: ("Large", 22, 16, 14, 15, 17)
+		]
 
 	var name: String { Self.sizeData[self]!.name }
 	var searchFieldSize: CGFloat { Self.sizeData[self]!.searchField }
@@ -795,11 +838,12 @@ enum FontFamily: String, Codable, Equatable {
 enum QuickSelectModifier: String, CaseIterable {
 	case option, command, control
 
-	private static let modData: [QuickSelectModifier: (name: String, symbol: String, flag: NSEvent.ModifierFlags)] = [
-		.option: ("⌥ Option", "⌥", .option),
-		.command: ("⌘ Command", "⌘", .command),
-		.control: ("⌃ Control", "⌃", .control)
-	]
+	private static let modData:
+		[QuickSelectModifier: (name: String, symbol: String, flag: NSEvent.ModifierFlags)] = [
+			.option: ("⌥ Option", "⌥", .option),
+			.command: ("⌘ Command", "⌘", .command),
+			.control: ("⌃ Control", "⌃", .control)
+		]
 
 	var name: String { Self.modData[self]!.name }
 	var displaySymbol: String { Self.modData[self]!.symbol }
