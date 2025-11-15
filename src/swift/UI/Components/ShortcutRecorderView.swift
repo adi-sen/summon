@@ -16,12 +16,12 @@ struct ShortcutRecorderView: View {
 
 			Spacer()
 
-			Button(action: {
+			SwiftUI.Button(action: {
 				isRecording.toggle()
 				isFocused = isRecording
 			}) {
 				Text(isRecording ? "Press keys..." : shortcut.displayString)
-					.font(.system(size: DesignTokens.Typography.small, design: .monospaced))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 					.foregroundColor(isRecording ? settings.accentColorUI : settings.secondaryTextColorUI)
 					.padding(.horizontal, DesignTokens.Spacing.lg)
 					.padding(.vertical, DesignTokens.Spacing.sm)

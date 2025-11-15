@@ -51,9 +51,9 @@ struct FolderPicker: View {
 				.background(Color.white.opacity(0.1))
 
 			HStack(spacing: DesignTokens.Spacing.md) {
-				Button(action: navigateUp) {
+				SwiftUI.Button(action: navigateUp) {
 					Image(systemName: "chevron.left")
-						.font(.system(size: DesignTokens.Typography.small))
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.accentColorUI)
 						.frame(width: 24, height: 24)
 				}
@@ -98,11 +98,11 @@ struct FolderPicker: View {
 			HStack(spacing: DesignTokens.Spacing.lg) {
 				Spacer()
 
-				StyledButton("Cancel", style: .plain) {
+				Button("Cancel", style: .plain) {
 					isPresented = false
 				}
 
-				StyledButton("Select Current Folder", style: .primary) {
+				Button("Select Current Folder", style: .primary) {
 					onSelect(currentPath)
 					isPresented = false
 				}

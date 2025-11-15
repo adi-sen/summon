@@ -1,15 +1,15 @@
 import SwiftUI
 
-struct StyledButton: View {
+struct Button: View {
 	let title: String
 	let icon: String?
 	let action: () -> Void
-	let style: ButtonStyle
-	let size: ButtonSize
+	let style: Style
+	let size: Size
 	let fullWidth: Bool
 	@ObservedObject var settings = AppSettings.shared
 
-	enum ButtonStyle {
+	enum Style {
 		case primary
 		case secondary
 		case success
@@ -17,7 +17,7 @@ struct StyledButton: View {
 		case plain
 	}
 
-	enum ButtonSize {
+	enum Size {
 		case small
 		case medium
 		case large
@@ -58,8 +58,8 @@ struct StyledButton: View {
 	init(
 		_ title: String,
 		icon: String? = nil,
-		style: ButtonStyle = .primary,
-		size: ButtonSize = .medium,
+		style: Style = .primary,
+		size: Size = .medium,
 		fullWidth: Bool = false,
 		action: @escaping () -> Void
 	) {
@@ -72,11 +72,11 @@ struct StyledButton: View {
 	}
 
 	var body: some View {
-		Button(action: action) {
+		SwiftUI.Button(action: action) {
 			HStack(spacing: icon != nil ? 6 : 0) {
 				if let icon {
 					Image(systemName: icon)
-						.font(.system(size: size.iconSize))
+						.font(Font(settings.uiFont.withSize(size.iconSize)))
 				}
 				Text(title)
 					.font(Font(settings.uiFont.withSize(size.fontSize)))
@@ -122,7 +122,6 @@ struct StyledButton: View {
 	}
 }
 
-/// Icon-only button variant
 struct IconButton: View {
 	let icon: String
 	let action: () -> Void
@@ -143,9 +142,9 @@ struct IconButton: View {
 	}
 
 	var body: some View {
-		Button(action: action) {
+		SwiftUI.Button(action: action) {
 			Image(systemName: icon)
-				.font(.system(size: size))
+				.font(Font(settings.uiFont.withSize(size)))
 				.foregroundColor(color ?? settings.secondaryTextColorUI)
 		}
 		.buttonStyle(PlainButtonStyle())

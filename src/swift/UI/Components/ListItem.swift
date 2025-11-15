@@ -39,7 +39,7 @@ struct ListItem<TrailingContent: View>: View {
 	}
 
 	var body: some View {
-		Button(action: { action?() }) {
+		SwiftUI.Button(action: { action?() }) {
 			HStack(spacing: DesignTokens.Spacing.lg) {
 				iconView
 					.frame(width: DesignTokens.Layout.iconSize, height: DesignTokens.Layout.iconSize)
@@ -77,7 +77,7 @@ struct ListItem<TrailingContent: View>: View {
 		switch icon {
 		case .sfSymbol(let name, let color):
 			Image(systemName: name)
-				.font(.system(size: 16))
+				.font(Font(settings.uiFont.withSize(16)))
 				.foregroundColor(color ?? settings.accentColorUI)
 		case .image(let image):
 			Image(nsImage: image)
@@ -146,10 +146,10 @@ struct CompactListItem: View {
 	}
 
 	var body: some View {
-		Button(action: onSelect) {
+		SwiftUI.Button(action: onSelect) {
 			HStack(spacing: DesignTokens.Spacing.lg) {
 				Image(systemName: icon)
-					.font(.system(size: DesignTokens.Typography.large))
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(iconColor.opacity(0.8))
 
 				Text(title)
@@ -159,9 +159,9 @@ struct CompactListItem: View {
 				Spacer()
 
 				if let onSecondaryAction {
-					Button(action: onSecondaryAction) {
+					SwiftUI.Button(action: onSecondaryAction) {
 						Image(systemName: "chevron.right")
-							.font(.system(size: DesignTokens.Typography.small))
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(settings.secondaryTextColorUI)
 					}
 					.buttonStyle(PlainButtonStyle())

@@ -5,7 +5,7 @@ struct Switch: View {
 	@ObservedObject var settings = AppSettings.shared
 
 	var body: some View {
-		Button(action: { isOn.toggle() }) {
+		SwiftUI.Button(action: { isOn.toggle() }) {
 			HStack(spacing: 0) {
 				RoundedRectangle(cornerRadius: 4)
 					.fill(Color.white)
