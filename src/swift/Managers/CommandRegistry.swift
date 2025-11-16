@@ -63,8 +63,3 @@ final class CommandRegistry {
 		commands.first(where: { $0.id == id })?.action()
 	}
 }
-
-extension Notification.Name {
-	static let openSettings = Notification.Name("com.invoke.openSettings")
-	static let refreshAppIndex = Notification.Name("com.invoke.refreshAppIndex")
-}

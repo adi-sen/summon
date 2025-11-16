@@ -121,32 +121,3 @@ struct Button: View {
 		}
 	}
 }
-
-struct IconButton: View {
-	let icon: String
-	let action: () -> Void
-	let size: CGFloat
-	let color: Color?
-	@EnvironmentObject var settings: AppSettings
-
-	init(
-		icon: String,
-		size: CGFloat = 18,
-		color: Color? = nil,
-		action: @escaping () -> Void
-	) {
-		self.icon = icon
-		self.size = size
-		self.color = color
-		self.action = action
-	}
-
-	var body: some View {
-		SwiftUI.Button(action: action) {
-			Image(systemName: icon)
-				.font(Font(settings.uiFont.withSize(size)))
-				.foregroundColor(color ?? settings.secondaryTextColorUI)
-		}
-		.buttonStyle(PlainButtonStyle())
-	}
-}

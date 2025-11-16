@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ThemeCard: View {
+private struct ThemeCard: View {
 	let theme: Theme
 	let isSelected: Bool
 	let settings: AppSettings

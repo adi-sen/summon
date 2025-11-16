@@ -48,24 +48,4 @@ extension View {
 	func newItemShortcut() -> some View {
 		keyboardShortcut(KeyboardShortcuts.newItem, modifiers: KeyboardShortcuts.newItemModifiers)
 	}
-
-	func closeWindowShortcut() -> some View {
-		keyboardShortcut(KeyboardShortcuts.closeWindow, modifiers: KeyboardShortcuts.closeWindowModifiers)
-	}
-
-	func settingsShortcut() -> some View {
-		keyboardShortcut(KeyboardShortcuts.settings, modifiers: KeyboardShortcuts.settingsModifiers)
-	}
-
-	func cancelShortcut() -> some View {
-		keyboardShortcut(KeyboardShortcuts.cancel, modifiers: KeyboardShortcuts.cancelModifiers)
-	}
-
-	func deleteShortcut() -> some View {
-		keyboardShortcut(KeyboardShortcuts.delete, modifiers: KeyboardShortcuts.deleteModifiers)
-	}
-
-	func confirmShortcut() -> some View {
-		keyboardShortcut(KeyboardShortcuts.confirm, modifiers: KeyboardShortcuts.confirmModifiers)
-	}
 }
