@@ -1,5 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
 
 APP_NAME="Summon"
 VERSION="${VERSION:-0.0.1}"
@@ -12,7 +15,7 @@ RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 echo "Packaging ${APP_NAME} v${VERSION}"
 
 rm -rf "${APP_BUNDLE}"
-./scripts/build-release.sh
+./scripts/build.sh release
 
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 cp "${BUILD_DIR}/${APP_NAME}" "${MACOS_DIR}/"
