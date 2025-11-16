@@ -1,6 +1,6 @@
 import SwiftUI
 
-// swiftlint:disable file_length function_body_length
+// swiftlint:disable file_length function_body_length avoid_stateobject_in_child
 class LifecycleTracker: ObservableObject {
 	let name: String
 	init(_ name: String) {
@@ -121,14 +121,14 @@ struct SettingsView: View {
 	private var selectedTabView: some View {
 		Group {
 			switch selectedTab {
-			case 0: GeneralTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "General tab") }
-			case 1: AppearanceTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Appearance tab") }
-			case 2: SearchTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Search tab") }
-			case 3: ClipboardTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Clipboard tab") }
-			case 4: CommandsTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Commands tab") }
-			case 5: SnippetsSettingsTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Snippets tab") }
-			case 6: ExtensionsSettingsTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Extensions tab") }
-			case 7: ShortcutsTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Shortcuts tab") }
+			case 0: GeneralTab(settings: settings)
+			case 1: AppearanceTab(settings: settings)
+			case 2: SearchTab(settings: settings)
+			case 3: ClipboardTab(settings: settings)
+			case 4: CommandsTab(settings: settings)
+			case 5: SnippetsSettingsTab(settings: settings)
+			case 6: ExtensionsSettingsTab(settings: settings)
+			case 7: ShortcutsTab(settings: settings)
 			default: ShortcutsTab(settings: settings)
 			}
 		}
@@ -511,7 +511,7 @@ struct SnippetsSettingsTab: View {
 									)
 							}
 							.foregroundColor(
-								settings.theme.accentColorUI
+								settings.accentColorUI
 							)
 							.padding(.horizontal, DesignTokens.Spacing.xl)
 							.padding(.vertical, DesignTokens.Spacing.md)
@@ -520,7 +520,7 @@ struct SnippetsSettingsTab: View {
 							.overlay(
 								RoundedRectangle(cornerRadius: 6)
 									.stroke(
-										settings.theme.accentColorUI.opacity(0.3), lineWidth: 1
+										settings.accentColorUI.opacity(0.3), lineWidth: 1
 									)
 							)
 						}
@@ -530,18 +530,18 @@ struct SnippetsSettingsTab: View {
 						Text("Or press ⌘N")
 							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(
-								settings.theme.secondaryTextColorUI.opacity(0.5)
+								settings.secondaryTextColorUI.opacity(0.5)
 							)
 							.padding(.top, 4)
 					}
 					Spacer()
 				}
 				.background(
-					settings.theme.backgroundColorUI)
+					settings.backgroundColorUI)
 			} else {
 				SnippetsList()
 					.background(
-						settings.theme.backgroundColorUI)
+						settings.backgroundColorUI)
 			}
 		}
 		.sheet(isPresented: $showingAddSnippet) {
@@ -624,7 +624,7 @@ struct SnippetsTableView: NSViewRepresentable {
 				cellView.wantsLayer = true
 				cellView.layer?.backgroundColor =
 					NSColor(
-						parent.settings.theme.searchBarColorUI
+						parent.settings.searchBarColorUI
 					).cgColor
 				cellView.layer?.cornerRadius = 6
 
@@ -636,7 +636,7 @@ struct SnippetsTableView: NSViewRepresentable {
 				textField.backgroundColor = .clear
 				textField.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .medium)
 				textField.textColor = NSColor(
-					parent.settings.theme.accentColorUI)
+					parent.settings.accentColorUI)
 				textField.delegate = self
 				textField.tag = row
 				cellView.addSubview(textField)
@@ -658,7 +658,7 @@ struct SnippetsTableView: NSViewRepresentable {
 				cellView.wantsLayer = true
 				cellView.layer?.backgroundColor =
 					NSColor(
-						parent.settings.theme.searchBarColorUI
+						parent.settings.searchBarColorUI
 					).cgColor
 				cellView.layer?.cornerRadius = 6
 
@@ -670,7 +670,7 @@ struct SnippetsTableView: NSViewRepresentable {
 				textField.backgroundColor = .clear
 				textField.font = NSFont.systemFont(ofSize: 13)
 				textField.textColor = NSColor(
-					parent.settings.theme.textColorUI)
+					parent.settings.textColorUI)
 				textField.delegate = self
 				textField.tag = row
 				textField.lineBreakMode = .byTruncatingTail
@@ -871,7 +871,7 @@ struct SnippetsTableView: NSViewRepresentable {
 		scrollView.autohidesScrollers = true
 		scrollView.drawsBackground = false
 		scrollView.backgroundColor = NSColor(
-			settings.theme.backgroundColorUI)
+			settings.backgroundColorUI)
 
 		return scrollView
 	}
@@ -889,7 +889,7 @@ class ThemedTableView: NSTableView {
 
 	override func drawGrid(inClipRect clipRect: NSRect) {
 		let gridColor = NSColor(
-			settings.theme.metadataColorUI.opacity(0.3))
+			settings.metadataColorUI.opacity(0.3))
 		gridColor.setStroke()
 		super.drawGrid(inClipRect: clipRect)
 	}
@@ -897,7 +897,7 @@ class ThemedTableView: NSTableView {
 	override var backgroundColor: NSColor {
 		get {
 			NSColor(
-				settings.theme.backgroundColorUI)
+				settings.backgroundColorUI)
 		}
 		set {}
 	}
@@ -918,7 +918,7 @@ class ThemedTableHeaderView: NSTableHeaderView {
 
 	override func draw(_ dirtyRect: NSRect) {
 		NSColor(
-			settings.theme.searchBarColorUI
+			settings.searchBarColorUI
 		).setFill()
 		dirtyRect.fill()
 		super.draw(dirtyRect)
@@ -935,19 +935,19 @@ struct ShortcutInfoRow: View {
 			Text(keys)
 				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 				.foregroundColor(
-					settings.theme.accentColorUI
+					settings.accentColorUI
 				)
 				.padding(.horizontal, DesignTokens.Spacing.md)
 				.padding(.vertical, DesignTokens.Spacing.xs)
 				.background(
-					settings.theme.metadataColorUI
+					settings.metadataColorUI
 				)
 				.cornerRadius(DesignTokens.CornerRadius.sm)
 
 			Text(description)
 				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 				.foregroundColor(
-					settings.theme.secondaryTextColorUI)
+					settings.secondaryTextColorUI)
 		}
 		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
@@ -968,7 +968,7 @@ struct SettingSection<Content: View>: View {
 			Text(title)
 				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)).weight(.medium))
 				.foregroundColor(
-					settings.theme.secondaryTextColorUI.opacity(0.9)
+					settings.secondaryTextColorUI.opacity(0.9)
 				)
 				.tracking(0.5)
 
@@ -976,31 +976,6 @@ struct SettingSection<Content: View>: View {
 				content
 			}
 		}
-	}
-}
-
-struct SettingRow<Content: View>: View {
-	let label: String
-	let content: Content
-	@EnvironmentObject var settings: AppSettings
-
-	init(label: String, @ViewBuilder content: () -> Content) {
-		self.label = label
-		self.content = content()
-	}
-
-	var body: some View {
-		HStack {
-			Text(label)
-				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
-				.foregroundColor(
-					settings.theme.textColorUI)
-
-			Spacer()
-
-			content
-		}
-		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
 }
 
@@ -1024,19 +999,19 @@ struct AddSnippetView: View {
 				Text("Add Snippet")
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(
-						settings.theme.textColorUI)
+						settings.textColorUI)
 				Spacer()
 				SwiftUI.Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large + 2)))
 						.foregroundColor(
-							settings.theme.secondaryTextColorUI)
+							settings.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
 			.padding(DesignTokens.Spacing.xl)
 			.background(
-				settings.theme.backgroundColorUI)
+				settings.backgroundColorUI)
 
 			Divider()
 				.background(Color.white.opacity(0.1))
@@ -1046,12 +1021,12 @@ struct AddSnippetView: View {
 					Text("Trigger")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
-							settings.theme.textColorUI)
+							settings.textColorUI)
 					TextField("e.g., \\email", text: $trigger)
 						.textFieldStyle(PlainTextFieldStyle())
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(
-							settings.theme.textColorUI
+							settings.textColorUI
 						)
 						.padding(DesignTokens.Spacing.md + 2)
 						.background(settings.searchBarColorUI)
@@ -1062,11 +1037,11 @@ struct AddSnippetView: View {
 					Text("Content")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
-							settings.theme.textColorUI)
+							settings.textColorUI)
 					ThemedTextEditor(
 						text: $content,
-						backgroundColor: settings.theme.searchBarColorUI,
-						textColor: settings.theme.textColorUI
+						backgroundColor: settings.searchBarColorUI,
+						textColor: settings.textColorUI
 					)
 					.frame(height: 120)
 					.cornerRadius(DesignTokens.CornerRadius.md)
@@ -1079,12 +1054,12 @@ struct AddSnippetView: View {
 					}
 					.buttonStyle(PlainButtonStyle())
 					.foregroundColor(
-						settings.theme.textColorUI
+						settings.textColorUI
 					)
 					.padding(.horizontal, DesignTokens.Spacing.xl)
 					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
-						settings.theme.metadataColorUI
+						settings.metadataColorUI
 					)
 					.cornerRadius(DesignTokens.CornerRadius.md)
 
@@ -1098,7 +1073,7 @@ struct AddSnippetView: View {
 					.padding(.horizontal, DesignTokens.Spacing.xl)
 					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
-						settings.theme.accentColorUI
+						settings.accentColorUI
 					)
 					.cornerRadius(DesignTokens.CornerRadius.md)
 					.disabled(trigger.isEmpty || content.isEmpty)
@@ -1110,7 +1085,7 @@ struct AddSnippetView: View {
 		}
 		.frame(width: 480, height: 360)
 		.background(
-			settings.theme.backgroundColorUI
+			settings.backgroundColorUI
 		)
 		.onAppear {
 			if let initialContent {
@@ -1195,19 +1170,19 @@ struct EditSnippetView: View {
 				Text("Edit Snippet")
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(
-						settings.theme.textColorUI)
+						settings.textColorUI)
 				Spacer()
 				SwiftUI.Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large + 2)))
 						.foregroundColor(
-							settings.theme.secondaryTextColorUI)
+							settings.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
 			.padding(DesignTokens.Spacing.xl)
 			.background(
-				settings.theme.backgroundColorUI)
+				settings.backgroundColorUI)
 
 			Divider()
 				.background(Color.white.opacity(0.1))
@@ -1217,12 +1192,12 @@ struct EditSnippetView: View {
 					Text("Trigger")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
-							settings.theme.textColorUI)
+							settings.textColorUI)
 					TextField("e.g., \\email", text: $trigger)
 						.textFieldStyle(PlainTextFieldStyle())
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(
-							settings.theme.textColorUI
+							settings.textColorUI
 						)
 						.padding(DesignTokens.Spacing.md + 2)
 						.background(settings.searchBarColorUI)
@@ -1233,11 +1208,11 @@ struct EditSnippetView: View {
 					Text("Content")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
-							settings.theme.textColorUI)
+							settings.textColorUI)
 					ThemedTextEditor(
 						text: $content,
-						backgroundColor: settings.theme.searchBarColorUI,
-						textColor: settings.theme.textColorUI
+						backgroundColor: settings.searchBarColorUI,
+						textColor: settings.textColorUI
 					)
 					.frame(height: 120)
 					.cornerRadius(DesignTokens.CornerRadius.md)
@@ -1250,12 +1225,12 @@ struct EditSnippetView: View {
 					}
 					.buttonStyle(PlainButtonStyle())
 					.foregroundColor(
-						settings.theme.textColorUI
+						settings.textColorUI
 					)
 					.padding(.horizontal, DesignTokens.Spacing.xl)
 					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
-						settings.theme.metadataColorUI
+						settings.metadataColorUI
 					)
 					.cornerRadius(DesignTokens.CornerRadius.md)
 
@@ -1271,7 +1246,7 @@ struct EditSnippetView: View {
 					.padding(.horizontal, DesignTokens.Spacing.xl)
 					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
-						settings.theme.accentColorUI
+						settings.accentColorUI
 					)
 					.cornerRadius(DesignTokens.CornerRadius.md)
 					.disabled(trigger.isEmpty || content.isEmpty)
@@ -1283,6 +1258,6 @@ struct EditSnippetView: View {
 		}
 		.frame(width: 440, height: 320)
 		.background(
-			settings.theme.backgroundColorUI)
+			settings.backgroundColorUI)
 	}
 }
