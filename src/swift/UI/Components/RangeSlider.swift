@@ -6,7 +6,7 @@ struct RangeSlider: View {
 	let range: ClosedRange<Double>
 	let step: Double
 	let valueLabel: (Double) -> String
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@State private var textValue: String = ""
 
 	var body: some View {
@@ -45,7 +45,7 @@ struct ThemedSliderControl: NSViewRepresentable {
 	@Binding var value: Double
 	let range: ClosedRange<Double>
 	let step: Double
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	func makeNSView(context: Context) -> NSSlider {
 		let slider = NSSlider()

@@ -4,7 +4,7 @@ import SwiftUI
 struct ShortcutRecorderView: View {
 	let label: String
 	@Binding var shortcut: KeyboardShortcut
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@State private var isRecording = false
 	@FocusState private var isFocused: Bool
 

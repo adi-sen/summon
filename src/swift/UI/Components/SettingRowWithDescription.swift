@@ -4,7 +4,7 @@ struct SettingRowWithDescription<Content: View>: View {
 	let label: String
 	let description: String?
 	let content: Content
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	init(label: String, description: String? = nil, @ViewBuilder content: () -> Content) {
 		self.label = label
@@ -27,7 +27,7 @@ struct SettingRowWithDescription<Content: View>: View {
 			if let description {
 				Text(description)
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
-					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+					.foregroundColor(settings.secondaryTextColorUI70)
 					.fixedSize(horizontal: false, vertical: true)
 			}
 		}

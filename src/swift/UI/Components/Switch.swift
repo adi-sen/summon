@@ -2,7 +2,7 @@ import SwiftUI
 
 struct Switch: View {
 	@Binding var isOn: Bool
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	var body: some View {
 		SwiftUI.Button(action: { isOn.toggle() }) {

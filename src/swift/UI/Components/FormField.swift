@@ -43,7 +43,7 @@ struct FormField<Content: View>: View {
 			if let description {
 				Text(description)
 					.font(Font(settings.uiFont.withSize(10)))
-					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+					.foregroundColor(settings.secondaryTextColorUI70)
 					.fixedSize(horizontal: false, vertical: true)
 			}
 		}
@@ -75,7 +75,7 @@ extension FormField where Content == AnyView {
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					.foregroundColor(settings.textColorUI)
 					.padding(DesignTokens.Spacing.md + 2)
-					.background(settings.searchBarColorUI.opacity(0.5))
+					.background(settings.searchBarColorUI50)
 					.cornerRadius(labelStyle == .uppercase ? DesignTokens.CornerRadius.sm : DesignTokens.CornerRadius
 						.md)
 					.onChange(of: text.wrappedValue) { _ in
@@ -90,7 +90,7 @@ extension FormField where Content == AnyView {
 					.textSelection(.enabled)
 					.padding(DesignTokens.Spacing.md + 2)
 					.frame(maxWidth: .infinity, alignment: .leading)
-					.background(settings.searchBarColorUI.opacity(0.5))
+					.background(settings.searchBarColorUI50)
 					.cornerRadius(DesignTokens.CornerRadius.sm)
 			)
 		}

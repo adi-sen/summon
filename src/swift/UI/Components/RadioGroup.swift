@@ -51,7 +51,7 @@ struct RadioOption: View {
 			HStack(spacing: DesignTokens.Spacing.sm) {
 				Image(systemName: isSelected ? "circle.inset.filled" : "circle")
 					.font(.system(size: DesignTokens.Typography.body))
-					.foregroundColor(isSelected ? settings.accentColorUI : settings.secondaryTextColorUI.opacity(0.5))
+					.foregroundColor(isSelected ? settings.accentColorUI : settings.secondaryTextColorUI50)
 
 				Text(label)
 					.styled(fontSize: DesignTokens.Typography.body, settings: settings)

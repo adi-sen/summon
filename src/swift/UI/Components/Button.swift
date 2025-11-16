@@ -7,7 +7,7 @@ struct Button: View {
 	let style: Style
 	let size: Size
 	let fullWidth: Bool
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	enum Style {
 		case primary
@@ -127,7 +127,7 @@ struct IconButton: View {
 	let action: () -> Void
 	let size: CGFloat
 	let color: Color?
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	init(
 		icon: String,

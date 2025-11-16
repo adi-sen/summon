@@ -20,11 +20,7 @@ struct ThemeCard: View {
 
 				Text(theme.name)
 					.styled(fontSize: DesignTokens.Typography.small, settings: settings)
-					.foregroundColor(isSelected ? settings.textColorUI : settings.secondaryTextColorUI)
-
-				Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-					.font(.system(size: DesignTokens.Typography.body))
-					.foregroundColor(isSelected ? settings.accentColorUI : settings.secondaryTextColorUI.opacity(0.3))
+					.foregroundColor(isSelected ? settings.accentColorUI : settings.textColorUI)
 			}
 			.padding(DesignTokens.Spacing.md)
 			.background(
@@ -37,7 +33,7 @@ struct ThemeCard: View {
 			.cornerRadius(DesignTokens.CornerRadius.md)
 			.overlay(
 				RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
-					.stroke(isSelected ? settings.accentColorUI.opacity(0.5) : .clear, lineWidth: 2)
+					.stroke(isSelected ? settings.accentColorUI : .clear, lineWidth: 2)
 			)
 		}
 		.buttonStyle(PlainButtonStyle())

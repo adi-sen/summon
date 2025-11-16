@@ -8,7 +8,7 @@ struct ListItem<TrailingContent: View>: View {
 	let isHovered: Binding<Bool>?
 	let trailingContent: TrailingContent
 	let action: (() -> Void)?
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	enum ListItemIcon {
 		case sfSymbol(String, Color? = nil)
@@ -126,7 +126,7 @@ struct CompactListItem: View {
 	let isSelected: Bool
 	let onSelect: () -> Void
 	let onSecondaryAction: (() -> Void)?
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@State private var isHovered = false
 
 	init(

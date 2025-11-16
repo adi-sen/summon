@@ -4,7 +4,7 @@ import SwiftUI
 struct FolderPicker: View {
 	@Binding var isPresented: Bool
 	let onSelect: (String) -> Void
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@State private var currentPath: String = NSHomeDirectory()
 	@State private var selectedFolder: String? = nil
 
@@ -71,7 +71,7 @@ struct FolderPicker: View {
 			}
 			.padding(.horizontal, DesignTokens.Spacing.xl)
 			.padding(.vertical, DesignTokens.Spacing.md)
-			.background(settings.searchBarColorUI.opacity(0.5))
+			.background(settings.searchBarColorUI50)
 
 			ScrollView {
 				VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
