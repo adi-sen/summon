@@ -13,12 +13,12 @@ snippet_storage = { path = "../snippet_storage" }
 app_storage = { path = "../app_storage" }
 settings_storage = { path = "../settings_storage" }
 action_manager = { path = "../action_manager" }
+file_indexer = { path = "../file_indexer" }
 serde.workspace = true
 sonic-rs.workspace = true
 libc.workspace = true
 parking_lot.workspace = true
 mimalloc.workspace = true
-rustc-hash.workspace = true
 compact_str.workspace = true
 paste.workspace = true
 
@@ -29,5 +29,8 @@ crate-type = ["staticlib"]
 [package.metadata.cargo-machete]
 ignored = ["serde"]
 
-[lints]
-workspace = true
+[lints.clippy]
+unwrap_used = "allow"
+expect_used = "allow"
+panic = "allow"
+indexing_slicing = "allow"
