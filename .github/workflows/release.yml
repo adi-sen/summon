@@ -45,7 +45,7 @@ jobs:
 
             - name: Build app
               run: |
-                  chmod +x scripts/build-release.sh scripts/package.sh
+                  chmod +x scripts/build.sh scripts/package.sh
                   VERSION=${GITHUB_REF#refs/tags/v} ./scripts/package.sh
 
             - name: Create distribution archives

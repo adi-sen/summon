@@ -27,3 +27,5 @@ benchmarks/
 src/rust/ffi/cbindgen.toml
 src/rust/ffi/ffi.h
 src/swift/ffi.h
+src/swift/ffi.h.tmp
+.cargo/

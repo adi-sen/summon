@@ -24,9 +24,6 @@ case "$MODE" in
 		;;
 esac
 
-echo "Generating command icons..."
-./scripts/generate-command-icons.swift
-
 MACOSX_DEPLOYMENT_TARGET=12.0 cargo build $CARGO_FLAGS -p ffi &
 CARGO_PID=$!
 swift build $SWIFT_FLAGS --jobs 8 &

@@ -27,7 +27,7 @@ Download the latest release from the [releases page](https://github.com/adi-sen/
 Or build from source:
 
 ```bash
-./scripts/build-release.sh
+./scripts/build.sh release
 ./scripts/package.sh
 cp -r .build/macos/Summon.app /Applications/
 ```
