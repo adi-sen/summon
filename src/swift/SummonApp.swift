@@ -37,7 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 	weak static var shared: AppDelegate?
 
 	var window: NSWindow?
-	var settingsWindow: NSWindow?
+	private var settingsWindowController: NSWindowController?
 	var searchEngine: SearchEngine?
 	var hotKeyMonitor: HotKeyMonitor?
 	var statusBarManager: StatusBarManager?
@@ -173,9 +173,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 	}
 
 	private func setupFloatingWindow() {
+		guard let searchEngine, let clipboardManager else {
+			fatalError("SearchEngine and ClipboardManager must be initialized before setupFloatingWindow")
+		}
+
 		var contentView = ContentView(
-			searchEngine: searchEngine!,
-			clipboardManager: clipboardManager!
+			searchEngine: searchEngine,
+			clipboardManager: clipboardManager
 		)
 		contentView.onOpenSettings = { [weak self] in
 			self?.showSettingsWindow()
@@ -186,7 +190,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 			backing: .buffered,
 			defer: false
 		)
-		window?.contentView = NSHostingView(rootView: contentView)
+		window?.contentView = NSHostingView(
+			rootView: contentView.environmentObject(AppSettings.shared)
+		)
 		window?.center()
 	}
 
@@ -329,7 +335,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 	@objc private func handleTrafficLightsSettingChanged(_ notification: Notification) {
 		guard let shouldHide = notification.object as? Bool else { return }
-		if let settingsWindow {
+		if let settingsWindow = settingsWindowController?.window {
 			setTrafficLightsVisibility(for: settingsWindow, hidden: shouldHide)
 		}
 	}
@@ -392,7 +398,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 	private func updateActivationPolicy() {
 		let settings = AppSettings.shared
-		let shouldShowInDock = settings.showDockIcon || settingsWindow?.isVisible == true
+		let shouldShowInDock = settings.showDockIcon || settingsWindowController?.window?.isVisible == true
 		NSApp.setActivationPolicy(shouldShowInDock ? .regular : .accessory)
 	}
 
@@ -443,34 +449,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 	}
 
 	func showSettingsWindow() {
-		if settingsWindow == nil {
-			let settingsView = SettingsView()
-
-			let window = NSWindow(
-				contentRect: NSRect(x: 0, y: 0, width: 900, height: 750),
-				styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
-				backing: .buffered,
-				defer: false
-			)
-
-			window.title = "Settings"
-			window.titleVisibility = .hidden
-			window.titlebarAppearsTransparent = true
-			window.isMovableByWindowBackground = false
-			window.center()
-			window.minSize = NSSize(width: 800, height: 650)
-			window.contentView = NSHostingView(rootView: settingsView)
-			window.isReleasedWhenClosed = false
-			window.delegate = self
-
-			setTrafficLightsVisibility(for: window, hidden: AppSettings.shared.hideTrafficLights)
-
-			settingsWindow = window
+		if settingsWindowController == nil {
+			settingsWindowController = createSettingsWindowController()
 		}
-
 		updateActivationPolicy()
-		settingsWindow?.makeKeyAndOrderFront(nil)
+		settingsWindowController?.showWindow(nil)
 		NSApp.activate(ignoringOtherApps: true)
+	}
+
+	private func createSettingsWindowController() -> NSWindowController {
+		let settingsView = SettingsView()
+		let window = NSWindow(
+			contentRect: NSRect(x: 0, y: 0, width: 900, height: 750),
+			styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
+			backing: .buffered,
+			defer: false
+		)
+		window.title = "Settings"
+		window.titleVisibility = .hidden
+		window.titlebarAppearsTransparent = true
+		window.isMovableByWindowBackground = false
+		window.center()
+		window.minSize = NSSize(width: 800, height: 650)
+		window.contentView = NSHostingView(
+			rootView: settingsView.environmentObject(AppSettings.shared)
+		)
+		setTrafficLightsVisibility(for: window, hidden: AppSettings.shared.hideTrafficLights)
+		let controller = NSWindowController(window: window)
+		controller.window?.delegate = self
+		return controller
 	}
 
 	private func indexApplications() {
@@ -606,11 +613,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 	func windowWillClose(_ notification: Notification) {
 		if let closingWindow = notification.object as? NSWindow,
-		   closingWindow === settingsWindow
+		   closingWindow === settingsWindowController?.window
 		{
 			NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
-			settingsWindow?.contentView = nil
-			settingsWindow = nil
+			ThumbnailCache.shared.clear()
+			IconCache.shared.clear()
+			FontCache.shared.clear()
 			updateActivationPolicy()
 		}
 	}

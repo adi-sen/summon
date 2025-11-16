@@ -1,11 +1,23 @@
 import SwiftUI
 
 // swiftlint:disable file_length function_body_length
+class LifecycleTracker: ObservableObject {
+	let name: String
+	init(_ name: String) {
+		self.name = name
+		print("✓ \(name) initialized")
+	}
+	deinit {
+		print("✓ \(name) deallocated")
+	}
+}
+
 struct SettingsView: View {
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@ObservedObject var snippetManager = SnippetManager.shared
 	@State private var selectedTab: Int
 	@State private var eventMonitor: Any?
+	@StateObject private var lifecycleTracker = LifecycleTracker("SettingsView")
 
 	init(initialTab: Int = 0) {
 		_selectedTab = State(initialValue: initialTab)
@@ -45,6 +57,7 @@ struct SettingsView: View {
 			tabBar
 			Divider().background(Color.white.opacity(0.1))
 			selectedTabView
+				.id(selectedTab)
 		}
 		.background(backgroundColor)
 		.onChange(of: settings.theme) { _ in settings.scheduleSave() }
@@ -73,30 +86,30 @@ struct SettingsView: View {
 
 	private var tabBar: some View {
 		HStack(spacing: 0) {
-			TabButton(title: "General", isSelected: selectedTab == 0) {
+			TabButton(title: "General", isSelected: selectedTab == 0, action: {
 				selectedTab = 0
-			}
-			TabButton(title: "Appearance", isSelected: selectedTab == 1) {
+			}, settings: settings)
+			TabButton(title: "Appearance", isSelected: selectedTab == 1, action: {
 				selectedTab = 1
-			}
-			TabButton(title: "Search", isSelected: selectedTab == 2) {
+			}, settings: settings)
+			TabButton(title: "Search", isSelected: selectedTab == 2, action: {
 				selectedTab = 2
-			}
-			TabButton(title: "Clipboard", isSelected: selectedTab == 3) {
+			}, settings: settings)
+			TabButton(title: "Clipboard", isSelected: selectedTab == 3, action: {
 				selectedTab = 3
-			}
-			TabButton(title: "Commands", isSelected: selectedTab == 4) {
+			}, settings: settings)
+			TabButton(title: "Commands", isSelected: selectedTab == 4, action: {
 				selectedTab = 4
-			}
-			TabButton(title: "Snippets", isSelected: selectedTab == 5) {
+			}, settings: settings)
+			TabButton(title: "Snippets", isSelected: selectedTab == 5, action: {
 				selectedTab = 5
-			}
-			TabButton(title: "Extensions", isSelected: selectedTab == 6) {
+			}, settings: settings)
+			TabButton(title: "Extensions", isSelected: selectedTab == 6, action: {
 				selectedTab = 6
-			}
-			TabButton(title: "Shortcuts", isSelected: selectedTab == 7) {
+			}, settings: settings)
+			TabButton(title: "Shortcuts", isSelected: selectedTab == 7, action: {
 				selectedTab = 7
-			}
+			}, settings: settings)
 			Spacer()
 		}
 		.padding(.horizontal, DesignTokens.Spacing.xxl)
@@ -106,21 +119,25 @@ struct SettingsView: View {
 
 	@ViewBuilder
 	private var selectedTabView: some View {
-		switch selectedTab {
-		case 0: GeneralTab(settings: settings)
-		case 1: AppearanceTab(settings: settings)
-		case 2: SearchTab(settings: settings)
-		case 3: ClipboardTab(settings: settings)
-		case 4: CommandsTab(settings: settings)
-		case 5: SnippetsSettingsTab()
-		case 6: ExtensionsSettingsTab()
-		case 7: ShortcutsTab(settings: settings)
-		default: ShortcutsTab(settings: settings)
+		Group {
+			switch selectedTab {
+			case 0: GeneralTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "General tab") }
+			case 1: AppearanceTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Appearance tab") }
+			case 2: SearchTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Search tab") }
+			case 3: ClipboardTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Clipboard tab") }
+			case 4: CommandsTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Commands tab") }
+			case 5: SnippetsSettingsTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Snippets tab") }
+			case 6: ExtensionsSettingsTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Extensions tab") }
+			case 7: ShortcutsTab(settings: settings).onAppear { MemoryProfiler.logMemoryUsage(label: "Shortcuts tab") }
+			default: ShortcutsTab(settings: settings)
+			}
 		}
+		.id(selectedTab)
 	}
 
 	private func setupEventMonitor() {
-		eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+		removeEventMonitor()
+		eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
 			if event.modifierFlags.contains(.command) {
 				switch event.charactersIgnoringModifiers {
 				case "1":
@@ -191,7 +208,7 @@ struct TabButton: View {
 	let title: String
 	let isSelected: Bool
 	let action: () -> Void
-	@ObservedObject var settings = AppSettings.shared
+	@ObservedObject var settings: AppSettings
 
 	var body: some View {
 		SwiftUI.Button(action: action) {
@@ -202,7 +219,7 @@ struct TabButton: View {
 				)
 				.padding(.horizontal, DesignTokens.Spacing.lg)
 				.padding(.vertical, DesignTokens.Spacing.sm)
-				.background(isSelected ? settings.accentColorUI.opacity(0.15) : Color.clear)
+				.background(isSelected ? settings.accentColorUI15 : Color.clear)
 				.cornerRadius(DesignTokens.CornerRadius.md)
 		}
 		.buttonStyle(PlainButtonStyle())
@@ -216,7 +233,7 @@ struct FallbackSearchEngineCard: View {
 	let onDelete: () -> Void
 	let onKeywordChange: (String) -> Void
 	let canDelete: Bool
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@State private var isHovered = false
 	@State private var brandIcon: NSImage?
 	@State private var editingKeyword: String
@@ -329,7 +346,7 @@ struct FallbackSearchEngineCard: View {
 
 struct AddSearchEngineView: View {
 	let onAdd: (String, String, String, String) -> Void
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@State private var name: String = ""
 	@State private var urlTemplate: String = ""
 	@State private var iconName: String = "globe"
@@ -352,7 +369,7 @@ struct AddSearchEngineView: View {
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					.foregroundColor(settings.textColorUI)
 					.padding(DesignTokens.Spacing.sm)
-					.background(settings.searchBarColorUI.opacity(0.5))
+					.background(settings.searchBarColorUI50)
 					.cornerRadius(DesignTokens.CornerRadius.sm)
 			}
 
@@ -363,14 +380,14 @@ struct AddSearchEngineView: View {
 
 				Text("Use {query} as placeholder")
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
-					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+					.foregroundColor(settings.secondaryTextColorUI70)
 
 				TextField("https://example.com/search?q={query}", text: $urlTemplate)
 					.textFieldStyle(PlainTextFieldStyle())
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					.foregroundColor(settings.textColorUI)
 					.padding(DesignTokens.Spacing.sm)
-					.background(settings.searchBarColorUI.opacity(0.5))
+					.background(settings.searchBarColorUI50)
 					.cornerRadius(DesignTokens.CornerRadius.sm)
 			}
 
@@ -384,7 +401,7 @@ struct AddSearchEngineView: View {
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					.foregroundColor(settings.textColorUI)
 					.padding(DesignTokens.Spacing.sm)
-					.background(settings.searchBarColorUI.opacity(0.5))
+					.background(settings.searchBarColorUI50)
 					.cornerRadius(DesignTokens.CornerRadius.sm)
 			}
 
@@ -395,12 +412,12 @@ struct AddSearchEngineView: View {
 
 				Text("Use web:name to load icon (e.g. web:google loads google.png)")
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
-					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+					.foregroundColor(settings.secondaryTextColorUI70)
 
 				HStack(spacing: 4) {
 					Text("Override defaults or add new icons (PNG, JPEG, WebP, any size):")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
-						.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+						.foregroundColor(settings.secondaryTextColorUI70)
 
 					SwiftUI.Button(action: {
 						let iconsDir = WebIconDownloader.getIconsDirectory()
@@ -419,7 +436,7 @@ struct AddSearchEngineView: View {
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 					.foregroundColor(settings.textColorUI)
 					.padding(DesignTokens.Spacing.sm)
-					.background(settings.searchBarColorUI.opacity(0.5))
+					.background(settings.searchBarColorUI50)
 					.cornerRadius(DesignTokens.CornerRadius.sm)
 			}
 
@@ -432,7 +449,7 @@ struct AddSearchEngineView: View {
 						.foregroundColor(settings.secondaryTextColorUI)
 						.padding(.horizontal, DesignTokens.Spacing.lg)
 						.padding(.vertical, DesignTokens.Spacing.sm)
-						.background(settings.searchBarColorUI.opacity(0.3))
+						.background(settings.searchBarColorUI30)
 						.cornerRadius(DesignTokens.CornerRadius.md)
 				}
 				.buttonStyle(PlainButtonStyle())
@@ -463,10 +480,11 @@ struct AddSearchEngineView: View {
 }
 
 struct SnippetsSettingsTab: View {
-	@ObservedObject var settings = AppSettings.shared
+	@ObservedObject var settings: AppSettings
 	@ObservedObject var snippetManager = SnippetManager.shared
 	@State private var showingAddSnippet = false
 	@State private var eventMonitor: Any?
+	@StateObject private var lifecycleTracker = LifecycleTracker("SnippetsSettingsTab")
 
 	var body: some View {
 		Group {
@@ -476,7 +494,7 @@ struct SnippetsSettingsTab: View {
 					VStack(spacing: DesignTokens.Spacing.md) {
 						Image(systemName: "text.quote")
 							.font(Font(settings.uiFont.withSize(48)))
-							.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
+							.foregroundColor(settings.secondaryTextColorUI40)
 						Text("No snippets yet")
 							.font(Font(settings.uiFont.withSize(15)))
 							.foregroundColor(settings.secondaryTextColorUI)
@@ -493,11 +511,7 @@ struct SnippetsSettingsTab: View {
 									)
 							}
 							.foregroundColor(
-								Color(
-									red: settings.theme.accentColor.0,
-									green: settings.theme.accentColor.1,
-									blue: settings.theme.accentColor.2
-								)
+								settings.theme.accentColorUI
 							)
 							.padding(.horizontal, DesignTokens.Spacing.xl)
 							.padding(.vertical, DesignTokens.Spacing.md)
@@ -506,11 +520,7 @@ struct SnippetsSettingsTab: View {
 							.overlay(
 								RoundedRectangle(cornerRadius: 6)
 									.stroke(
-										Color(
-											red: settings.theme.accentColor.0,
-											green: settings.theme.accentColor.1,
-											blue: settings.theme.accentColor.2
-										).opacity(0.3), lineWidth: 1
+										settings.theme.accentColorUI.opacity(0.3), lineWidth: 1
 									)
 							)
 						}
@@ -520,30 +530,18 @@ struct SnippetsSettingsTab: View {
 						Text("Or press ⌘N")
 							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 							.foregroundColor(
-								Color(
-									red: settings.theme.secondaryTextColor.0,
-									green: settings.theme.secondaryTextColor.1,
-									blue: settings.theme.secondaryTextColor.2
-								).opacity(0.5)
+								settings.theme.secondaryTextColorUI.opacity(0.5)
 							)
 							.padding(.top, 4)
 					}
 					Spacer()
 				}
 				.background(
-					Color(
-						red: settings.theme.backgroundColor.0,
-						green: settings.theme.backgroundColor.1,
-						blue: settings.theme.backgroundColor.2
-					))
+					settings.theme.backgroundColorUI)
 			} else {
 				SnippetsList()
 					.background(
-						Color(
-							red: settings.theme.backgroundColor.0,
-							green: settings.theme.backgroundColor.1,
-							blue: settings.theme.backgroundColor.2
-						))
+						settings.theme.backgroundColorUI)
 			}
 		}
 		.sheet(isPresented: $showingAddSnippet) {
@@ -563,9 +561,10 @@ struct SnippetsSettingsTab: View {
 	private func setupEventMonitor() {
 		if let monitor = eventMonitor {
 			NSEvent.removeMonitor(monitor)
+			eventMonitor = nil
 		}
 
-		eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+		eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
 			if event.modifierFlags.contains(.command),
 			   event.charactersIgnoringModifiers == "n"
 			{
@@ -578,7 +577,7 @@ struct SnippetsSettingsTab: View {
 }
 
 struct SnippetsTableView: NSViewRepresentable {
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@ObservedObject var snippetManager = SnippetManager.shared
 
 	class Coordinator: NSObject, NSTableViewDelegate, NSTableViewDataSource, NSTextFieldDelegate {
@@ -625,11 +624,7 @@ struct SnippetsTableView: NSViewRepresentable {
 				cellView.wantsLayer = true
 				cellView.layer?.backgroundColor =
 					NSColor(
-						Color(
-							red: parent.settings.theme.searchBarColor.0,
-							green: parent.settings.theme.searchBarColor.1,
-							blue: parent.settings.theme.searchBarColor.2
-						)
+						parent.settings.theme.searchBarColorUI
 					).cgColor
 				cellView.layer?.cornerRadius = 6
 
@@ -641,11 +636,7 @@ struct SnippetsTableView: NSViewRepresentable {
 				textField.backgroundColor = .clear
 				textField.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .medium)
 				textField.textColor = NSColor(
-					Color(
-						red: parent.settings.theme.accentColor.0,
-						green: parent.settings.theme.accentColor.1,
-						blue: parent.settings.theme.accentColor.2
-					))
+					parent.settings.theme.accentColorUI)
 				textField.delegate = self
 				textField.tag = row
 				cellView.addSubview(textField)
@@ -667,11 +658,7 @@ struct SnippetsTableView: NSViewRepresentable {
 				cellView.wantsLayer = true
 				cellView.layer?.backgroundColor =
 					NSColor(
-						Color(
-							red: parent.settings.theme.searchBarColor.0,
-							green: parent.settings.theme.searchBarColor.1,
-							blue: parent.settings.theme.searchBarColor.2
-						)
+						parent.settings.theme.searchBarColorUI
 					).cgColor
 				cellView.layer?.cornerRadius = 6
 
@@ -683,11 +670,7 @@ struct SnippetsTableView: NSViewRepresentable {
 				textField.backgroundColor = .clear
 				textField.font = NSFont.systemFont(ofSize: 13)
 				textField.textColor = NSColor(
-					Color(
-						red: parent.settings.theme.textColor.0,
-						green: parent.settings.theme.textColor.1,
-						blue: parent.settings.theme.textColor.2
-					))
+					parent.settings.theme.textColorUI)
 				textField.delegate = self
 				textField.tag = row
 				textField.lineBreakMode = .byTruncatingTail
@@ -888,11 +871,7 @@ struct SnippetsTableView: NSViewRepresentable {
 		scrollView.autohidesScrollers = true
 		scrollView.drawsBackground = false
 		scrollView.backgroundColor = NSColor(
-			Color(
-				red: settings.theme.backgroundColor.0,
-				green: settings.theme.backgroundColor.1,
-				blue: settings.theme.backgroundColor.2
-			))
+			settings.theme.backgroundColorUI)
 
 		return scrollView
 	}
@@ -910,11 +889,7 @@ class ThemedTableView: NSTableView {
 
 	override func drawGrid(inClipRect clipRect: NSRect) {
 		let gridColor = NSColor(
-			Color(
-				red: settings.theme.metadataColor.0,
-				green: settings.theme.metadataColor.1,
-				blue: settings.theme.metadataColor.2
-			).opacity(0.3))
+			settings.theme.metadataColorUI.opacity(0.3))
 		gridColor.setStroke()
 		super.drawGrid(inClipRect: clipRect)
 	}
@@ -922,11 +897,7 @@ class ThemedTableView: NSTableView {
 	override var backgroundColor: NSColor {
 		get {
 			NSColor(
-				Color(
-					red: settings.theme.backgroundColor.0,
-					green: settings.theme.backgroundColor.1,
-					blue: settings.theme.backgroundColor.2
-				))
+				settings.theme.backgroundColorUI)
 		}
 		set {}
 	}
@@ -947,11 +918,7 @@ class ThemedTableHeaderView: NSTableHeaderView {
 
 	override func draw(_ dirtyRect: NSRect) {
 		NSColor(
-			Color(
-				red: settings.theme.searchBarColor.0,
-				green: settings.theme.searchBarColor.1,
-				blue: settings.theme.searchBarColor.2
-			)
+			settings.theme.searchBarColorUI
 		).setFill()
 		dirtyRect.fill()
 		super.draw(dirtyRect)
@@ -961,38 +928,26 @@ class ThemedTableHeaderView: NSTableHeaderView {
 struct ShortcutInfoRow: View {
 	let keys: String
 	let description: String
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	var body: some View {
 		HStack {
 			Text(keys)
 				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 				.foregroundColor(
-					Color(
-						red: settings.theme.accentColor.0,
-						green: settings.theme.accentColor.1,
-						blue: settings.theme.accentColor.2
-					)
+					settings.theme.accentColorUI
 				)
 				.padding(.horizontal, DesignTokens.Spacing.md)
 				.padding(.vertical, DesignTokens.Spacing.xs)
 				.background(
-					Color(
-						red: settings.theme.metadataColor.0,
-						green: settings.theme.metadataColor.1,
-						blue: settings.theme.metadataColor.2
-					)
+					settings.theme.metadataColorUI
 				)
 				.cornerRadius(DesignTokens.CornerRadius.sm)
 
 			Text(description)
 				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 				.foregroundColor(
-					Color(
-						red: settings.theme.secondaryTextColor.0,
-						green: settings.theme.secondaryTextColor.1,
-						blue: settings.theme.secondaryTextColor.2
-					))
+					settings.theme.secondaryTextColorUI)
 		}
 		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
@@ -1001,7 +956,7 @@ struct ShortcutInfoRow: View {
 struct SettingSection<Content: View>: View {
 	let title: String
 	let content: Content
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	init(title: String, @ViewBuilder content: () -> Content) {
 		self.title = title
@@ -1013,11 +968,7 @@ struct SettingSection<Content: View>: View {
 			Text(title)
 				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)).weight(.medium))
 				.foregroundColor(
-					Color(
-						red: settings.theme.secondaryTextColor.0,
-						green: settings.theme.secondaryTextColor.1,
-						blue: settings.theme.secondaryTextColor.2
-					).opacity(0.9)
+					settings.theme.secondaryTextColorUI.opacity(0.9)
 				)
 				.tracking(0.5)
 
@@ -1031,7 +982,7 @@ struct SettingSection<Content: View>: View {
 struct SettingRow<Content: View>: View {
 	let label: String
 	let content: Content
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	init(label: String, @ViewBuilder content: () -> Content) {
 		self.label = label
@@ -1043,11 +994,7 @@ struct SettingRow<Content: View>: View {
 			Text(label)
 				.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 				.foregroundColor(
-					Color(
-						red: settings.theme.textColor.0,
-						green: settings.theme.textColor.1,
-						blue: settings.theme.textColor.2
-					))
+					settings.theme.textColorUI)
 
 			Spacer()
 
@@ -1059,7 +1006,7 @@ struct SettingRow<Content: View>: View {
 
 struct AddSnippetView: View {
 	@Environment(\.presentationMode) var presentationMode
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@ObservedObject var snippetManager = SnippetManager.shared
 
 	let initialContent: String?
@@ -1077,31 +1024,19 @@ struct AddSnippetView: View {
 				Text("Add Snippet")
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(
-						Color(
-							red: settings.theme.textColor.0,
-							green: settings.theme.textColor.1,
-							blue: settings.theme.textColor.2
-						))
+						settings.theme.textColorUI)
 				Spacer()
 				SwiftUI.Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large + 2)))
 						.foregroundColor(
-							Color(
-								red: settings.theme.secondaryTextColor.0,
-								green: settings.theme.secondaryTextColor.1,
-								blue: settings.theme.secondaryTextColor.2
-							))
+							settings.theme.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
 			.padding(DesignTokens.Spacing.xl)
 			.background(
-				Color(
-					red: settings.theme.backgroundColor.0,
-					green: settings.theme.backgroundColor.1,
-					blue: settings.theme.backgroundColor.2
-				))
+				settings.theme.backgroundColorUI)
 
 			Divider()
 				.background(Color.white.opacity(0.1))
@@ -1111,20 +1046,12 @@ struct AddSnippetView: View {
 					Text("Trigger")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
-							Color(
-								red: settings.theme.textColor.0,
-								green: settings.theme.textColor.1,
-								blue: settings.theme.textColor.2
-							))
+							settings.theme.textColorUI)
 					TextField("e.g., \\email", text: $trigger)
 						.textFieldStyle(PlainTextFieldStyle())
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(
-							Color(
-								red: settings.theme.textColor.0,
-								green: settings.theme.textColor.1,
-								blue: settings.theme.textColor.2
-							)
+							settings.theme.textColorUI
 						)
 						.padding(DesignTokens.Spacing.md + 2)
 						.background(settings.searchBarColorUI)
@@ -1135,23 +1062,11 @@ struct AddSnippetView: View {
 					Text("Content")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
-							Color(
-								red: settings.theme.textColor.0,
-								green: settings.theme.textColor.1,
-								blue: settings.theme.textColor.2
-							))
+							settings.theme.textColorUI)
 					ThemedTextEditor(
 						text: $content,
-						backgroundColor: Color(
-							red: settings.theme.searchBarColor.0,
-							green: settings.theme.searchBarColor.1,
-							blue: settings.theme.searchBarColor.2
-						),
-						textColor: Color(
-							red: settings.theme.textColor.0,
-							green: settings.theme.textColor.1,
-							blue: settings.theme.textColor.2
-						)
+						backgroundColor: settings.theme.searchBarColorUI,
+						textColor: settings.theme.textColorUI
 					)
 					.frame(height: 120)
 					.cornerRadius(DesignTokens.CornerRadius.md)
@@ -1164,20 +1079,12 @@ struct AddSnippetView: View {
 					}
 					.buttonStyle(PlainButtonStyle())
 					.foregroundColor(
-						Color(
-							red: settings.theme.textColor.0,
-							green: settings.theme.textColor.1,
-							blue: settings.theme.textColor.2
-						)
+						settings.theme.textColorUI
 					)
 					.padding(.horizontal, DesignTokens.Spacing.xl)
 					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
-						Color(
-							red: settings.theme.metadataColor.0,
-							green: settings.theme.metadataColor.1,
-							blue: settings.theme.metadataColor.2
-						)
+						settings.theme.metadataColorUI
 					)
 					.cornerRadius(DesignTokens.CornerRadius.md)
 
@@ -1191,11 +1098,7 @@ struct AddSnippetView: View {
 					.padding(.horizontal, DesignTokens.Spacing.xl)
 					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
-						Color(
-							red: settings.theme.accentColor.0,
-							green: settings.theme.accentColor.1,
-							blue: settings.theme.accentColor.2
-						)
+						settings.theme.accentColorUI
 					)
 					.cornerRadius(DesignTokens.CornerRadius.md)
 					.disabled(trigger.isEmpty || content.isEmpty)
@@ -1207,11 +1110,7 @@ struct AddSnippetView: View {
 		}
 		.frame(width: 480, height: 360)
 		.background(
-			Color(
-				red: settings.theme.backgroundColor.0,
-				green: settings.theme.backgroundColor.1,
-				blue: settings.theme.backgroundColor.2
-			)
+			settings.theme.backgroundColorUI
 		)
 		.onAppear {
 			if let initialContent {
@@ -1278,7 +1177,7 @@ struct ThemedTextEditor: NSViewRepresentable {
 struct EditSnippetView: View {
 	let snippet: Snippet
 	@Environment(\.presentationMode) var presentationMode
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@ObservedObject var snippetManager = SnippetManager.shared
 
 	@State private var trigger: String
@@ -1296,31 +1195,19 @@ struct EditSnippetView: View {
 				Text("Edit Snippet")
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(
-						Color(
-							red: settings.theme.textColor.0,
-							green: settings.theme.textColor.1,
-							blue: settings.theme.textColor.2
-						))
+						settings.theme.textColorUI)
 				Spacer()
 				SwiftUI.Button(action: { presentationMode.wrappedValue.dismiss() }) {
 					Image(systemName: "xmark.circle.fill")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large + 2)))
 						.foregroundColor(
-							Color(
-								red: settings.theme.secondaryTextColor.0,
-								green: settings.theme.secondaryTextColor.1,
-								blue: settings.theme.secondaryTextColor.2
-							))
+							settings.theme.secondaryTextColorUI)
 				}
 				.buttonStyle(PlainButtonStyle())
 			}
 			.padding(DesignTokens.Spacing.xl)
 			.background(
-				Color(
-					red: settings.theme.backgroundColor.0,
-					green: settings.theme.backgroundColor.1,
-					blue: settings.theme.backgroundColor.2
-				))
+				settings.theme.backgroundColorUI)
 
 			Divider()
 				.background(Color.white.opacity(0.1))
@@ -1330,20 +1217,12 @@ struct EditSnippetView: View {
 					Text("Trigger")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
-							Color(
-								red: settings.theme.textColor.0,
-								green: settings.theme.textColor.1,
-								blue: settings.theme.textColor.2
-							))
+							settings.theme.textColorUI)
 					TextField("e.g., \\email", text: $trigger)
 						.textFieldStyle(PlainTextFieldStyle())
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
 						.foregroundColor(
-							Color(
-								red: settings.theme.textColor.0,
-								green: settings.theme.textColor.1,
-								blue: settings.theme.textColor.2
-							)
+							settings.theme.textColorUI
 						)
 						.padding(DesignTokens.Spacing.md + 2)
 						.background(settings.searchBarColorUI)
@@ -1354,23 +1233,11 @@ struct EditSnippetView: View {
 					Text("Content")
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(
-							Color(
-								red: settings.theme.textColor.0,
-								green: settings.theme.textColor.1,
-								blue: settings.theme.textColor.2
-							))
+							settings.theme.textColorUI)
 					ThemedTextEditor(
 						text: $content,
-						backgroundColor: Color(
-							red: settings.theme.searchBarColor.0,
-							green: settings.theme.searchBarColor.1,
-							blue: settings.theme.searchBarColor.2
-						),
-						textColor: Color(
-							red: settings.theme.textColor.0,
-							green: settings.theme.textColor.1,
-							blue: settings.theme.textColor.2
-						)
+						backgroundColor: settings.theme.searchBarColorUI,
+						textColor: settings.theme.textColorUI
 					)
 					.frame(height: 120)
 					.cornerRadius(DesignTokens.CornerRadius.md)
@@ -1383,20 +1250,12 @@ struct EditSnippetView: View {
 					}
 					.buttonStyle(PlainButtonStyle())
 					.foregroundColor(
-						Color(
-							red: settings.theme.textColor.0,
-							green: settings.theme.textColor.1,
-							blue: settings.theme.textColor.2
-						)
+						settings.theme.textColorUI
 					)
 					.padding(.horizontal, DesignTokens.Spacing.xl)
 					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
-						Color(
-							red: settings.theme.metadataColor.0,
-							green: settings.theme.metadataColor.1,
-							blue: settings.theme.metadataColor.2
-						)
+						settings.theme.metadataColorUI
 					)
 					.cornerRadius(DesignTokens.CornerRadius.md)
 
@@ -1412,11 +1271,7 @@ struct EditSnippetView: View {
 					.padding(.horizontal, DesignTokens.Spacing.xl)
 					.padding(.vertical, DesignTokens.Spacing.md)
 					.background(
-						Color(
-							red: settings.theme.accentColor.0,
-							green: settings.theme.accentColor.1,
-							blue: settings.theme.accentColor.2
-						)
+						settings.theme.accentColorUI
 					)
 					.cornerRadius(DesignTokens.CornerRadius.md)
 					.disabled(trigger.isEmpty || content.isEmpty)
@@ -1428,10 +1283,6 @@ struct EditSnippetView: View {
 		}
 		.frame(width: 440, height: 320)
 		.background(
-			Color(
-				red: settings.theme.backgroundColor.0,
-				green: settings.theme.backgroundColor.1,
-				blue: settings.theme.backgroundColor.2
-			))
+			settings.theme.backgroundColorUI)
 	}
 }

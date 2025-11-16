@@ -41,6 +41,11 @@ class ClipboardCoordinator: ObservableObject {
 		clipboardPage += 1
 	}
 
+	func removeEntry(at index: Int) {
+		clipboardManager.removeEntry(at: index)
+		loadHistory()
+	}
+
 	private func createPagedResults(from history: [ClipboardEntry]) -> [CategoryResult] {
 		let startIndex = clipboardPage * clipboardPageSize
 		let endIndex = min(startIndex + clipboardPageSize, history.count)
@@ -101,11 +106,7 @@ class ClipboardCoordinator: ObservableObject {
 				case .text:
 					pasteboard.setString(entry.content, forType: .string)
 				case .image:
-					if let imageData = Data(base64Encoded: entry.content),
-					   let image = NSImage(data: imageData)
-					{
-						pasteboard.writeObjects([image])
-					}
+					entry.loadImageAndPaste(to: pasteboard)
 				case .unknown:
 					pasteboard.setString(entry.content, forType: .string)
 				}

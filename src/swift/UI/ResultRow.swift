@@ -6,14 +6,22 @@ struct ResultRow: View {
 	let hideCategory: Bool
 	let quickSelectNumber: Int?
 	@State private var icon: NSImage?
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	private var isSmallIcon: Bool {
 		result.category == "Clipboard"
 	}
 
-	private func themeColor(_ color: (Double, Double, Double)) -> Color {
-		Color(red: color.0, green: color.1, blue: color.2)
+	private var accentColor: Color {
+		settings.theme.accentColorUI
+	}
+
+	private var textColor: Color {
+		settings.theme.textColorUI
+	}
+
+	private var searchBarColor: Color {
+		settings.theme.searchBarColorUI
 	}
 
 	var body: some View {
@@ -25,7 +33,6 @@ struct ResultRow: View {
 	}
 
 	private var calculatorRow: some View {
-		let accentColor = themeColor(settings.theme.accentColor)
 		let fontSize = settings.compactMode ? DesignTokens.Typography.large : DesignTokens.Typography.xlarge
 		let font = Font(settings.uiFont.withSize(fontSize))
 		let verticalPadding = settings.compactMode ? DesignTokens.Spacing.sm : DesignTokens.Spacing.lg
@@ -34,7 +41,7 @@ struct ResultRow: View {
 			if let subtitle = resultSubtitle {
 				Text(subtitle)
 					.font(font)
-					.foregroundColor(themeColor(settings.theme.textColor).opacity(0.8))
+					.foregroundColor(textColor.opacity(0.8))
 					.lineLimit(1)
 					.frame(maxWidth: .infinity)
 					.multilineTextAlignment(.center)
@@ -57,7 +64,7 @@ struct ResultRow: View {
 		.frame(maxWidth: .infinity)
 		.background(
 			RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg)
-				.fill(isSelected ? accentColor.opacity(0.15) : themeColor(settings.theme.searchBarColor))
+				.fill(isSelected ? accentColor.opacity(0.15) : searchBarColor)
 		)
 		.overlay(
 			RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg)
@@ -84,7 +91,7 @@ struct ResultRow: View {
 				if result.category == "Pinned" {
 					Image(systemName: "pin.fill")
 						.font(Font(settings.uiFont.withSize(8)))
-						.foregroundColor(themeColor(settings.theme.accentColor))
+						.foregroundColor(accentColor)
 						.offset(x: 4, y: -4)
 				}
 			}
@@ -114,7 +121,7 @@ struct ResultRow: View {
 		}
 		.padding(.horizontal, DesignTokens.Spacing.md + 2)
 		.padding(.vertical, DesignTokens.Spacing.sm)
-		.background(isSelected ? themeColor(settings.theme.accentColor).opacity(0.5) : Color.clear)
+		.background(isSelected ? accentColor.opacity(0.5) : Color.clear)
 		.cornerRadius(DesignTokens.CornerRadius.md)
 		.padding(.horizontal, DesignTokens.Spacing.xs)
 		.padding(.vertical, 0)
@@ -147,8 +154,6 @@ struct ResultRow: View {
 	}
 
 	private var iconColor: Color {
-		let accentColor = themeColor(settings.theme.accentColor)
-
 		if result.id.hasPrefix("cmd_") {
 			return accentColor.opacity(0.8)
 		}
@@ -182,25 +187,25 @@ struct ResultRow: View {
 		}
 
 		DispatchQueue.global(qos: .userInitiated).async {
-			autoreleasepool {
+			let targetSize = NSSize(width: DesignTokens.Layout.iconSize, height: DesignTokens.Layout.iconSize)
+			let resizedIcon = autoreleasepool {
 				let loadedIcon = NSWorkspace.shared.icon(forFile: path)
-
-				let size = NSSize(width: DesignTokens.Layout.iconSize, height: DesignTokens.Layout.iconSize)
-				let resized = NSImage(size: size)
+				let resized = NSImage(size: targetSize)
 				resized.lockFocus()
 				loadedIcon.draw(
-					in: NSRect(origin: .zero, size: size),
+					in: NSRect(origin: .zero, size: targetSize),
 					from: NSRect(origin: .zero, size: loadedIcon.size),
 					operation: .copy,
 					fraction: 1.0
 				)
 				resized.unlockFocus()
+				return resized
+			}
 
-				IconCache.shared.set(path, icon: resized)
+			IconCache.shared.set(path, icon: resizedIcon)
 
-				DispatchQueue.main.async {
-					icon = resized
-				}
+			DispatchQueue.main.async {
+				icon = resizedIcon
 			}
 		}
 	}

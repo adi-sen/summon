@@ -12,6 +12,8 @@ class SearchCoordinator: ObservableObject {
     private let calculator: Calculator
     private var searchTask: DispatchWorkItem?
     private var searchGeneration = 0
+    private var recentAppsCache: [String: Int] = [:]
+    private var recentAppsCacheGeneration = -1
 
     init(searchEngine: SearchEngine, settings: AppSettings, calculator: Calculator) {
         self.searchEngine = searchEngine
@@ -121,15 +123,18 @@ class SearchCoordinator: ObservableObject {
     }
 
     private func createAppResults(_ appResults: [SearchResult]) -> [CategoryResult] {
-        let recentAppsMap = Dictionary(
-            uniqueKeysWithValues: settings.recentApps.enumerated().map { ($1.path, $0) }
-        )
+        if recentAppsCacheGeneration != settings.recentAppsGeneration {
+            recentAppsCache = Dictionary(
+                uniqueKeysWithValues: settings.recentApps.enumerated().map { ($1.path, $0) }
+            )
+            recentAppsCacheGeneration = settings.recentAppsGeneration
+        }
 
         return appResults.map { result in
             let isCommand = result.id.hasPrefix("cmd_")
             var score = result.score
 
-            if let path = result.path, let recentIndex = recentAppsMap[path] {
+            if let path = result.path, let recentIndex = recentAppsCache[path] {
                 score += Int64(10000 - (recentIndex * 100))
             }
 

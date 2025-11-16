@@ -4,7 +4,7 @@ import SwiftUI
 // swiftlint:disable:next avoid_stateobject_in_child
 struct ContentView: View {
 	@ObservedObject var searchEngine: SearchEngine
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	let clipboardManager: ClipboardManager
 	@ObservedObject var calculator: Calculator
 
@@ -14,13 +14,14 @@ struct ContentView: View {
 	init(searchEngine: SearchEngine, clipboardManager: ClipboardManager) {
 		self.searchEngine = searchEngine
 		self.clipboardManager = clipboardManager
-		calculator = Calculator()
+		let sharedCalculator = Calculator()
+		calculator = sharedCalculator
 
 		_searchCoordinator = StateObject(
 			wrappedValue: SearchCoordinator(
 				searchEngine: searchEngine,
 				settings: AppSettings.shared,
-				calculator: Calculator()
+				calculator: sharedCalculator
 			))
 		_clipboardCoordinator = StateObject(
 			wrappedValue: ClipboardCoordinator(
@@ -42,6 +43,8 @@ struct ContentView: View {
 	}
 
 	@State var clipboardResults: [CategoryResult] = []
+	@State private var cachedLandingResults: [CategoryResult] = []
+	@State private var landingCacheKey: String = ""
 
 	var windowHeight: CGFloat {
 		let maxVisibleRows = 7
@@ -54,8 +57,15 @@ struct ContentView: View {
 		let rowHeight: CGFloat = 44
 		let bottomBuffer: CGFloat = 1
 
-		if settings.compactMode, !isClipboardMode {
-			guard actualRows > 0 else { return searchBarHeight }
+		if isClipboardMode {
+			return searchBarHeight + dividerHeight + topPadding + CGFloat(maxVisibleRows) * rowHeight
+				+ bottomBuffer + footerHeight
+		}
+
+		if settings.compactMode {
+			guard actualRows > 0 else {
+				return searchBarHeight
+			}
 			return searchBarHeight + dividerHeight + topPadding + CGFloat(actualRows) * rowHeight
 				+ bottomBuffer + footerHeight
 		}
@@ -67,12 +77,12 @@ struct ContentView: View {
 	var shouldShowFooter: Bool {
 		guard settings.showFooterHints else { return false }
 
-		if !settings.compactMode {
-			return true
-		}
-
 		if isClipboardMode {
 			return !results.isEmpty && selectedIndex < clipboardHistory.count
+		}
+
+		if !settings.compactMode {
+			return true
 		}
 
 		guard !results.isEmpty, selectedIndex < results.count else { return false }
@@ -111,7 +121,8 @@ struct ContentView: View {
 			return [
 				HintAction(
 					shortcut: settings.pinAppShortcut.displayString,
-					label: isPinned ? "Unpin" : "Pin"
+					label: isPinned ? "Unpin" : "Pin",
+					action: { self.handleTogglePin() }
 				)
 			]
 		}
@@ -120,15 +131,27 @@ struct ContentView: View {
 
 		if showSecondaryHints {
 			var hints: [HintAction] = [
-				HintAction(shortcut: settings.copyPathShortcut.displayString, label: "Copy Path")
+				HintAction(
+					shortcut: settings.copyPathShortcut.displayString,
+					label: "Copy Path",
+					action: { self.handleCopyPath() }
+				)
 			]
 			if running {
 				hints.insert(
-					HintAction(shortcut: settings.quitAppShortcut.displayString, label: "Quit App"),
+					HintAction(
+						shortcut: settings.quitAppShortcut.displayString,
+						label: "Quit App",
+						action: { self.handleQuitApp(force: false) }
+					),
 					at: 0
 				)
 				hints.insert(
-					HintAction(shortcut: settings.hideAppShortcut.displayString, label: "Hide App"),
+					HintAction(
+						shortcut: settings.hideAppShortcut.displayString,
+						label: "Hide App",
+						action: { self.handleHideApp() }
+					),
 					at: 1
 				)
 			}
@@ -137,18 +160,31 @@ struct ContentView: View {
 			var hints: [HintAction] = []
 			if running {
 				hints.append(
-					HintAction(shortcut: settings.quitAppShortcut.displayString, label: "Quit"))
+					HintAction(
+						shortcut: settings.quitAppShortcut.displayString,
+						label: "Quit",
+						action: { self.handleQuitApp(force: false) }
+					))
 				hints.append(
-					HintAction(shortcut: settings.hideAppShortcut.displayString, label: "Hide"))
+					HintAction(
+						shortcut: settings.hideAppShortcut.displayString,
+						label: "Hide",
+						action: { self.handleHideApp() }
+					))
 			}
 			hints.append(
 				HintAction(
 					shortcut: settings.pinAppShortcut.displayString,
-					label: isPinned ? "Unpin" : "Pin"
+					label: isPinned ? "Unpin" : "Pin",
+					action: { self.handleTogglePin() }
 				))
 			if !running {
 				hints.append(
-					HintAction(shortcut: settings.revealAppShortcut.displayString, label: "Reveal"))
+					HintAction(
+						shortcut: settings.revealAppShortcut.displayString,
+						label: "Reveal",
+						action: { self.handleShowInFinder() }
+					))
 			}
 			return hints
 		}
@@ -156,6 +192,35 @@ struct ContentView: View {
 
 	var placeholderText: String {
 		isClipboardMode ? "Type to filter entries..." : "Search applications..."
+	}
+
+	func getClipboardHints() -> [HintAction] {
+		guard isClipboardMode, selectedIndex < clipboardHistory.count else { return [] }
+
+		let entry = clipboardHistory[selectedIndex]
+		var hints: [HintAction] = []
+
+		if entry.type == .text {
+			hints.append(HintAction(
+				shortcut: settings.saveClipboardShortcut.displayString,
+				label: "Save as text expansion",
+				action: { self.handleSaveAsSnippet() }
+			))
+		} else if entry.type == .image {
+			hints.append(HintAction(
+				shortcut: settings.saveClipboardShortcut.displayString,
+				label: "Save to Pictures",
+				action: { self.handleSaveImage() }
+			))
+		}
+
+		hints.append(HintAction(
+			shortcut: settings.deleteClipboardShortcut.displayString,
+			label: "Delete",
+			action: { self.handleDeleteClipboardEntry() }
+		))
+
+		return hints
 	}
 
 	var body: some View {
@@ -225,9 +290,7 @@ struct ContentView: View {
 										.padding(.top, 4)
 									}
 									.onChange(of: selectedIndex) { newIndex in
-										withAnimation(.easeInOut(duration: 0.15)) {
-											proxy.scrollTo(newIndex, anchor: .center)
-										}
+										proxy.scrollTo(newIndex, anchor: .center)
 										selectedAppInfo = nil
 									}
 								}
@@ -265,55 +328,25 @@ struct ContentView: View {
 								.background(settings.backgroundColorUI)
 							}
 						}
-					} else if !searchText.isEmpty, !isClipboardMode, !searchCoordinator.isSearching {
-						if settings.compactMode {
-							VStack {
-								Spacer()
-								VStack(spacing: DesignTokens.Spacing.md) {
-									Image(systemName: "magnifyingglass")
-										.font(.system(size: 48))
-										.foregroundColor(.secondary.opacity(0.5))
-									Text("No results")
-										.font(.system(size: 15))
-										.foregroundColor(.secondary)
-								}
-								Spacer()
-							}
-							.frame(height: 100)
-							.background(settings.backgroundColorUI)
-						} else {
-							VStack {
-								Spacer()
-								VStack(spacing: DesignTokens.Spacing.md) {
-									Image(systemName: "magnifyingglass")
-										.font(.system(size: 48))
-										.foregroundColor(.secondary.opacity(0.5))
-									Text("No results")
-										.font(.system(size: 15))
-										.foregroundColor(.secondary)
-								}
-								Spacer()
-							}
-							.frame(height: 308)
-							.background(settings.backgroundColorUI)
-						}
+					} else if !searchText.isEmpty, !isClipboardMode, !searchCoordinator.isSearching,
+					          !settings.compactMode
+					{
+						EmptyStateView(
+							iconName: "magnifyingglass",
+							title: "No results",
+							subtitle: nil,
+							height: 308
+						)
+						.equatable()
+						.background(settings.backgroundColorUI)
 					} else if searchText.isEmpty, !isClipboardMode, !settings.compactMode {
-						VStack {
-							Spacer()
-							VStack(spacing: DesignTokens.Spacing.md) {
-								Image(systemName: "square.stack.3d.up.slash")
-									.font(.system(size: 48))
-									.foregroundColor(.secondary.opacity(0.5))
-								Text("No pinned or recently launched apps")
-									.font(.system(size: 15))
-									.foregroundColor(.secondary)
-								Text("Start typing to search")
-									.font(.system(size: 13))
-									.foregroundColor(.secondary.opacity(0.7))
-							}
-							Spacer()
-						}
-						.frame(height: 308)
+						EmptyStateView(
+							iconName: "square.stack.3d.up.slash",
+							title: "No pinned or recently launched apps",
+							subtitle: "Start typing to search",
+							height: 308
+						)
+						.equatable()
 						.background(settings.backgroundColorUI)
 					} else if !searchText.isEmpty, !isClipboardMode, searchCoordinator.isSearching,
 					          !settings.compactMode
@@ -322,37 +355,17 @@ struct ContentView: View {
 							.frame(height: 308)
 							.background(settings.backgroundColorUI)
 					} else if isClipboardMode, results.isEmpty {
-						if settings.compactMode {
-							VStack {
-								Spacer()
-								VStack(spacing: DesignTokens.Spacing.md) {
-									Image(systemName: "doc.on.clipboard")
-										.font(.system(size: 48))
-										.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
-									Text("No clipboard items")
-										.font(.system(size: 15))
-										.foregroundColor(settings.secondaryTextColorUI)
-								}
-								Spacer()
-							}
-							.frame(height: 100)
-							.background(settings.backgroundColorUI)
-						} else {
-							VStack {
-								Spacer()
-								VStack(spacing: DesignTokens.Spacing.md) {
-									Image(systemName: "doc.on.clipboard")
-										.font(.system(size: 48))
-										.foregroundColor(settings.secondaryTextColorUI.opacity(0.4))
-									Text("No clipboard items")
-										.font(.system(size: 15))
-										.foregroundColor(settings.secondaryTextColorUI)
-								}
-								Spacer()
-							}
-							.frame(height: 308)
-							.background(settings.backgroundColorUI)
-						}
+						EmptyStateView(
+							iconName: "doc.on.clipboard",
+							title: "No clipboard items",
+							subtitle: nil,
+							height: 308
+						)
+						.equatable()
+						.background(settings.backgroundColorUI)
+					} else if settings.compactMode, results.isEmpty {
+						Color.clear
+							.frame(height: 0)
 					}
 				}
 				.frame(height: settings.compactMode ? nil : 308)
@@ -369,22 +382,10 @@ struct ContentView: View {
 								.padding(.leading, DesignTokens.Spacing.md)
 						}
 
-						if isClipboardMode, selectedIndex < clipboardHistory.count {
-							let entry = clipboardHistory[selectedIndex]
-							if entry.type == .text {
-								ContextualHints(hints: [
-									HintAction(
-										shortcut: settings.saveClipboardShortcut.displayString,
-										label: "Save as text expansion"
-									)
-								])
-							} else if entry.type == .image {
-								ContextualHints(hints: [
-									HintAction(
-										shortcut: settings.saveClipboardShortcut.displayString,
-										label: "Save to Pictures"
-									)
-								])
+						if isClipboardMode {
+							let hints = getClipboardHints()
+							if !hints.isEmpty {
+								ContextualHints(hints: hints)
 							}
 						} else if !isClipboardMode, selectedIndex < results.count {
 							let selectedResult = results[selectedIndex]
@@ -508,6 +509,13 @@ struct ContentView: View {
 	func performLandingPageSearch() {
 		settings.cleanInvalidApps()
 
+		let currentKey = "\(settings.pinnedApps.count):\(settings.recentApps.count):\(settings.showRecentAppsOnLanding)"
+		if landingCacheKey == currentKey, !cachedLandingResults.isEmpty {
+			searchCoordinator.results = cachedLandingResults
+			selectedIndex = 0
+			return
+		}
+
 		var landingResults: [CategoryResult] = []
 
 		landingResults.append(
@@ -545,6 +553,8 @@ struct ContentView: View {
 				})
 		}
 
+		cachedLandingResults = landingResults
+		landingCacheKey = currentKey
 		searchCoordinator.results = landingResults
 		selectedIndex = 0
 	}
@@ -634,6 +644,41 @@ struct ContentView: View {
 			IconCache.shared.clear()
 			ThumbnailCache.shared.clear()
 		}
+	}
+}
+
+struct EmptyStateView: View, Equatable {
+	let iconName: String
+	let title: String
+	let subtitle: String?
+	let height: CGFloat
+
+	var body: some View {
+		VStack {
+			Spacer()
+			VStack(spacing: DesignTokens.Spacing.md) {
+				Image(systemName: iconName)
+					.font(.system(size: 48))
+					.foregroundColor(.secondary.opacity(0.5))
+				Text(title)
+					.font(.system(size: 15))
+					.foregroundColor(.secondary)
+				if let subtitle {
+					Text(subtitle)
+						.font(.system(size: 13))
+						.foregroundColor(.secondary.opacity(0.7))
+				}
+			}
+			Spacer()
+		}
+		.frame(height: height)
+	}
+
+	static func == (lhs: EmptyStateView, rhs: EmptyStateView) -> Bool {
+		lhs.iconName == rhs.iconName &&
+		lhs.title == rhs.title &&
+		lhs.subtitle == rhs.subtitle &&
+		lhs.height == rhs.height
 	}
 }
 

@@ -7,7 +7,7 @@ enum ActionFilterType {
 }
 
 struct ActionsList: View {
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@ObservedObject var actionManager = ActionManager.shared
 	@State private var showingAddAction = false
 
@@ -71,12 +71,12 @@ struct ActionsList: View {
 							.padding(.horizontal, DesignTokens.Spacing.lg)
 							.padding(.vertical, DesignTokens.Spacing.md + 2)
 							.frame(maxWidth: .infinity)
-							.background(settings.searchBarColorUI.opacity(0.3))
+							.background(settings.searchBarColorUI30)
 							.cornerRadius(DesignTokens.CornerRadius.md)
 							.overlay(
 								RoundedRectangle(cornerRadius: 6)
 									.strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-									.foregroundColor(settings.accentColorUI.opacity(0.3))
+									.foregroundColor(settings.accentColorUI30)
 							)
 						}
 						.buttonStyle(PlainButtonStyle())
@@ -92,7 +92,7 @@ struct ActionsList: View {
 							.foregroundColor(settings.secondaryTextColorUI)
 							.padding(.horizontal, DesignTokens.Spacing.md + 2)
 							.padding(.vertical, DesignTokens.Spacing.md + 2)
-							.background(settings.searchBarColorUI.opacity(0.3))
+							.background(settings.searchBarColorUI30)
 							.cornerRadius(DesignTokens.CornerRadius.md)
 						}
 						.buttonStyle(PlainButtonStyle())
@@ -108,12 +108,12 @@ struct ActionsList: View {
 							.padding(.horizontal, DesignTokens.Spacing.lg)
 							.padding(.vertical, DesignTokens.Spacing.md + 2)
 							.frame(maxWidth: .infinity)
-							.background(settings.searchBarColorUI.opacity(0.3))
+							.background(settings.searchBarColorUI30)
 							.cornerRadius(DesignTokens.CornerRadius.md)
 							.overlay(
 								RoundedRectangle(cornerRadius: 6)
 									.strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-									.foregroundColor(settings.accentColorUI.opacity(0.3))
+									.foregroundColor(settings.accentColorUI30)
 							)
 						}
 						.buttonStyle(PlainButtonStyle())
@@ -138,7 +138,7 @@ struct InlineEditableActionCard: View {
 	let onUpdate: (Action) -> Void
 	let onToggle: () -> Void
 	let onDelete: () -> Void
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@State private var isHovered = false
 	@State private var editingName = ""
 	@State private var editingKeyword = ""
@@ -277,7 +277,7 @@ struct InlineEditableActionCard: View {
 						.font(Font(settings.uiFont.withSize(DesignTokens.Spacing.md)))
 						.foregroundColor(settings.secondaryTextColorUI)
 
-					Text(scriptPath.split(separator: "/").last.map(String.init) ?? scriptPath)
+					Text(URL(fileURLWithPath: scriptPath).lastPathComponent)
 						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
 						.foregroundColor(settings.secondaryTextColorUI)
 						.lineLimit(1)
@@ -345,7 +345,7 @@ struct InlineEditableActionCard: View {
 
 struct AddActionView: View {
 	@Environment(\.presentationMode) var presentationMode
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 	@ObservedObject var actionManager = ActionManager.shared
 
 	@State private var name = ""
@@ -434,7 +434,7 @@ struct AddActionView: View {
 								.padding(.vertical, DesignTokens.Spacing.md)
 								.background(
 									useCustomIcon
-										? settings.searchBarColorUI.opacity(0.5)
+										? settings.searchBarColorUI50
 										: settings.accentColorUI.opacity(0.2)
 								)
 								.cornerRadius(DesignTokens.CornerRadius.md)
@@ -454,7 +454,7 @@ struct AddActionView: View {
 								.background(
 									useCustomIcon
 										? settings.accentColorUI.opacity(0.2)
-										: settings.searchBarColorUI.opacity(0.5)
+										: settings.searchBarColorUI50
 								)
 								.cornerRadius(DesignTokens.CornerRadius.md)
 							}
@@ -513,10 +513,10 @@ struct AddActionView: View {
 
 								Text("Supports PNG, JPG, GIF • Large images will be resized")
 									.font(Font(settings.uiFont.withSize(10)))
-									.foregroundColor(settings.secondaryTextColorUI.opacity(0.6))
+									.foregroundColor(settings.secondaryTextColorUI60)
 							}
 							.padding(DesignTokens.Spacing.lg)
-							.background(settings.searchBarColorUI.opacity(0.3))
+							.background(settings.searchBarColorUI30)
 							.cornerRadius(DesignTokens.CornerRadius.md)
 						} else {
 							HStack(spacing: 12) {
@@ -524,7 +524,7 @@ struct AddActionView: View {
 									.font(Font(settings.uiFont.withSize(20)))
 									.foregroundColor(settings.accentColorUI)
 									.frame(width: 32, height: 32)
-									.background(settings.searchBarColorUI.opacity(0.3))
+									.background(settings.searchBarColorUI30)
 									.cornerRadius(DesignTokens.CornerRadius.md)
 
 								TextField("e.g., globe, magnifyingglass, star.fill", text: $icon)
