@@ -122,7 +122,7 @@ extension ContentView {
 		pasteboard.setString(path, forType: .string)
 	}
 
-	func handleQuitApp() {
+	func handleQuitApp(force: Bool = false) {
 		guard !isClipboardMode, selectedIndex < results.count else { return }
 		let result = results[selectedIndex]
 
@@ -134,7 +134,11 @@ extension ContentView {
 		if let app = NSWorkspace.shared.runningApplications.first(where: {
 			$0.bundleURL?.path == path
 		}) {
-			app.terminate()
+			if force {
+				app.forceTerminate()
+			} else {
+				app.terminate()
+			}
 		}
 	}
 
@@ -173,8 +177,7 @@ extension ContentView {
 			FileManager.default.fileExists(atPath: settings.imageSavePath) {
 				URL(fileURLWithPath: settings.imageSavePath)
 			} else {
-				FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)
-					.first!
+				StoragePathManager.getPicturesDirectory()
 			}
 
 		let timestamp = Int(Date().timeIntervalSince1970)
@@ -190,6 +193,18 @@ extension ContentView {
 		}
 
 		NSApp.keyWindow?.orderOut(nil)
+	}
+
+	func handleDeleteClipboardEntry() {
+		guard isClipboardMode, selectedIndex < clipboardHistory.count else { return }
+
+		clipboardCoordinator.removeEntry(at: selectedIndex)
+
+		if selectedIndex >= clipboardHistory.count, selectedIndex > 0 {
+			selectedIndex -= 1
+		}
+
+		performSearch(searchText)
 	}
 
 	func matchesShortcut(_ event: NSEvent, _ shortcut: KeyboardShortcut) -> Bool {
@@ -252,15 +267,23 @@ extension ContentView {
 
 	func handleClipboardShortcuts(_ event: NSEvent) -> NSEvent? {
 		guard isClipboardMode else { return nil }
-		guard matchesShortcut(event, settings.saveClipboardShortcut) else { return nil }
 		guard selectedIndex < clipboardHistory.count else { return nil }
 
-		let entry = clipboardHistory[selectedIndex]
-		switch entry.type {
-		case .text: handleSaveAsSnippet()
-		case .image: handleSaveImage()
-		case .unknown: break
+		if matchesShortcut(event, settings.deleteClipboardShortcut) {
+			handleDeleteClipboardEntry()
+			return nil
 		}
+
+		if matchesShortcut(event, settings.saveClipboardShortcut) {
+			let entry = clipboardHistory[selectedIndex]
+			switch entry.type {
+			case .text: handleSaveAsSnippet()
+			case .image: handleSaveImage()
+			case .unknown: break
+			}
+			return nil
+		}
+
 		return nil
 	}
 
@@ -276,11 +299,17 @@ extension ContentView {
 		} else if matchesShortcut(event, settings.copyPathShortcut) {
 			handleCopyPath()
 			return nil
+		} else if matchesShortcut(event, settings.forceQuitShortcut) {
+			handleQuitApp(force: true)
+			return nil
 		} else if matchesShortcut(event, settings.quitAppShortcut) {
-			handleQuitApp()
+			handleQuitApp(force: false)
 			return nil
 		} else if matchesShortcut(event, settings.hideAppShortcut) {
 			handleHideApp()
+			return nil
+		} else if matchesShortcut(event, settings.getInfoShortcut) {
+			handleGetInfo()
 			return nil
 		}
 		return nil
