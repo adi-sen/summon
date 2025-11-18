@@ -176,10 +176,22 @@ enum FFI {
 			return []
 		}
 
-		let swiftSnippets = convertCSnippetsToSwift(cSnippets, count: outCount)
-		snippets_free(cSnippets, outCount)
+		defer { snippets_free(cSnippets, outCount) }
+		return FFIHelpers.convertCArray(cSnippets, count: outCount) { cSnippet in
+			guard let id = FFIHelpers.safeString(from: cSnippet.id),
+			      let trigger = FFIHelpers.safeString(from: cSnippet.trigger),
+			      let content = FFIHelpers.safeString(from: cSnippet.content),
+			      let category = FFIHelpers.safeString(from: cSnippet.category)
+			else { return nil }
 
-		return swiftSnippets
+			return SwiftSnippet(
+				id: id,
+				trigger: trigger,
+				content: content,
+				enabled: cSnippet.enabled,
+				category: category
+			)
+		}
 	}
 
 	static func snippetStorageGetEnabled(_ handle: SnippetStorageHandle?) -> [SwiftSnippet] {
@@ -192,10 +204,22 @@ enum FFI {
 			return []
 		}
 
-		let swiftSnippets = convertCSnippetsToSwift(cSnippets, count: outCount)
-		snippets_free(cSnippets, outCount)
+		defer { snippets_free(cSnippets, outCount) }
+		return FFIHelpers.convertCArray(cSnippets, count: outCount) { cSnippet in
+			guard let id = FFIHelpers.safeString(from: cSnippet.id),
+			      let trigger = FFIHelpers.safeString(from: cSnippet.trigger),
+			      let content = FFIHelpers.safeString(from: cSnippet.content),
+			      let category = FFIHelpers.safeString(from: cSnippet.category)
+			else { return nil }
 
-		return swiftSnippets
+			return SwiftSnippet(
+				id: id,
+				trigger: trigger,
+				content: content,
+				enabled: cSnippet.enabled,
+				category: category
+			)
+		}
 	}
 
 	static func snippetStorageLen(_ handle: SnippetStorageHandle?) -> Int {
@@ -207,41 +231,7 @@ enum FFI {
 		FFIHelpers.safeString(from: ptr)
 	}
 
-	private static func convertCSnippetsToSwift(
-		_ cSnippets: UnsafeMutablePointer<CSnippet>,
-		count: Int
-	) -> [SwiftSnippet] {
-		var swiftSnippets: [SwiftSnippet] = []
-		swiftSnippets.reserveCapacity(count)
-
-		for i in 0 ..< count {
-			let cSnippet = cSnippets[i]
-
-			guard let id = FFIHelpers.safeString(from: cSnippet.id),
-			      let trigger = FFIHelpers.safeString(from: cSnippet.trigger),
-			      let content = FFIHelpers.safeString(from: cSnippet.content),
-			      let category = FFIHelpers.safeString(from: cSnippet.category)
-			else { continue }
-
-			swiftSnippets.append(
-				SwiftSnippet(
-					id: id,
-					trigger: trigger,
-					content: content,
-					enabled: cSnippet.enabled,
-					category: category
-				))
-		}
-
-		return swiftSnippets
-	}
-
 	typealias AppStorageHandle = OpaquePointer
-
-	struct CAppEntry {
-		let name: UnsafeMutablePointer<CChar>?
-		let path: UnsafeMutablePointer<CChar>?
-	}
 
 	struct SwiftAppEntry {
 		let name: String
@@ -291,20 +281,14 @@ enum FFI {
 			return []
 		}
 
-		var swiftEntries: [SwiftAppEntry] = []
-		swiftEntries.reserveCapacity(outCount)
-
-		for i in 0 ..< outCount {
-			let cEntry = cEntries[i]
+		defer { app_entries_free(cEntries, outCount) }
+		return FFIHelpers.convertCArray(cEntries, count: outCount) { cEntry in
 			guard let name = FFIHelpers.safeString(from: cEntry.name),
 			      let path = FFIHelpers.safeString(from: cEntry.path)
-			else { continue }
+			else { return nil }
 
-			swiftEntries.append(SwiftAppEntry(name: name, path: path))
+			return SwiftAppEntry(name: name, path: path)
 		}
-
-		app_entries_free(cEntries, outCount)
-		return swiftEntries
 	}
 
 	static func appStorageLen(_ handle: AppStorageHandle?) -> Int {
@@ -339,7 +323,7 @@ enum FFI {
 
 		var launcherShortcut = ("space", ["command"])
 		if let jsonPtr = settings_storage_get_launcher_shortcut(handle) {
-			defer { calculator_free_string(jsonPtr) }
+			defer { string_free(jsonPtr) }
 			if let jsonStr = FFIHelpers.safeString(from: jsonPtr),
 			   let data = jsonStr.data(using: .utf8),
 			   let dict = try? JSONDecoder().decode([String: [String]].self, from: data),
@@ -352,7 +336,7 @@ enum FFI {
 
 		var clipboardShortcut = ("v", ["command", "shift"])
 		if let jsonPtr = settings_storage_get_clipboard_shortcut(handle) {
-			defer { calculator_free_string(jsonPtr) }
+			defer { string_free(jsonPtr) }
 			if let jsonStr = FFIHelpers.safeString(from: jsonPtr),
 			   let data = jsonStr.data(using: .utf8),
 			   let dict = try? JSONDecoder().decode([String: [String]].self, from: data),
@@ -365,7 +349,7 @@ enum FFI {
 
 		var searchFolders = ["/Applications", "/System/Applications", "/System/Applications/Utilities"]
 		if let jsonPtr = settings_storage_get_search_folders(handle) {
-			defer { calculator_free_string(jsonPtr) }
+			defer { string_free(jsonPtr) }
 			if let jsonStr = FFIHelpers.safeString(from: jsonPtr),
 			   let data = jsonStr.data(using: .utf8),
 			   let arr = try? JSONDecoder().decode([String].self, from: data)
@@ -465,7 +449,7 @@ enum FFI {
 
 		guard let result else { return nil }
 
-		defer { calculator_free_string(result) }
+		defer { string_free(result) }
 		return String(cString: result)
 	}
 
@@ -475,7 +459,7 @@ enum FFI {
 		let json = calculator_get_history_json(handle)
 		guard let json else { return nil }
 
-		defer { calculator_free_string(json) }
+		defer { string_free(json) }
 		return String(cString: json)
 	}
 
@@ -655,24 +639,17 @@ enum FFI {
 	}
 }
 
-struct CSearchResult {
-	var id: UnsafeMutablePointer<CChar>?
-	var name: UnsafeMutablePointer<CChar>?
-	var path: UnsafeMutablePointer<CChar>?
-	var score: Int64
-}
-
-struct CSnippetMatch {
-	var trigger: UnsafeMutablePointer<CChar>?
-	var content: UnsafeMutablePointer<CChar>?
-	var matchEnd: Int
-}
-
 @_silgen_name("calculator_clear_history")
 func calculator_clear_history(_ handle: OpaquePointer?)
 
-@_silgen_name("calculator_free_string")
-func calculator_free_string(_ s: UnsafeMutablePointer<CChar>?)
+@_silgen_name("string_free")
+func string_free(_ s: UnsafeMutablePointer<CChar>?)
+
+@_silgen_name("calculator_new")
+func calculator_new() -> OpaquePointer?
+
+@_silgen_name("calculator_free")
+func calculator_free(_ handle: OpaquePointer?)
 
 @_silgen_name("clipboard_storage_new")
 func clipboard_storage_new(_ path: UnsafePointer<CChar>?) -> OpaquePointer?
@@ -822,11 +799,6 @@ func search_engine_scan_apps(
 	_ excludePatterns: CStringArray
 ) -> Int
 
-struct CIndexedApp {
-	var name: UnsafeMutablePointer<CChar>?
-	var path: UnsafeMutablePointer<CChar>?
-}
-
 @_silgen_name("search_engine_get_apps")
 func search_engine_get_apps(
 	_ handle: OpaquePointer?,
@@ -865,10 +837,10 @@ func app_storage_add(
 
 @_silgen_name("app_storage_get_all")
 func app_storage_get_all(_ handle: OpaquePointer?, _ outCount: UnsafeMutablePointer<Int>?)
-	-> UnsafeMutablePointer<FFI.CAppEntry>?
+	-> UnsafeMutablePointer<CAppEntry>?
 
 @_silgen_name("app_entries_free")
-func app_entries_free(_ entries: UnsafeMutablePointer<FFI.CAppEntry>?, _ count: Int)
+func app_entries_free(_ entries: UnsafeMutablePointer<CAppEntry>?, _ count: Int)
 
 @_silgen_name("app_storage_len")
 func app_storage_len(_ handle: OpaquePointer?) -> Int
@@ -921,15 +893,6 @@ func settings_storage_get_clipboard_shortcut(_ handle: OpaquePointer?) -> Unsafe
 
 extension FFI {
 	typealias ActionManagerHandle = OpaquePointer
-
-	struct CActionResult {
-		let id: UnsafeMutablePointer<CChar>?
-		let title: UnsafeMutablePointer<CChar>?
-		let subtitle: UnsafeMutablePointer<CChar>?
-		let icon: UnsafeMutablePointer<CChar>?
-		let url: UnsafeMutablePointer<CChar>?
-		let score: Float
-	}
 
 	struct SwiftActionResult {
 		let id: String
@@ -1077,10 +1040,10 @@ func action_manager_search(
 	_ handle: OpaquePointer?,
 	_ query: UnsafePointer<CChar>?,
 	_ outCount: UnsafeMutablePointer<Int>?
-) -> UnsafeMutablePointer<FFI.CActionResult>?
+) -> UnsafeMutablePointer<CActionResult>?
 
 @_silgen_name("action_results_free")
-func action_results_free(_ results: UnsafeMutablePointer<FFI.CActionResult>?, _ count: Int)
+func action_results_free(_ results: UnsafeMutablePointer<CActionResult>?, _ count: Int)
 
 @_silgen_name("action_manager_add_json")
 func action_manager_add_json(_ handle: OpaquePointer?, _ json: UnsafePointer<CChar>?) -> Bool
@@ -1119,6 +1082,3 @@ func action_manager_get_all_json(_ handle: OpaquePointer?) -> UnsafeMutablePoint
 
 @_silgen_name("action_manager_import_defaults")
 func action_manager_import_defaults(_ handle: OpaquePointer?) -> Bool
-
-@_silgen_name("string_free")
-func string_free(_ s: UnsafeMutablePointer<CChar>?)
