@@ -7,14 +7,15 @@ publish.workspace = true
 
 [dependencies]
 rkyv.workspace = true
-bytecheck = "0.8"
+bytecheck.workspace = true
 serde.workspace = true
+serde_json = "1.0"
 parking_lot.workspace = true
 uuid = { version = "1.0", features = ["v4"] }
 storage_utils = { path = "../storage_utils" }
 
 [dev-dependencies]
-tempfile = "3.8"
+tempfile.workspace = true
 
 [lints]
 workspace = true

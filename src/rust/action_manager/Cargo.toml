@@ -6,18 +6,22 @@ publish.workspace = true
 
 [dependencies]
 rkyv.workspace = true
-bytecheck = "0.8"
+bytecheck.workspace = true
 serde = { version = "1.0", features = ["derive", "serde_derive"] }
 sonic-rs = "0.5"
 parking_lot = "0.12"
 urlencoding = "2.1"
 lru = { workspace = true }
 rustc-hash = { workspace = true }
-aho-corasick = "1.1"
 wait-timeout = "0.2"
+compact_str = { workspace = true }
 
 storage_utils = { path = "../storage_utils" }
 shared_utils = { path = "../shared_utils" }
 
-[lints]
-workspace = true
+[package.metadata.cargo-machete]
+ignored = []
+
+[lints.clippy]
+indexing_slicing = "allow"
+literal_string_with_formatting_args = "allow"

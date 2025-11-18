@@ -2,43 +2,44 @@ pub mod action;
 pub mod pattern;
 pub mod script_filter;
 
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
-use aho_corasick::AhoCorasick;
-use parking_lot::RwLock;
+use shared_utils::KeywordMatcherCache;
 use storage_utils::RkyvStorage;
 
 use crate::{action::{Action, ActionKind, ActionResult}, pattern::{create_result, match_pattern}};
 
 pub struct ActionManager {
-	storage:               Arc<RkyvStorage<Action>>,
-	actions:               Arc<RwLock<Vec<Action>>>,
-	keyword_matcher:       Arc<RwLock<Option<AhoCorasick>>>,
-	matcher_needs_rebuild: Arc<RwLock<bool>>,
+	storage:         RkyvStorage<Action>,
+	keyword_matcher: KeywordMatcherCache,
 }
 
 impl ActionManager {
 	pub fn new(storage_path: impl AsRef<Path>) -> std::io::Result<Self> {
-		let storage = Arc::new(RkyvStorage::new(storage_path)?);
-		let actions = Arc::new(RwLock::new(storage.get_all()));
-		let keyword_matcher = Arc::new(RwLock::new(None));
-		let matcher_needs_rebuild = Arc::new(RwLock::new(true));
+		let storage = RkyvStorage::new(storage_path)?;
+		let keyword_matcher = KeywordMatcherCache::new();
 
-		let manager = Self { storage, actions, keyword_matcher, matcher_needs_rebuild };
+		let manager = Self { storage, keyword_matcher };
 		manager.rebuild_keyword_matcher();
 		Ok(manager)
 	}
 
+	fn invalidate_matcher_if_modified(&self, modified: bool) {
+		if modified {
+			self.keyword_matcher.invalidate();
+		}
+	}
+
 	pub fn add(&self, action: Action) -> std::io::Result<()> {
-		self.storage.add(action.clone())?;
-		self.actions.write().push(action);
-		*self.matcher_needs_rebuild.write() = true;
+		self.storage.add(action)?;
+		self.invalidate_matcher_if_modified(true);
 		Ok(())
 	}
 
 	pub fn update(&self, action: Action) -> std::io::Result<bool> {
+		let action_id = action.id.clone();
 		let modified = self.storage.update(|actions| {
-			if let Some(pos) = actions.iter().position(|a| a.id == action.id) {
+			if let Some(pos) = actions.iter().position(|a| a.id == action_id) {
 				actions[pos] = action.clone();
 				true
 			} else {
@@ -46,15 +47,7 @@ impl ActionManager {
 			}
 		})?;
 
-		if modified {
-			let mut actions = self.actions.write();
-			if let Some(pos) = actions.iter().position(|a| a.id == action.id) {
-				actions[pos] = action;
-			}
-			drop(actions);
-			*self.matcher_needs_rebuild.write() = true;
-		}
-
+		self.invalidate_matcher_if_modified(modified);
 		Ok(modified)
 	}
 
@@ -65,11 +58,7 @@ impl ActionManager {
 			actions.len() != before_len
 		})?;
 
-		if modified {
-			self.actions.write().retain(|a| a.id != id);
-			*self.matcher_needs_rebuild.write() = true;
-		}
-
+		self.invalidate_matcher_if_modified(modified);
 		Ok(modified)
 	}
 
@@ -83,41 +72,38 @@ impl ActionManager {
 			}
 		})?;
 
-		if modified && let Some(action) = self.actions.write().iter_mut().find(|a| a.id == id) {
-			action.enabled = !action.enabled;
-		}
-
-		*self.matcher_needs_rebuild.write() = true;
+		self.invalidate_matcher_if_modified(modified);
 		Ok(modified)
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn get_all(&self) -> Vec<Action> { self.actions.read().clone() }
+	pub fn get_all(&self) -> std::sync::Arc<Vec<Action>> { self.storage.get_all() }
 
 	#[must_use]
 	pub fn get_by_type(&self, filter: impl Fn(&ActionKind) -> bool) -> Vec<Action> {
-		self.actions.read().iter().filter(|a| filter(&a.kind)).cloned().collect()
+		self.storage.get_all().iter().filter(|a| filter(&a.kind)).cloned().collect()
 	}
 
 	#[must_use]
 	pub fn search(&self, query: &str) -> Vec<ActionResult> {
-		if *self.matcher_needs_rebuild.read() {
+		if self.keyword_matcher.needs_rebuild() {
 			self.rebuild_keyword_matcher();
 		}
 
-		let actions = self.actions.read();
-		let mut results = Vec::new();
+		let actions = self.storage.get_all();
+		let mut results = Vec::with_capacity(actions.len().min(10));
 
 		for action in actions.iter().filter(|a| a.enabled) {
 			match &action.kind {
 				ActionKind::QuickLink { keyword, url } => {
-					if let Some(search_query) = Self::match_quick_link(query, keyword) {
+					if let Some(search_query) = Self::match_quick_link(query, keyword.as_str()) {
 						let expanded_url = url.replace("{query}", &urlencoding::encode(search_query));
 						results.push(ActionResult::new(
 							format!("{}:{search_query}", action.id),
 							format!("{}: {search_query}", action.name),
 							expanded_url.clone(),
-							&action.icon,
+							action.icon.as_str(),
 							100.0,
 							crate::action::ResultAction::OpenUrl(expanded_url),
 						));
@@ -125,15 +111,27 @@ impl ActionManager {
 				}
 
 				ActionKind::Pattern { pattern, action: action_type } => {
-					if let Some(captures) = match_pattern(pattern, query) {
-						let result = create_result(&action.id, &action.name, pattern, action_type, &captures, &action.icon);
+					if let Some(captures) = match_pattern(pattern.as_str(), query) {
+						let result = create_result(
+							action.id.as_str(),
+							action.name.as_str(),
+							pattern.as_str(),
+							action_type,
+							&captures,
+							action.icon.as_str(),
+						);
 						results.push(result);
 					}
 				}
 
 				ActionKind::ScriptFilter { keyword, script_path, extension_dir } => {
-					if let Some(search_query) = Self::match_quick_link(query, keyword) {
-						match script_filter::execute_script_filter(script_path, extension_dir, search_query, &action.id) {
+					if let Some(search_query) = Self::match_quick_link(query, keyword.as_str()) {
+						match script_filter::execute_script_filter(
+							script_path.as_str(),
+							extension_dir.as_str(),
+							search_query,
+							action.id.as_str(),
+						) {
 							Ok(script_results) => {
 								results.extend(script_results);
 							}
@@ -189,8 +187,9 @@ impl ActionManager {
 			),
 		];
 
+		let existing_actions = self.storage.get_all();
 		for action in defaults {
-			if !self.actions.read().iter().any(|a| a.id == action.id) {
+			if !existing_actions.iter().any(|a| a.id == action.id) {
 				self.add(action)?;
 			}
 		}
@@ -202,19 +201,16 @@ impl ActionManager {
 	pub fn storage_path(&self) -> &Path { self.storage.path() }
 
 	fn rebuild_keyword_matcher(&self) {
-		*self.matcher_needs_rebuild.write() = false;
-
-		let actions = self.actions.read();
-		let mut keywords = Vec::new();
-
-		for action in actions.iter().filter(|a| a.enabled) {
-			let keyword = match &action.kind {
-				ActionKind::QuickLink { keyword, .. } | ActionKind::ScriptFilter { keyword, .. } => keyword.as_str(),
-				ActionKind::Pattern { .. } => continue,
-			};
-			keywords.push(keyword);
-		}
-
-		*self.keyword_matcher.write() = shared_utils::build_automaton_leftmost_longest(&keywords);
+		let actions = self.storage.get_all();
+		self.keyword_matcher.rebuild(|| {
+			actions
+				.iter()
+				.filter(|a| a.enabled)
+				.filter_map(|a| match &a.kind {
+					ActionKind::QuickLink { keyword, .. } | ActionKind::ScriptFilter { keyword, .. } => Some(keyword.as_str()),
+					ActionKind::Pattern { .. } => None,
+				})
+				.collect()
+		});
 	}
 }

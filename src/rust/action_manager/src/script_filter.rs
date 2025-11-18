@@ -1,4 +1,4 @@
-use std::{io::Read, path::{Path, PathBuf}, process::{Command, Stdio}, time::{Duration, Instant}};
+use std::{io::Read, num::NonZeroUsize, path::{Path, PathBuf}, process::{Command, Stdio}, time::{Duration, Instant}};
 
 use lru::LruCache;
 use parking_lot::RwLock;
@@ -21,6 +21,7 @@ static SCRIPT_CACHE: RwLock<Option<LruCache<CacheKey, CacheEntry>>> = RwLock::ne
 const SCRIPT_TIMEOUT_MS: u64 = 2000;
 const CACHE_TTL_MS: u64 = 2000;
 const CACHE_SIZE: usize = 100;
+const CACHE_SIZE_NZ: NonZeroUsize = NonZeroUsize::new(CACHE_SIZE).unwrap();
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScriptOutput {
@@ -57,12 +58,12 @@ pub struct ScriptIcon {
 	pub r#type: Option<String>,
 }
 
-fn default_true() -> bool { true }
+const fn default_true() -> bool { true }
 
 fn init_cache() {
 	let mut cache = SCRIPT_CACHE.write();
 	if cache.is_none() {
-		*cache = Some(LruCache::new(unsafe { std::num::NonZeroUsize::new_unchecked(CACHE_SIZE) }));
+		*cache = Some(LruCache::new(CACHE_SIZE_NZ));
 	}
 }
 
@@ -96,8 +97,6 @@ fn store_cache(key: CacheKey, results: Vec<ActionResult>) {
 	}
 }
 
-/// # Errors
-/// Returns error if script fails or times out
 #[allow(clippy::too_many_lines)]
 pub fn execute_script_filter(
 	script_path: &str,
@@ -145,8 +144,8 @@ pub fn execute_script_filter(
 		return Err(format!("Script timed out after {SCRIPT_TIMEOUT_MS}ms"));
 	};
 
-	let mut stdout = Vec::new();
-	let mut stderr = Vec::new();
+	let mut stdout = Vec::with_capacity(4096);
+	let mut stderr = Vec::with_capacity(4096);
 
 	if let Some(ref mut out) = child.stdout {
 		let _ = out.read_to_end(&mut stdout);

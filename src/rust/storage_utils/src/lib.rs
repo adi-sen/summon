@@ -1,7 +1,114 @@
-use std::{fs::{self, OpenOptions}, io::{self, BufWriter, Write}, path::{Path, PathBuf}, sync::Arc};
+use std::{fs::{self, OpenOptions}, io::{self, BufWriter, Write}, path::{Path, PathBuf}, sync::{Arc, OnceLock, mpsc}, thread};
 
 use parking_lot::RwLock;
 use rkyv::{Archive, Deserialize, Serialize, api::high::HighValidator, bytecheck::CheckBytes, rancor::Error};
+
+static ASYNC_WRITER: OnceLock<AsyncWriter> = OnceLock::new();
+
+fn async_writer() -> &'static AsyncWriter { ASYNC_WRITER.get_or_init(AsyncWriter::new) }
+
+struct AsyncWriter {
+	tx: mpsc::Sender<WriteOp>,
+}
+
+enum WriteOp {
+	Save { path: PathBuf, data: Vec<u8> },
+	Flush { respond_to: mpsc::Sender<()> },
+	Shutdown,
+}
+
+impl AsyncWriter {
+	fn new() -> Self {
+		let (tx, rx) = mpsc::channel();
+
+		thread::Builder::new()
+			.name("storage-writer".to_owned())
+			.spawn(move || {
+				while let Ok(op) = rx.recv() {
+					match op {
+						WriteOp::Save { path, data } => {
+							if let Err(e) = Self::write_atomic(&path, &data) {
+								eprintln!("[AsyncWriter] Failed to write {}: {}", path.display(), e);
+							}
+						}
+						WriteOp::Flush { respond_to } => {
+							let _ = respond_to.send(());
+						}
+						WriteOp::Shutdown => break,
+					}
+				}
+			})
+			.ok();
+
+		Self { tx }
+	}
+
+	fn write_atomic(path: &Path, data: &[u8]) -> io::Result<()> {
+		let temp_path = path.with_extension("tmp");
+		let file = OpenOptions::new().write(true).create(true).truncate(true).open(&temp_path)?;
+		let mut writer = BufWriter::new(file);
+		writer.write_all(data)?;
+		writer.flush()?;
+		drop(writer);
+		fs::rename(temp_path, path)?;
+		Ok(())
+	}
+
+	fn save(&self, path: PathBuf, data: Vec<u8>) { let _ = self.tx.send(WriteOp::Save { path, data }); }
+
+	fn flush(&self) {
+		let (respond_tx, respond_rx) = mpsc::channel();
+		if self.tx.send(WriteOp::Flush { respond_to: respond_tx }).is_ok() {
+			let _ = respond_rx.recv();
+		}
+	}
+}
+
+impl Drop for AsyncWriter {
+	fn drop(&mut self) {
+		self.flush();
+		let _ = self.tx.send(WriteOp::Shutdown);
+	}
+}
+
+pub trait Storage<T>: Send + Sync
+where
+	T: Send + Sync,
+{
+	fn new(path: impl AsRef<Path>) -> io::Result<Self>
+	where
+		Self: Sized;
+
+	fn add(&self, item: T) -> io::Result<()>
+	where
+		T: Clone;
+
+	fn get_all(&self) -> Arc<Vec<T>>;
+
+	fn get_range(&self, start: usize, count: usize) -> Vec<T>
+	where
+		T: Clone;
+
+	fn get_filtered<F>(&self, predicate: F) -> Vec<T>
+	where
+		T: Clone,
+		F: Fn(&T) -> bool;
+
+	fn update<F>(&self, updater: F) -> io::Result<bool>
+	where
+		T: Clone,
+		F: FnOnce(&mut Vec<T>) -> bool;
+
+	fn clear(&self) -> io::Result<()>
+	where
+		T: Clone;
+
+	fn len(&self) -> usize;
+
+	fn is_empty(&self) -> bool;
+
+	fn path(&self) -> &Path;
+}
 
 pub fn load_from_disk<T>(path: &Path) -> io::Result<Vec<T>>
 where
@@ -33,6 +140,7 @@ where
 	Ok(())
 }
 
+#[allow(clippy::rc_buffer)]
 pub struct RkyvStorage<T>
 where
 	T: Archive
@@ -42,7 +150,7 @@ where
 	T::Archived:
 		for<'a> CheckBytes<HighValidator<'a, Error>> + Deserialize<T, rkyv::rancor::Strategy<rkyv::de::Pool, Error>>,
 {
-	items: Arc<RwLock<Vec<T>>>,
+	items: RwLock<Arc<Vec<T>>>,
 	path:  PathBuf,
 }
 
@@ -64,26 +172,44 @@ where
 
 		let items = if path.exists() { load_from_disk(&path)? } else { Vec::new() };
 
-		Ok(Self { items: Arc::new(RwLock::new(items)), path })
+		Ok(Self { items: RwLock::new(Arc::new(items)), path })
 	}
 
-	pub fn add(&self, item: T) -> io::Result<()> {
-		self.items.write().push(item);
-		self.save()
-	}
-
-	pub fn insert_at_front(&self, item: T) -> io::Result<()> {
-		self.items.write().insert(0, item);
-		self.save()
-	}
-
-	#[must_use]
-	pub fn get_all(&self) -> Vec<T>
+	pub fn add(&self, item: T) -> io::Result<()>
 	where
 		T: Clone,
 	{
-		self.items.read().clone()
+		Arc::make_mut(&mut self.items.write()).push(item);
+		self.save()
 	}
+
+	pub fn add_async(&self, item: T)
+	where
+		T: Clone,
+	{
+		Arc::make_mut(&mut self.items.write()).push(item);
+		self.async_save();
+	}
+
+	pub fn insert_at_front(&self, item: T) -> io::Result<()>
+	where
+		T: Clone,
+	{
+		Arc::make_mut(&mut self.items.write()).insert(0, item);
+		self.save()
+	}
+
+	pub fn insert_at_front_async(&self, item: T)
+	where
+		T: Clone,
+	{
+		Arc::make_mut(&mut self.items.write()).insert(0, item);
+		self.async_save();
+	}
+
+	#[inline]
+	#[must_use]
+	pub fn get_all(&self) -> Arc<Vec<T>> { Arc::clone(&self.items.read()) }
 
 	#[must_use]
 	pub fn get_range(&self, start: usize, count: usize) -> Vec<T>
@@ -96,13 +222,33 @@ where
 	}
 
 	#[must_use]
+	pub fn get_filtered<F>(&self, predicate: F) -> Vec<T>
+	where
+		T: Clone,
+		F: Fn(&T) -> bool,
+	{
+		self.items.read().iter().filter(|item| predicate(item)).cloned().collect()
+	}
+
+	#[must_use]
+	pub fn find_index<F>(&self, predicate: F) -> Option<usize>
+	where
+		F: Fn(&T) -> bool,
+	{
+		self.items.read().iter().position(predicate)
+	}
+
+	#[must_use]
 	pub fn len(&self) -> usize { self.items.read().len() }
 
 	#[must_use]
 	pub fn is_empty(&self) -> bool { self.items.read().is_empty() }
 
-	pub fn clear(&self) -> io::Result<()> {
-		self.items.write().clear();
+	pub fn clear(&self) -> io::Result<()>
+	where
+		T: Clone,
+	{
+		Arc::make_mut(&mut self.items.write()).clear();
 		self.save()
 	}
 
@@ -110,9 +256,10 @@ where
 	where
 		T: Clone,
 	{
-		let mut items = self.items.write();
+		let mut guard = self.items.write();
+		let items = Arc::make_mut(&mut guard);
 		let removed = if max < items.len() { items.drain(max..).collect() } else { Vec::new() };
-		drop(items);
+		drop(guard);
 		if !removed.is_empty() {
 			self.save()?;
 		}
@@ -121,25 +268,95 @@ where
 
 	pub fn update<F>(&self, updater: F) -> io::Result<bool>
 	where
+		T: Clone,
 		F: FnOnce(&mut Vec<T>) -> bool,
 	{
-		let modified = updater(&mut self.items.write());
+		let mut guard = self.items.write();
+		let modified = updater(Arc::make_mut(&mut guard));
 		if modified {
+			drop(guard);
 			self.save()?;
 		}
 		Ok(modified)
 	}
 
+	pub fn update_async<F>(&self, updater: F) -> bool
+	where
+		T: Clone,
+		F: FnOnce(&mut Vec<T>) -> bool,
+	{
+		let mut guard = self.items.write();
+		let modified = updater(Arc::make_mut(&mut guard));
+		if modified {
+			drop(guard);
+			self.async_save();
+		}
+		modified
+	}
+
 	fn save(&self) -> io::Result<()> {
 		let items = self.items.read();
-		save_to_disk(&self.path, &*items)
+		save_to_disk(&self.path, &**items)
 	}
+
+	fn async_save(&self) {
+		let items = self.items.read();
+		if let Ok(bytes) = rkyv::to_bytes::<Error>(&**items).map_err(|e| eprintln!("[async_save] rkyv error: {e:?}")) {
+			async_writer().save(self.path.clone(), bytes.to_vec());
+		}
+	}
+
+	pub fn flush(&self) { async_writer().flush(); }
 
 	#[must_use]
 	pub fn path(&self) -> &Path { &self.path }
 }
 
+impl<T> Storage<T> for RkyvStorage<T>
+where
+	T: Archive
+		+ Clone
+		+ Send
+		+ Sync
+		+ for<'a> Serialize<
+			rkyv::api::high::HighSerializer<rkyv::util::AlignedVec, rkyv::ser::allocator::ArenaHandle<'a>, Error>,
+		>,
+	T::Archived:
+		for<'a> CheckBytes<HighValidator<'a, Error>> + Deserialize<T, rkyv::rancor::Strategy<rkyv::de::Pool, Error>>,
+{
+	fn new(path: impl AsRef<Path>) -> io::Result<Self> { Self::new(path) }
+
+	fn add(&self, item: T) -> io::Result<()> { self.add(item) }
+
+	fn get_all(&self) -> Arc<Vec<T>> { self.get_all() }
+
+	fn get_range(&self, start: usize, count: usize) -> Vec<T> { self.get_range(start, count) }
+
+	fn get_filtered<F>(&self, predicate: F) -> Vec<T>
+	where
+		F: Fn(&T) -> bool,
+	{
+		self.get_filtered(predicate)
+	}
+
+	fn update<F>(&self, updater: F) -> io::Result<bool>
+	where
+		F: FnOnce(&mut Vec<T>) -> bool,
+	{
+		self.update(updater)
+	}
+
+	fn clear(&self) -> io::Result<()> { self.clear() }
+
+	fn len(&self) -> usize { self.len() }
+
+	fn is_empty(&self) -> bool { self.is_empty() }
+
+	fn path(&self) -> &Path { self.path() }
+}
+
 #[cfg(test)]
+#[allow(clippy::indexing_slicing)]
 mod tests {
 	use std::io::Write;
 

@@ -67,7 +67,7 @@ impl SettingsStorage {
 	}
 
 	#[must_use]
-	pub fn get(&self) -> AppSettings { self.storage.get_all().into_iter().next().unwrap_or_default() }
+	pub fn get(&self) -> AppSettings { self.storage.get_all().first().cloned().unwrap_or_default() }
 
 	pub fn save(&self, settings: AppSettings) -> io::Result<()> {
 		self.storage.update(|entries| {

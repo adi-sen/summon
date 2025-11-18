@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use crate::action::{ActionResult, PatternActionType, ResultAction};
 
 #[must_use]
-pub fn match_pattern(pattern: &str, input: &str) -> Option<HashMap<String, String>> {
-	let mut captures = HashMap::new();
+pub fn match_pattern(pattern: &str, input: &str) -> Option<FxHashMap<String, String>> {
+	let mut captures = FxHashMap::default();
 	let pattern_parts: Vec<_> = pattern.split_whitespace().collect();
 	let input_parts: Vec<_> = input.split_whitespace().collect();
 
@@ -70,13 +70,35 @@ pub fn match_pattern(pattern: &str, input: &str) -> Option<HashMap<String, Strin
 }
 
 #[must_use]
-pub fn expand_template<S: std::hash::BuildHasher>(template: &str, captures: &HashMap<String, String, S>) -> String {
-	let mut result = template.to_string();
+pub fn expand_template<S: std::hash::BuildHasher>(
+	template: &str,
+	captures: &std::collections::HashMap<String, String, S>,
+) -> String {
+	let mut result = String::with_capacity(template.len() + 32);
+	let bytes = template.as_bytes();
+	let mut i = 0;
+	let mut last_end = 0;
 
-	for (key, value) in captures {
-		result = result.replace(&format!("{{{key}}}"), value);
+	while i < bytes.len() {
+		if bytes[i] == b'{'
+			&& i + 1 < bytes.len()
+			&& let Some(close) = bytes[i + 1..].iter().position(|&b| b == b'}')
+		{
+			let key_start = i + 1;
+			let key_end = key_start + close;
+			let key = &template[key_start..key_end];
+
+			if let Some(value) = captures.get(key) {
+				result.push_str(&template[last_end..i]);
+				result.push_str(value);
+				i = key_end + 1;
+				last_end = i;
+				continue;
+			}
+		}
+		i += 1;
 	}
-
+	result.push_str(&template[last_end..]);
 	result
 }
 
@@ -86,7 +108,7 @@ pub fn create_result<S: std::hash::BuildHasher>(
 	_action_name: &str,
 	pattern: &str,
 	action_type: &PatternActionType,
-	captures: &HashMap<String, String, S>,
+	captures: &std::collections::HashMap<String, String, S>,
 	icon: &str,
 ) -> ActionResult {
 	let title = expand_template(pattern, captures);

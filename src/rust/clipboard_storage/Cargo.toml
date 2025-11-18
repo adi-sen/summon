@@ -7,13 +7,13 @@ publish.workspace = true
 
 [dependencies]
 rkyv.workspace = true
-bytecheck = "0.8"
+bytecheck.workspace = true
 serde.workspace = true
 parking_lot.workspace = true
 storage_utils = { path = "../storage_utils" }
 
 [dev-dependencies]
-tempfile = "3.8"
+tempfile.workspace = true
 
 [lints]
 workspace = true

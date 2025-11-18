@@ -9,8 +9,8 @@ rkyv.workspace = true
 parking_lot.workspace = true
 
 [dev-dependencies]
-tempfile = "3.8"
-bytecheck = "0.8"
+tempfile.workspace = true
+bytecheck.workspace = true
 
 [lib]
 crate-type = ["staticlib", "rlib"]

@@ -14,6 +14,7 @@ compact_str.workspace = true
 smallvec.workspace = true
 walkdir.workspace = true
 rayon = "1.10"
+file_indexer = { path = "../file_indexer" }
 
 [lib]
 crate-type = ["staticlib", "rlib"]
@@ -21,5 +22,5 @@ crate-type = ["staticlib", "rlib"]
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 
-[lints]
-workspace = true
+[lints.clippy]
+indexing_slicing = "allow"

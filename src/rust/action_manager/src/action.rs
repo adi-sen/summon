@@ -1,29 +1,34 @@
 #![allow(clippy::used_underscore_binding)]
 
 use bytecheck::CheckBytes;
+use compact_str::CompactString;
 use rkyv::{Archive, Deserialize, Serialize};
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
 #[derive(Archive, Deserialize, Serialize, CheckBytes, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
 #[rkyv(derive(Debug))]
 pub struct Action {
-	pub id:      String,
-	pub name:    String,
-	pub icon:    String,
+	pub id:      CompactString,
+	pub name:    CompactString,
+	pub icon:    CompactString,
 	pub enabled: bool,
 	pub kind:    ActionKind,
 }
 
-#[derive(Archive, Deserialize, Serialize, CheckBytes, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
+#[derive(
+	Archive, Deserialize, Serialize, CheckBytes, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq, Eq,
+)]
 #[rkyv(derive(Debug))]
 #[repr(u8)]
 pub enum ActionKind {
-	QuickLink { keyword: String, url: String },
-	Pattern { pattern: String, action: PatternActionType },
-	ScriptFilter { keyword: String, script_path: String, extension_dir: String },
+	QuickLink { keyword: CompactString, url: CompactString },
+	Pattern { pattern: CompactString, action: PatternActionType },
+	ScriptFilter { keyword: CompactString, script_path: CompactString, extension_dir: CompactString },
 }
 
-#[derive(Archive, Deserialize, Serialize, CheckBytes, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq)]
+#[derive(
+	Archive, Deserialize, Serialize, CheckBytes, SerdeSerialize, SerdeDeserialize, Debug, Clone, PartialEq, Eq,
+)]
 #[rkyv(derive(Debug))]
 #[repr(u8)]
 pub enum PatternActionType {
@@ -34,17 +39,17 @@ pub enum PatternActionType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ActionResult {
-	pub id:        String,
-	pub title:     String,
-	pub subtitle:  String,
-	pub icon:      String,
-	pub icon_path: Option<String>,
+	pub id:        CompactString,
+	pub title:     CompactString,
+	pub subtitle:  CompactString,
+	pub icon:      CompactString,
+	pub icon_path: Option<CompactString>,
 	pub score:     f32,
 	pub action:    ResultAction,
-	pub quicklook: Option<String>,
+	pub quicklook: Option<CompactString>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResultAction {
 	OpenUrl(String),
 	CopyText(String),
@@ -53,11 +58,11 @@ pub enum ResultAction {
 
 impl Action {
 	pub fn quick_link(
-		id: impl Into<String>,
-		name: impl Into<String>,
-		keyword: impl Into<String>,
-		url: impl Into<String>,
-		icon: impl Into<String>,
+		id: impl Into<CompactString>,
+		name: impl Into<CompactString>,
+		keyword: impl Into<CompactString>,
+		url: impl Into<CompactString>,
+		icon: impl Into<CompactString>,
 	) -> Self {
 		Self {
 			id:      id.into(),
@@ -69,11 +74,11 @@ impl Action {
 	}
 
 	pub fn pattern(
-		id: impl Into<String>,
-		name: impl Into<String>,
-		pattern: impl Into<String>,
+		id: impl Into<CompactString>,
+		name: impl Into<CompactString>,
+		pattern: impl Into<CompactString>,
 		action: PatternActionType,
-		icon: impl Into<String>,
+		icon: impl Into<CompactString>,
 	) -> Self {
 		Self {
 			id:      id.into(),
@@ -85,12 +90,12 @@ impl Action {
 	}
 
 	pub fn script_filter(
-		id: impl Into<String>,
-		name: impl Into<String>,
-		keyword: impl Into<String>,
-		script_path: impl Into<String>,
-		extension_dir: impl Into<String>,
-		icon: impl Into<String>,
+		id: impl Into<CompactString>,
+		name: impl Into<CompactString>,
+		keyword: impl Into<CompactString>,
+		script_path: impl Into<CompactString>,
+		extension_dir: impl Into<CompactString>,
+		icon: impl Into<CompactString>,
 	) -> Self {
 		Self {
 			id:      id.into(),
@@ -118,10 +123,10 @@ impl Action {
 
 impl ActionResult {
 	pub fn new(
-		id: impl Into<String>,
-		title: impl Into<String>,
-		subtitle: impl Into<String>,
-		icon: impl Into<String>,
+		id: impl Into<CompactString>,
+		title: impl Into<CompactString>,
+		subtitle: impl Into<CompactString>,
+		icon: impl Into<CompactString>,
 		score: f32,
 		action: ResultAction,
 	) -> Self {
@@ -138,13 +143,13 @@ impl ActionResult {
 	}
 
 	#[must_use]
-	pub fn with_icon_path(mut self, path: impl Into<String>) -> Self {
+	pub fn with_icon_path(mut self, path: impl Into<CompactString>) -> Self {
 		self.icon_path = Some(path.into());
 		self
 	}
 
 	#[must_use]
-	pub fn with_quicklook(mut self, url: impl Into<String>) -> Self {
+	pub fn with_quicklook(mut self, url: impl Into<CompactString>) -> Self {
 		self.quicklook = Some(url.into());
 		self
 	}

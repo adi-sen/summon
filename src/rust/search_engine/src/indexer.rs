@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use compact_str::CompactString;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ItemType {
 	Application,
 	File,
@@ -17,11 +19,11 @@ pub struct IndexedItem {
 	pub name:      CompactString,
 	pub item_type: ItemType,
 	pub path:      Option<CompactString>,
-	pub metadata:  FxHashMap<CompactString, CompactString>,
+	pub metadata:  Option<FxHashMap<CompactString, CompactString>>,
 }
 
 pub struct Indexer {
-	items: FxHashMap<CompactString, IndexedItem>,
+	items: FxHashMap<CompactString, Arc<IndexedItem>>,
 	stats: IndexStats,
 }
 
@@ -47,7 +49,7 @@ impl Indexer {
 			self.update_stats(&item.item_type, 1);
 		}
 		let id = item.id.clone();
-		self.items.insert(id, item);
+		self.items.insert(id, Arc::new(item));
 	}
 
 	pub fn add_items(&mut self, items: Vec<IndexedItem>) {
@@ -59,18 +61,51 @@ impl Indexer {
 				self.update_stats(&item.item_type, 1);
 			}
 			let id = item.id.clone();
-			self.items.insert(id, item);
+			self.items.insert(id, Arc::new(item));
 		}
 	}
 
 	#[inline]
 	pub fn remove_item(&mut self, id: &str) -> Option<IndexedItem> {
-		self.items.remove(id).inspect(|item| self.update_stats(&item.item_type, -1))
+		self.items.remove(id).map(|arc| {
+			self.update_stats(&arc.item_type, -1);
+			Arc::unwrap_or_clone(arc)
+		})
+	}
+
+	pub fn remove_items(&mut self, ids: &[&str]) -> usize {
+		let mut removed = 0;
+		for id in ids {
+			if self.remove_item(id).is_some() {
+				removed += 1;
+			}
+		}
+		removed
+	}
+
+	pub fn clear_by_type(&mut self, item_type: &ItemType) -> usize {
+		let to_remove: Vec<_> =
+			self.items.iter().filter(|(_, item)| &item.item_type == item_type).map(|(id, _)| id.clone()).collect();
+
+		let count = to_remove.len();
+		for id in to_remove {
+			self.items.remove(&id);
+		}
+
+		match item_type {
+			ItemType::Application => self.stats.apps = 0,
+			ItemType::File => self.stats.files = 0,
+			ItemType::Snippet => self.stats.snippets = 0,
+			_ => {}
+		}
+		self.stats.total_items = self.stats.total_items.saturating_sub(count);
+
+		count
 	}
 
 	#[inline]
 	#[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
-	fn update_stats(&mut self, item_type: &ItemType, delta: i32) {
+	const fn update_stats(&mut self, item_type: &ItemType, delta: i32) {
 		self.stats.total_items = (self.stats.total_items as i32 + delta) as usize;
 		match item_type {
 			ItemType::Application => self.stats.apps = (self.stats.apps as i32 + delta) as usize,
@@ -81,14 +116,14 @@ impl Indexer {
 	}
 
 	#[inline]
-	pub fn items_iter(&self) -> impl Iterator<Item = &IndexedItem> + '_ { self.items.values() }
+	pub fn items_iter(&self) -> impl Iterator<Item = &Arc<IndexedItem>> + '_ { self.items.values() }
 
 	#[inline]
 	#[must_use]
-	pub fn get_item(&self, id: &str) -> Option<IndexedItem> { self.items.get(id).cloned() }
+	pub fn get_item(&self, id: &str) -> Option<IndexedItem> { self.items.get(id).map(|arc| (**arc).clone()) }
 
 	#[inline]
-	pub fn get_items_by_type(&self, item_type: ItemType) -> impl Iterator<Item = &IndexedItem> + '_ {
+	pub fn get_items_by_type(&self, item_type: ItemType) -> impl Iterator<Item = &Arc<IndexedItem>> + '_ {
 		self.items.values().filter(move |item| item.item_type == item_type)
 	}
 
@@ -121,10 +156,10 @@ mod tests {
 			name:      "Test App".into(),
 			item_type: ItemType::Application,
 			path:      Some("/Applications/Test.app".into()),
-			metadata:  FxHashMap::default(),
+			metadata:  None,
 		};
 
-		indexer.add_item(item.clone());
+		indexer.add_item(item);
 		assert_eq!(indexer.get_item("test1").unwrap().name.as_str(), "Test App");
 	}
 
@@ -136,7 +171,7 @@ mod tests {
 			name:      "Test App".into(),
 			item_type: ItemType::Application,
 			path:      None,
-			metadata:  FxHashMap::default(),
+			metadata:  None,
 		};
 
 		indexer.add_item(item);
@@ -153,7 +188,7 @@ mod tests {
 			name:      "App".into(),
 			item_type: ItemType::Application,
 			path:      None,
-			metadata:  FxHashMap::default(),
+			metadata:  None,
 		});
 
 		indexer.add_item(IndexedItem {
@@ -161,7 +196,7 @@ mod tests {
 			name:      "File".into(),
 			item_type: ItemType::File,
 			path:      None,
-			metadata:  FxHashMap::default(),
+			metadata:  None,
 		});
 
 		let (total, apps, files, _) = indexer.stats();

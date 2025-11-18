@@ -1,42 +1,47 @@
-use nucleo_matcher::{
-	Config, Matcher, Utf32String,
-	pattern::{CaseMatching, Normalization, Pattern},
-};
+use nucleo_matcher::{Config, Matcher, Utf32String, pattern::{CaseMatching, Normalization, Pattern}};
 use parking_lot::Mutex;
+use smallvec::SmallVec;
+
+pub use nucleo_matcher::pattern::Pattern as FuzzyPattern;
 
 pub struct FuzzyMatcher {
-	matcher: Mutex<Matcher>,
+	matcher:     Mutex<Matcher>,
+	indices_buf: Mutex<Vec<u32>>,
 }
 
 impl FuzzyMatcher {
 	#[inline]
 	#[must_use]
 	pub fn new() -> Self {
-		Self { matcher: Mutex::new(Matcher::new(Config::DEFAULT)) }
+		Self { matcher: Mutex::new(Matcher::new(Config::DEFAULT)), indices_buf: Mutex::new(Vec::with_capacity(64)) }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn parse_pattern(query: &str) -> Pattern {
-		Pattern::parse(query, CaseMatching::Smart, Normalization::Smart)
-	}
+	pub fn parse_pattern(query: &str) -> Pattern { Pattern::parse(query, CaseMatching::Smart, Normalization::Smart) }
 
 	#[inline]
-	pub fn match_with_indices(&self, candidate: &str, query: &str) -> Option<(i64, Vec<usize>)> {
+	pub fn match_with_indices(&self, candidate: &str, query: &str) -> Option<(i64, SmallVec<[usize; 8]>)> {
 		let pattern = Self::parse_pattern(query);
 		self.match_with_pattern(&pattern, candidate, query)
 	}
 
 	#[inline]
-	pub fn match_with_pattern(&self, pattern: &Pattern, candidate: &str, query: &str) -> Option<(i64, Vec<usize>)> {
+	pub fn match_with_pattern(
+		&self,
+		pattern: &Pattern,
+		candidate: &str,
+		query: &str,
+	) -> Option<(i64, SmallVec<[usize; 8]>)> {
 		let haystack = Utf32String::from(candidate);
-		let mut indices = Vec::with_capacity(query.len());
+		let mut indices_buf = self.indices_buf.lock();
+		indices_buf.clear();
 
-		let score = pattern.indices(haystack.slice(..), &mut self.matcher.lock(), &mut indices)?;
+		let score = pattern.indices(haystack.slice(..), &mut self.matcher.lock(), &mut indices_buf)?;
 
-		let bonus_score = Self::calculate_bonus(candidate, query, i64::from(score), &indices);
+		let bonus_score = Self::calculate_bonus(candidate, query, i64::from(score), &indices_buf);
 
-		Some((bonus_score, indices.iter().map(|&i| i as usize).collect()))
+		Some((bonus_score, indices_buf.iter().map(|&i| i as usize).collect()))
 	}
 
 	#[inline]
@@ -48,8 +53,10 @@ impl FuzzyMatcher {
 			bonus += 10000;
 		}
 
-		let query_lower = query.to_lowercase();
-		if candidate.to_lowercase().starts_with(&query_lower) {
+		// Use byte-level ASCII case-insensitive prefix check to avoid allocations
+		if candidate.len() >= query.len()
+			&& candidate.as_bytes()[..query.len()].iter().zip(query.as_bytes()).all(|(a, b)| a.eq_ignore_ascii_case(b))
+		{
 			bonus += 5000;
 		}
 
@@ -78,15 +85,13 @@ impl FuzzyMatcher {
 	}
 
 	#[inline]
-	pub fn match_indices(&self, candidate: &str, query: &str) -> Option<Vec<usize>> {
+	pub fn match_indices(&self, candidate: &str, query: &str) -> Option<SmallVec<[usize; 8]>> {
 		self.match_with_indices(candidate, query).map(|(_, indices)| indices)
 	}
 }
 
 impl Default for FuzzyMatcher {
-	fn default() -> Self {
-		Self::new()
-	}
+	fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

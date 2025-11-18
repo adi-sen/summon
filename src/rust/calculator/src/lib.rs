@@ -1,7 +1,8 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 use chrono::{DateTime, Datelike, Local, TimeZone, Utc};
 use chrono_tz::Tz;
+use rustc_hash::FxHashMap;
 
 const MAX_HISTORY: usize = 50;
 
@@ -29,7 +30,7 @@ pub struct CalculationEntry {
 }
 
 pub struct Calculator {
-	exchange_rates: HashMap<String, f64>,
+	exchange_rates: FxHashMap<String, f64>,
 	history:        VecDeque<CalculationEntry>,
 }
 
@@ -37,7 +38,7 @@ impl Calculator {
 	#[must_use]
 	pub fn new() -> Self {
 		Self {
-			exchange_rates: HashMap::from([
+			exchange_rates: FxHashMap::from_iter([
 				("USD".to_owned(), 1.0),
 				("EUR".to_owned(), 0.92),
 				("GBP".to_owned(), 0.79),
@@ -57,14 +58,10 @@ impl Calculator {
 	#[allow(clippy::cast_precision_loss)]
 	pub fn eval_math(&self, expr: &str) -> Option<f64> {
 		evalexpr::eval(expr).ok().and_then(|v| {
-			if let Ok(f) = v.as_float() {
-				Some(f)
-			} else if let Ok(i) = v.as_int() {
+			v.as_float().ok().or_else(|| {
 				#[allow(clippy::cast_precision_loss)]
-				Some(i as f64)
-			} else {
-				None
-			}
+				v.as_int().ok().map(|i| i as f64)
+			})
 		})
 	}
 
@@ -76,15 +73,15 @@ impl Calculator {
 			return None;
 		}
 
-		let amount: f64 = parts[0].parse().ok()?;
+		let amount: f64 = parts.first()?.parse().ok()?;
 
-		let from_currency = parts[1].to_uppercase();
-		let to_currency = if parts.len() == 4 && parts[2].eq_ignore_ascii_case("to") {
-			parts[3].to_uppercase()
+		let from_currency = parts.get(1)?.to_uppercase();
+		let to_currency = if parts.len() == 4 && parts.get(2)?.eq_ignore_ascii_case("to") {
+			parts.get(3)?.to_uppercase()
 		} else if parts.len() == 3 {
-			parts[2].to_uppercase()
-		} else if parts.len() >= 4 && parts[2].eq_ignore_ascii_case("in") {
-			parts[3].to_uppercase()
+			parts.get(2)?.to_uppercase()
+		} else if parts.len() >= 4 && parts.get(2)?.eq_ignore_ascii_case("in") {
+			parts.get(3)?.to_uppercase()
 		} else {
 			return None;
 		};
@@ -106,8 +103,8 @@ impl Calculator {
 			return None;
 		}
 
-		if parts[0].eq_ignore_ascii_case("now") && parts[1].eq_ignore_ascii_case("in") && parts.len() >= 3 {
-			let target_tz_str = normalize_timezone(parts[2]);
+		if parts.first()?.eq_ignore_ascii_case("now") && parts.get(1)?.eq_ignore_ascii_case("in") && parts.len() >= 3 {
+			let target_tz_str = normalize_timezone(parts.get(2)?);
 			let target_tz: Tz = target_tz_str.parse().ok()?;
 
 			let now = Utc::now();
@@ -116,19 +113,19 @@ impl Calculator {
 			return Some((
 				"now".to_owned(),
 				"UTC".to_owned(),
-				parts[2].to_uppercase(),
+				parts.get(2)?.to_uppercase(),
 				target_time.format("%I:%M %p").to_string(),
 			));
 		}
 
-		let time_str = parts[0];
+		let time_str = parts.first()?;
 		let from_tz_str = parts.get(1)?;
-		let to_tz_str = if parts.len() == 4 && parts[2].eq_ignore_ascii_case("to") {
-			parts[3]
+		let to_tz_str = if parts.len() == 4 && parts.get(2)?.eq_ignore_ascii_case("to") {
+			parts.get(3)?
 		} else if parts.len() == 3 {
-			parts[2]
-		} else if parts.len() >= 4 && parts[2].eq_ignore_ascii_case("in") {
-			parts[3]
+			parts.get(2)?
+		} else if parts.len() >= 4 && parts.get(2)?.eq_ignore_ascii_case("in") {
+			parts.get(3)?
 		} else {
 			return None;
 		};
@@ -141,7 +138,7 @@ impl Calculator {
 		let target_time = time.with_timezone(&to_tz);
 
 		Some((
-			time_str.to_string(),
+			(*time_str).to_string(),
 			from_tz_str.to_uppercase(),
 			to_tz_str.to_uppercase(),
 			target_time.format("%I:%M %p").to_string(),
@@ -212,7 +209,7 @@ impl Calculator {
 	}
 
 	#[must_use]
-	pub fn get_history(&self) -> &VecDeque<CalculationEntry> { &self.history }
+	pub const fn get_history(&self) -> &VecDeque<CalculationEntry> { &self.history }
 
 	pub fn clear_history(&mut self) { self.history.clear(); }
 }

@@ -1,10 +1,8 @@
-use std::{io, path::Path};
-
 use bytecheck::CheckBytes;
 use rkyv::{Archive, Deserialize, Serialize};
 use storage_utils::RkyvStorage;
 
-#[derive(Archive, Deserialize, Serialize, CheckBytes, Debug, Clone, PartialEq)]
+#[derive(Archive, Deserialize, Serialize, CheckBytes, Debug, Clone, PartialEq, Eq)]
 #[rkyv(derive(Debug))]
 #[repr(u8)]
 pub enum ClipboardItemType {
@@ -15,20 +13,20 @@ pub enum ClipboardItemType {
 
 impl ClipboardItemType {
 	#[must_use]
-	pub fn as_u8(self) -> u8 {
+	pub const fn as_u8(self) -> u8 {
 		match self {
-			ClipboardItemType::Text => 0,
-			ClipboardItemType::Image => 1,
-			ClipboardItemType::Unknown => 2,
+			Self::Text => 0,
+			Self::Image => 1,
+			Self::Unknown => 2,
 		}
 	}
 
 	#[must_use]
-	pub fn from_u8(value: u8) -> Self {
+	pub const fn from_u8(value: u8) -> Self {
 		match value {
-			0 => ClipboardItemType::Text,
-			1 => ClipboardItemType::Image,
-			_ => ClipboardItemType::Unknown,
+			0 => Self::Text,
+			1 => Self::Image,
+			_ => Self::Unknown,
 		}
 	}
 }
@@ -54,7 +52,7 @@ pub struct ClipboardEntry {
 
 impl ClipboardEntry {
 	#[must_use]
-	pub fn new_text(content: String, timestamp: f64, size: i32, source_app: Option<String>) -> Self {
+	pub const fn new_text(content: String, timestamp: f64, size: i32, source_app: Option<String>) -> Self {
 		Self {
 			content,
 			timestamp,
@@ -67,7 +65,7 @@ impl ClipboardEntry {
 	}
 
 	#[must_use]
-	pub fn new_image(
+	pub const fn new_image(
 		content: String,
 		timestamp: f64,
 		image_file_path: String,
@@ -88,46 +86,10 @@ impl ClipboardEntry {
 	}
 }
 
-pub struct ClipboardStorage {
-	storage: RkyvStorage<ClipboardEntry>,
-}
-
-impl ClipboardStorage {
-	pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> { Ok(Self { storage: RkyvStorage::new(path)? }) }
-
-	pub fn add_entry(&self, entry: ClipboardEntry) -> io::Result<()> { self.storage.insert_at_front(entry) }
-
-	#[must_use]
-	pub fn get_entries(&self) -> Vec<ClipboardEntry> { self.storage.get_all() }
-
-	#[must_use]
-	pub fn get_entries_range(&self, start: usize, count: usize) -> Vec<ClipboardEntry> {
-		self.storage.get_range(start, count)
-	}
-
-	#[must_use]
-	pub fn len(&self) -> usize { self.storage.len() }
-
-	#[must_use]
-	pub fn is_empty(&self) -> bool { self.storage.is_empty() }
-
-	pub fn trim_to(&self, max_entries: usize) -> io::Result<Vec<ClipboardEntry>> { self.storage.trim_to(max_entries) }
-
-	pub fn clear(&self) -> io::Result<()> { self.storage.clear() }
-
-	pub fn remove_at(&self, index: usize) -> io::Result<bool> {
-		self.storage.update(|entries| {
-			if index < entries.len() {
-				entries.remove(index);
-				true
-			} else {
-				false
-			}
-		})
-	}
-}
+pub type ClipboardStorage = RkyvStorage<ClipboardEntry>;
 
 #[cfg(test)]
+#[allow(clippy::indexing_slicing)]
 mod tests {
 	use tempfile::NamedTempFile;
 
@@ -148,10 +110,10 @@ mod tests {
 
 		let entry = ClipboardEntry::new_text("Hello, World!".to_owned(), 1_234_567_890.0, 13, Some("TestApp".to_owned()));
 
-		storage.add_entry(entry.clone()).unwrap();
+		storage.insert_at_front_async(entry);
 		assert_eq!(storage.len(), 1);
 
-		let entries = storage.get_entries();
+		let entries = storage.get_all();
 		assert_eq!(entries.len(), 1);
 		assert_eq!(entries[0].content, "Hello, World!");
 	}
@@ -164,12 +126,13 @@ mod tests {
 		{
 			let storage = ClipboardStorage::new(&path).unwrap();
 			let entry = ClipboardEntry::new_text("Persistent data".to_owned(), 1_234_567_890.0, 15, None);
-			storage.add_entry(entry).unwrap();
+			storage.insert_at_front_async(entry);
+			storage.flush();
 		}
 
 		let storage = ClipboardStorage::new(&path).unwrap();
 		assert_eq!(storage.len(), 1);
-		let entries = storage.get_entries();
+		let entries = storage.get_all();
 		assert_eq!(entries[0].content, "Persistent data");
 	}
 
@@ -180,9 +143,10 @@ mod tests {
 
 		for i in 0..10 {
 			let entry = ClipboardEntry::new_text(format!("Entry {i}"), 1_234_567_890.0 + f64::from(i), 10, None);
-			storage.add_entry(entry).unwrap();
+			storage.insert_at_front_async(entry);
 		}
 
+		storage.flush();
 		assert_eq!(storage.len(), 10);
 
 		let removed = storage.trim_to(5).unwrap();
