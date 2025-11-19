@@ -64,7 +64,11 @@ struct ListItem<TrailingContent: View>: View {
 			}
 			.padding(.horizontal, DesignTokens.Spacing.lg)
 			.padding(.vertical, DesignTokens.Spacing.md)
-			.background(backgroundView)
+			.selectableBackground(
+				isSelected: isSelected,
+				isHovered: isHovered?.wrappedValue ?? false,
+				settings: settings
+			)
 		}
 		.buttonStyle(PlainButtonStyle())
 		.onHover { hovering in
@@ -87,18 +91,8 @@ struct ListItem<TrailingContent: View>: View {
 		}
 	}
 
-	@ViewBuilder
-	private var backgroundView: some View {
-		RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
-			.fill(
-				isSelected
-					? settings.accentColorUI.opacity(0.2)
-					: (isHovered?.wrappedValue == true ? settings.searchBarColorUI : Color.clear)
-			)
-	}
 }
 
-/// Convenience initializer with no trailing content
 extension ListItem where TrailingContent == EmptyView {
 	init(
 		icon: ListItemIcon = .none,
@@ -115,72 +109,5 @@ extension ListItem where TrailingContent == EmptyView {
 		self.isHovered = isHovered
 		self.trailingContent = EmptyView()
 		self.action = action
-	}
-}
-
-/// Compact list item for simple cases (like folder rows)
-struct CompactListItem: View {
-	let icon: String
-	let iconColor: Color
-	let title: String
-	let isSelected: Bool
-	let onSelect: () -> Void
-	let onSecondaryAction: (() -> Void)?
-	@EnvironmentObject var settings: AppSettings
-	@State private var isHovered = false
-
-	init(
-		icon: String,
-		iconColor: Color = .blue,
-		title: String,
-		isSelected: Bool = false,
-		onSelect: @escaping () -> Void,
-		onSecondaryAction: (() -> Void)? = nil
-	) {
-		self.icon = icon
-		self.iconColor = iconColor
-		self.title = title
-		self.isSelected = isSelected
-		self.onSelect = onSelect
-		self.onSecondaryAction = onSecondaryAction
-	}
-
-	var body: some View {
-		SwiftUI.Button(action: onSelect) {
-			HStack(spacing: DesignTokens.Spacing.lg) {
-				Image(systemName: icon)
-					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
-					.foregroundColor(iconColor.opacity(0.8))
-
-				Text(title)
-					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
-					.foregroundColor(settings.textColorUI)
-
-				Spacer()
-
-				if let onSecondaryAction {
-					SwiftUI.Button(action: onSecondaryAction) {
-						Image(systemName: "chevron.right")
-							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
-							.foregroundColor(settings.secondaryTextColorUI)
-					}
-					.buttonStyle(PlainButtonStyle())
-				}
-			}
-			.padding(.horizontal, DesignTokens.Spacing.lg)
-			.padding(.vertical, DesignTokens.Spacing.md)
-			.background(
-				RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
-					.fill(
-						isSelected
-							? settings.accentColorUI.opacity(0.2)
-							: isHovered ? settings.searchBarColorUI : Color.clear
-					)
-			)
-		}
-		.buttonStyle(PlainButtonStyle())
-		.onHover { hovering in
-			isHovered = hovering
-		}
 	}
 }

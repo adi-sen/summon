@@ -13,15 +13,15 @@ struct ResultRow: View {
 	}
 
 	private var accentColor: Color {
-		settings.theme.accentColorUI
+		settings.accentColorUI
 	}
 
 	private var textColor: Color {
-		settings.theme.textColorUI
+		settings.textColorUI
 	}
 
 	private var searchBarColor: Color {
-		settings.theme.searchBarColorUI
+		settings.searchBarColorUI
 	}
 
 	var body: some View {
@@ -173,6 +173,8 @@ struct ResultRow: View {
 	}
 
 	private func loadIcon() {
+		guard icon == nil else { return }
+
 		if let customIcon = result.icon {
 			icon = customIcon
 			return
@@ -181,7 +183,7 @@ struct ResultRow: View {
 		let noIconCategories = ["Clipboard", "Action", "Command", "Calculator"]
 		guard !noIconCategories.contains(result.category), let path = result.path else { return }
 
-		if let cachedIcon = IconCache.shared.get(path) {
+		if let cachedIcon = ImageCache.icon.get(path) {
 			icon = cachedIcon
 			return
 		}
@@ -202,7 +204,7 @@ struct ResultRow: View {
 				return resized
 			}
 
-			IconCache.shared.set(path, icon: resizedIcon)
+			ImageCache.icon.set(path, image: resizedIcon)
 
 			DispatchQueue.main.async {
 				icon = resizedIcon

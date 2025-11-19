@@ -41,9 +41,12 @@ struct FolderPicker: View {
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
 					.foregroundColor(settings.textColorUI)
 				Spacer()
-				IconButton(icon: "xmark.circle.fill") {
-					isPresented = false
+				SwiftUI.Button(action: { isPresented = false }) {
+					Image(systemName: "xmark.circle.fill")
+						.font(Font(settings.uiFont.withSize(18)))
+						.foregroundColor(settings.secondaryTextColorUI)
 				}
+				.buttonStyle(PlainButtonStyle())
 			}
 			.padding(DesignTokens.Spacing.xl)
 			.background(settings.backgroundColorUI)
@@ -124,15 +127,23 @@ struct FolderRow: View {
 	let isSelected: Bool
 	let onSelect: () -> Void
 	let onOpen: () -> Void
+	@EnvironmentObject var settings: AppSettings
+	@State private var isHovered = false
 
 	var body: some View {
-		CompactListItem(
-			icon: "folder.fill",
-			iconColor: .blue,
+		ListItem(
+			icon: .sfSymbol("folder.fill", .blue.opacity(0.8)),
 			title: name,
 			isSelected: isSelected,
-			onSelect: onSelect,
-			onSecondaryAction: onOpen
-		)
+			isHovered: $isHovered,
+			action: onSelect
+		) {
+			SwiftUI.Button(action: onOpen) {
+				Image(systemName: "chevron.right")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(settings.secondaryTextColorUI)
+			}
+			.buttonStyle(PlainButtonStyle())
+		}
 	}
 }

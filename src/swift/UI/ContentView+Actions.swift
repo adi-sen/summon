@@ -28,15 +28,10 @@ extension ContentView {
 		guard !isClipboardMode, selectedIndex < results.count else { return }
 		let result = results[selectedIndex]
 
-		let isApp =
-			result.category == "Applications" || result.category == "Pinned"
-				|| result.category == "Recent"
-		let isCommand = result.category == "Command"
-
-		guard isApp || isCommand else { return }
+		guard result.isApp || result.isCommand else { return }
 
 		let identifier: String
-		if isCommand {
+		if result.isCommand {
 			identifier = result.id
 		} else {
 			guard let path = result.path else { return }
@@ -59,10 +54,7 @@ extension ContentView {
 		guard !isClipboardMode, selectedIndex < results.count else { return }
 		let result = results[selectedIndex]
 
-		let isApp =
-			result.category == "Applications" || result.category == "Pinned"
-				|| result.category == "Recent"
-		guard isApp, let path = result.path else { return }
+		guard result.isApp, let path = result.path else { return }
 
 		NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
 	}
@@ -71,10 +63,7 @@ extension ContentView {
 		guard !isClipboardMode, selectedIndex < results.count else { return }
 		let result = results[selectedIndex]
 
-		let isApp =
-			result.category == "Applications" || result.category == "Pinned"
-				|| result.category == "Recent"
-		guard isApp, let path = result.path else { return }
+		guard result.isApp, let path = result.path else { return }
 
 		let fileManager = FileManager.default
 		var totalSize: UInt64 = 0
@@ -112,10 +101,7 @@ extension ContentView {
 		guard !isClipboardMode, selectedIndex < results.count else { return }
 		let result = results[selectedIndex]
 
-		let isApp =
-			result.category == "Applications" || result.category == "Pinned"
-				|| result.category == "Recent"
-		guard isApp, let path = result.path else { return }
+		guard result.isApp, let path = result.path else { return }
 
 		let pasteboard = NSPasteboard.general
 		pasteboard.clearContents()
@@ -126,10 +112,7 @@ extension ContentView {
 		guard !isClipboardMode, selectedIndex < results.count else { return }
 		let result = results[selectedIndex]
 
-		let isApp =
-			result.category == "Applications" || result.category == "Pinned"
-				|| result.category == "Recent"
-		guard isApp, let path = result.path else { return }
+		guard result.isApp, let path = result.path else { return }
 
 		if let app = NSWorkspace.shared.runningApplications.first(where: {
 			$0.bundleURL?.path == path
@@ -146,10 +129,7 @@ extension ContentView {
 		guard !isClipboardMode, selectedIndex < results.count else { return }
 		let result = results[selectedIndex]
 
-		let isApp =
-			result.category == "Applications" || result.category == "Pinned"
-				|| result.category == "Recent"
-		guard isApp, let path = result.path else { return }
+		guard result.isApp, let path = result.path else { return }
 
 		if let app = NSWorkspace.shared.runningApplications.first(where: {
 			$0.bundleURL?.path == path

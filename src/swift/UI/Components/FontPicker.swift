@@ -233,4 +233,8 @@ class FontCache {
 		cachedFonts = fonts
 		return fonts
 	}
+
+	func clear() {
+		cachedFonts = nil
+	}
 }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SettingRowWithDescription<Content: View>: View {
+struct SettingRow<Content: View>: View {
 	let label: String
 	let description: String?
 	let content: Content
@@ -27,10 +27,12 @@ struct SettingRowWithDescription<Content: View>: View {
 			if let description {
 				Text(description)
 					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
-					.foregroundColor(settings.secondaryTextColorUI70)
+					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
 					.fixedSize(horizontal: false, vertical: true)
 			}
 		}
 		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
 }
+
+typealias SettingRowWithDescription = SettingRow

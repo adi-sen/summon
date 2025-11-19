@@ -49,28 +49,28 @@ struct ContentView: View {
 	var windowHeight: CGFloat {
 		let maxVisibleRows = 7
 		let actualRows = min(results.count, maxVisibleRows)
-		let footerHeight: CGFloat = shouldShowFooter ? 32 : 0
+		let footerHeight: CGFloat = shouldShowFooter ? DesignTokens.Layout.footerHeight : 0
 
-		let searchBarHeight: CGFloat = 52
-		let dividerHeight: CGFloat = 1
-		let topPadding: CGFloat = 4
-		let rowHeight: CGFloat = 44
-		let bottomBuffer: CGFloat = 1
+		let topPadding: CGFloat = DesignTokens.Spacing.xs
+		let bottomBuffer: CGFloat = DesignTokens.Spacing.xxs
 
 		if isClipboardMode {
-			return searchBarHeight + dividerHeight + topPadding + CGFloat(maxVisibleRows) * rowHeight
+			return DesignTokens.Layout.searchBarHeight + DesignTokens.Layout.dividerHeight + topPadding
+				+ CGFloat(maxVisibleRows) * DesignTokens.Layout.resultRowHeight
 				+ bottomBuffer + footerHeight
 		}
 
 		if settings.compactMode {
 			guard actualRows > 0 else {
-				return searchBarHeight
+				return DesignTokens.Layout.searchBarHeight
 			}
-			return searchBarHeight + dividerHeight + topPadding + CGFloat(actualRows) * rowHeight
+			return DesignTokens.Layout.searchBarHeight + DesignTokens.Layout.dividerHeight + topPadding
+				+ CGFloat(actualRows) * DesignTokens.Layout.resultRowHeight
 				+ bottomBuffer + footerHeight
 		}
 
-		return searchBarHeight + dividerHeight + topPadding + CGFloat(maxVisibleRows) * rowHeight
+		return DesignTokens.Layout.searchBarHeight + DesignTokens.Layout.dividerHeight + topPadding
+			+ CGFloat(maxVisibleRows) * DesignTokens.Layout.resultRowHeight
 			+ bottomBuffer + footerHeight
 	}
 
@@ -252,7 +252,7 @@ struct ContentView: View {
 				}
 				.padding(.horizontal, DesignTokens.Spacing.lg)
 				.padding(.vertical, DesignTokens.Spacing.md)
-				.frame(height: 52)
+				.frame(height: DesignTokens.Layout.searchBarHeight)
 				.background(settings.backgroundColorUI)
 				.zIndex(1000)
 
@@ -335,7 +335,7 @@ struct ContentView: View {
 							iconName: "magnifyingglass",
 							title: "No results",
 							subtitle: nil,
-							height: 308
+							height: DesignTokens.Layout.defaultListHeight
 						)
 						.equatable()
 						.background(settings.backgroundColorUI)
@@ -344,7 +344,7 @@ struct ContentView: View {
 							iconName: "square.stack.3d.up.slash",
 							title: "No pinned or recently launched apps",
 							subtitle: "Start typing to search",
-							height: 308
+							height: DesignTokens.Layout.defaultListHeight
 						)
 						.equatable()
 						.background(settings.backgroundColorUI)
@@ -352,14 +352,14 @@ struct ContentView: View {
 					          !settings.compactMode
 					{
 						Spacer()
-							.frame(height: 308)
+							.frame(height: DesignTokens.Layout.defaultListHeight)
 							.background(settings.backgroundColorUI)
 					} else if isClipboardMode, results.isEmpty {
 						EmptyStateView(
 							iconName: "doc.on.clipboard",
 							title: "No clipboard items",
 							subtitle: nil,
-							height: 308
+							height: DesignTokens.Layout.defaultListHeight
 						)
 						.equatable()
 						.background(settings.backgroundColorUI)
@@ -368,7 +368,7 @@ struct ContentView: View {
 							.frame(height: 0)
 					}
 				}
-				.frame(height: settings.compactMode ? nil : 308)
+				.frame(height: settings.compactMode ? nil : DesignTokens.Layout.defaultListHeight)
 
 				if shouldShowFooter {
 					Divider()
@@ -458,8 +458,8 @@ struct ContentView: View {
 			onOpenSettings?()
 		}
 		.onReceive(NotificationCenter.default.publisher(for: .clearIconCache)) { _ in
-			IconCache.shared.clear()
-			ThumbnailCache.shared.clear()
+			ImageCache.icon.clear()
+			ImageCache.thumbnail.clear()
 		}
 		.onReceive(NotificationCenter.default.publisher(for: .windowHidden)) { _ in
 			resetState()
@@ -641,8 +641,8 @@ struct ContentView: View {
 			isClipboardMode = false
 			selectedIndex = 0
 
-			IconCache.shared.clear()
-			ThumbnailCache.shared.clear()
+			ImageCache.icon.clear()
+			ImageCache.thumbnail.clear()
 		}
 	}
 }

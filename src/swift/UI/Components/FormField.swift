@@ -6,7 +6,7 @@ struct FormField<Content: View>: View {
 	let spacing: CGFloat
 	let description: String?
 	let content: Content
-	@ObservedObject var settings = AppSettings.shared
+	@EnvironmentObject var settings: AppSettings
 
 	enum LabelStyle {
 		case regular
@@ -66,7 +66,6 @@ extension FormField where Content == AnyView {
 		self.labelStyle = labelStyle
 		self.spacing = spacing
 		self.description = description
-		self.settings = settings
 
 		if editable {
 			self.content = AnyView(

@@ -65,7 +65,7 @@ struct ClipboardPreview: View {
 				}
 
 				let cacheKey = "thumb_\(currentTimestamp)"
-				if let cached = ThumbnailCache.shared.get(cacheKey) {
+				if let cached = ImageCache.thumbnail.get(cacheKey) {
 					DispatchQueue.main.async {
 						if entry.timestamp == currentTimestamp {
 							thumbnail = cached
@@ -83,7 +83,7 @@ struct ClipboardPreview: View {
 					return
 				}
 
-				ThumbnailCache.shared.set(cacheKey, image: thumb)
+				ImageCache.thumbnail.set(cacheKey, image: thumb)
 
 				DispatchQueue.main.async {
 					if entry.timestamp == currentTimestamp {
