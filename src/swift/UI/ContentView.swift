@@ -33,6 +33,9 @@ struct ContentView: View {
 	@State var searchText = ""
 	@State var selectedIndex = 0
 	@State var isClipboardMode = false
+	@State private var lastMousePosition: CGPoint?
+	@State private var hoveredIndex: Int?
+	@State private var mouseMovedMonitor: Any?
 
 	var results: [CategoryResult] {
 		isClipboardMode ? clipboardResults : searchCoordinator.results
@@ -235,11 +238,13 @@ struct ContentView: View {
 						onSubmit: launchSelected,
 						onEscape: handleEscape,
 						onUpArrow: {
+							lastMousePosition = nil
 							if selectedIndex > 0 {
 								selectedIndex -= 1
 							}
 						},
 						onDownArrow: {
+							lastMousePosition = nil
 							if selectedIndex < results.count - 1 {
 								selectedIndex += 1
 							}
@@ -283,7 +288,10 @@ struct ContentView: View {
 											}
 											.onHover { isHovering in
 												if isHovering {
-													selectedIndex = index
+													hoveredIndex = index
+													handleMouseHover(index: index)
+												} else if hoveredIndex == index {
+													hoveredIndex = nil
 												}
 											}
 										}
@@ -434,9 +442,15 @@ struct ContentView: View {
 		.onChange(of: searchText) { newValue in
 			performSearch(newValue)
 		}
+		.onChange(of: results.count) { count in
+			if selectedIndex >= count {
+				selectedIndex = 0
+			}
+		}
 		.onAppear {
 			clipboardCoordinator.loadHistory()
 			setupEventMonitor()
+			setupMouseMovedMonitor()
 			loadAppIcon()
 			if searchText.isEmpty, !isClipboardMode {
 				performLandingPageSearch()
@@ -444,6 +458,7 @@ struct ContentView: View {
 		}
 		.onDisappear {
 			removeEventMonitor()
+			removeMouseMovedMonitor()
 		}
 		.onReceive(NotificationCenter.default.publisher(for: .showClipboard)) { _ in
 			showClipboardHistory()
@@ -452,6 +467,7 @@ struct ContentView: View {
 			isClipboardMode = false
 			searchText = ""
 			selectedIndex = 0
+			lastMousePosition = nil
 			performLandingPageSearch()
 		}
 		.onReceive(NotificationCenter.default.publisher(for: .showSettings)) { _ in
@@ -470,6 +486,7 @@ struct ContentView: View {
 		searchText = ""
 		selectedIndex = 0
 		isClipboardMode = true
+		lastMousePosition = nil
 
 		clipboardCoordinator.loadHistory()
 		clipboardCoordinator.resetToFirstPage()
@@ -493,7 +510,7 @@ struct ContentView: View {
 	func performSearch(_ query: String) {
 		if isClipboardMode {
 			clipboardResults = clipboardCoordinator.createClipboardResults(searchQuery: query)
-			selectedIndex = min(selectedIndex, max(0, clipboardResults.count - 1))
+			selectedIndex = 0
 			return
 		}
 
@@ -503,7 +520,7 @@ struct ContentView: View {
 		}
 
 		searchCoordinator.performSearch(query)
-		selectedIndex = min(selectedIndex, max(0, searchCoordinator.results.count - 1))
+		selectedIndex = 0
 	}
 
 	func performLandingPageSearch() {
@@ -631,6 +648,56 @@ struct ContentView: View {
 		searchText = ""
 		isClipboardMode = false
 		selectedIndex = 0
+		lastMousePosition = nil
+	}
+
+	func setupMouseMovedMonitor() {
+		mouseMovedMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { event in
+			guard let hovered = self.hoveredIndex else { return event }
+
+			let mouseLocation = NSEvent.mouseLocation
+
+			if let lastPosition = self.lastMousePosition {
+				let dx = mouseLocation.x - lastPosition.x
+				let dy = mouseLocation.y - lastPosition.y
+				let distanceSquared = dx * dx + dy * dy
+
+				if distanceSquared > 9.0 {
+					self.selectedIndex = hovered
+					self.lastMousePosition = mouseLocation
+				}
+			} else {
+				self.lastMousePosition = mouseLocation
+			}
+
+			return event
+		}
+	}
+
+	func removeMouseMovedMonitor() {
+		if let monitor = mouseMovedMonitor {
+			NSEvent.removeMonitor(monitor)
+			mouseMovedMonitor = nil
+		}
+	}
+
+	func handleMouseHover(index: Int) {
+		guard hoveredIndex != index else { return }
+
+		let mouseLocation = NSEvent.mouseLocation
+
+		if let lastPosition = lastMousePosition {
+			let dx = mouseLocation.x - lastPosition.x
+			let dy = mouseLocation.y - lastPosition.y
+			let distanceSquared = dx * dx + dy * dy
+
+			if distanceSquared > 9.0 {
+				selectedIndex = index
+				lastMousePosition = mouseLocation
+			}
+		} else {
+			lastMousePosition = mouseLocation
+		}
 	}
 
 	func resetState() {
@@ -640,6 +707,7 @@ struct ContentView: View {
 			searchText = ""
 			isClipboardMode = false
 			selectedIndex = 0
+			lastMousePosition = nil
 
 			ImageCache.icon.clear()
 			ImageCache.thumbnail.clear()
