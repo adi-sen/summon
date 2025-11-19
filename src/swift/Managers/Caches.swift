@@ -55,51 +55,30 @@ final class LRUCache<Key: Hashable, Value> {
 	}
 }
 
-final class IconCache {
-	static let shared = IconCache()
+final class ImageCache {
+	static let icon = ImageCache(maxSize: 100)
+	static let thumbnail = ImageCache(maxSize: 30)
 
-	private let cache = NSCache<NSString, NSImage>()
+	private let cache: LRUCache<String, NSImage>
 
-	private init() {
-		cache.countLimit = 30
-		cache.totalCostLimit = 10 * 1024 * 1024
-	}
-
-	func get(_ path: String) -> NSImage? {
-		cache.object(forKey: path as NSString)
-	}
-
-	func set(_ path: String, icon: NSImage) {
-		let cost = Int(icon.size.width * icon.size.height * 4)
-		cache.setObject(icon, forKey: path as NSString, cost: cost)
-	}
-
-	func clear() {
-		cache.removeAllObjects()
-	}
-}
-
-final class ThumbnailCache {
-	static let shared = ThumbnailCache()
-
-	private let cache = NSCache<NSString, NSImage>()
-
-	private init() {
-		cache.countLimit = 10
-		cache.totalCostLimit = 5 * 1024 * 1024
+	init(maxSize: Int) {
+		cache = LRUCache<String, NSImage>(maxSize: maxSize)
 	}
 
 	func get(_ key: String) -> NSImage? {
-		cache.object(forKey: key as NSString)
+		cache.get(key)
 	}
 
 	func set(_ key: String, image: NSImage) {
-		let cost = Int(image.size.width * image.size.height * 4)
-		cache.setObject(image, forKey: key as NSString, cost: cost)
+		cache.set(key, value: image)
 	}
 
 	func clear() {
-		cache.removeAllObjects()
+		cache.clear()
+	}
+
+	func count() -> Int {
+		cache.count()
 	}
 }
 
@@ -113,4 +92,12 @@ struct CategoryResult: Identifiable {
 	let clipboardEntry: ClipboardEntry?
 	let icon: NSImage?
 	let score: Int64
+
+	var isApp: Bool {
+		category == "Applications" || category == "Pinned" || category == "Recent"
+	}
+
+	var isCommand: Bool {
+		category == "Command"
+	}
 }

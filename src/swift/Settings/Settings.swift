@@ -20,26 +20,8 @@ struct KeyboardShortcut: Codable, Equatable {
 		return parts.joined(separator: " ")
 	}
 
-	private static let keyMap: [Int: String] = [
-		kVK_Space: "Space", kVK_Escape: "Esc", kVK_Return: "↩", kVK_Tab: "⇥",
-		kVK_Delete: "⌫", kVK_ForwardDelete: "⌦", kVK_LeftArrow: "←", kVK_RightArrow: "→",
-		kVK_UpArrow: "↑", kVK_DownArrow: "↓", kVK_ANSI_A: "A", kVK_ANSI_B: "B",
-		kVK_ANSI_C: "C", kVK_ANSI_D: "D", kVK_ANSI_E: "E", kVK_ANSI_F: "F",
-		kVK_ANSI_G: "G", kVK_ANSI_H: "H", kVK_ANSI_I: "I", kVK_ANSI_J: "J",
-		kVK_ANSI_K: "K", kVK_ANSI_L: "L", kVK_ANSI_M: "M", kVK_ANSI_N: "N",
-		kVK_ANSI_O: "O", kVK_ANSI_P: "P", kVK_ANSI_Q: "Q", kVK_ANSI_R: "R",
-		kVK_ANSI_S: "S", kVK_ANSI_T: "T", kVK_ANSI_U: "U", kVK_ANSI_V: "V",
-		kVK_ANSI_W: "W", kVK_ANSI_X: "X", kVK_ANSI_Y: "Y", kVK_ANSI_Z: "Z",
-		kVK_ANSI_0: "0", kVK_ANSI_1: "1", kVK_ANSI_2: "2", kVK_ANSI_3: "3",
-		kVK_ANSI_4: "4", kVK_ANSI_5: "5", kVK_ANSI_6: "6", kVK_ANSI_7: "7",
-		kVK_ANSI_8: "8", kVK_ANSI_9: "9", kVK_ANSI_Comma: ",", kVK_ANSI_Period: ".",
-		kVK_ANSI_Slash: "/", kVK_ANSI_Semicolon: ";", kVK_ANSI_Quote: "'",
-		kVK_ANSI_LeftBracket: "[", kVK_ANSI_RightBracket: "]", kVK_ANSI_Backslash: "\\",
-		kVK_ANSI_Minus: "-", kVK_ANSI_Equal: "=", kVK_ANSI_Grave: "`"
-	]
-
 	private func keyCodeToString(_ code: UInt32) -> String {
-		Self.keyMap[Int(code)] ?? "?"
+		KeyCodeMapping.keyCodeToString[Int(code)] ?? "?"
 	}
 
 	static var defaultLauncher: KeyboardShortcut {
@@ -73,6 +55,18 @@ struct KeyboardShortcut: Codable, Equatable {
 
 	static var defaultSaveClipboard: KeyboardShortcut {
 		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(cmdKey))
+	}
+
+	static var defaultDeleteClipboard: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_Delete), modifiers: UInt32(cmdKey))
+	}
+
+	static var defaultForceQuit: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_Q), modifiers: UInt32(cmdKey | optionKey))
+	}
+
+	static var defaultGetInfo: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_I), modifiers: UInt32(cmdKey))
 	}
 }
 
@@ -153,6 +147,9 @@ class AppSettings: ObservableObject {
 	@Published var quitAppShortcut: KeyboardShortcut = .defaultQuitApp
 	@Published var hideAppShortcut: KeyboardShortcut = .defaultHideApp
 	@Published var saveClipboardShortcut: KeyboardShortcut = .defaultSaveClipboard
+	@Published var deleteClipboardShortcut: KeyboardShortcut = .defaultDeleteClipboard
+	@Published var forceQuitShortcut: KeyboardShortcut = .defaultForceQuit
+	@Published var getInfoShortcut: KeyboardShortcut = .defaultGetInfo
 	@Published var enableCommands: Bool = true
 	@Published var showTrayIcon: Bool = true
 	@Published var showDockIcon: Bool = false
@@ -163,6 +160,7 @@ class AppSettings: ObservableObject {
 	@Published var imageSavePath: String = ""
 	@Published var showQuickSelect: Bool = true
 	@Published var recentApps: [RecentApp] = []
+	@Published var recentAppsGeneration: Int = 0
 	@Published var pinnedApps: [RecentApp] = []
 	@Published var searchFolders: [String] = [
 		"/Applications",
@@ -191,7 +189,7 @@ class AppSettings: ObservableObject {
 
 	private var settingsStorage: FFI.SettingsStorageHandle?
 	private let userDefaults = UserDefaults.standard
-	private var saveWorkItem: DispatchWorkItem?
+	private let saveDebouncer = Debouncer(delay: 0.5)
 	private let recentAppsKey = "app_recentApps"
 	private let pinnedAppsKey = "app_pinnedApps"
 	private let customEnginesKey = "app_customFallbackEngines"
@@ -268,47 +266,24 @@ class AppSettings: ObservableObject {
 					] : swiftSettings.searchFolders
 
 			launcherShortcut =
-				keyboardShortcutFromStrings(
+				ShortcutManager.decode(
 					key: swiftSettings.launcherShortcutKey,
 					mods: swiftSettings.launcherShortcutMods
 				) ?? .defaultLauncher
 
 			clipboardShortcut =
-				keyboardShortcutFromStrings(
+				ShortcutManager.decode(
 					key: swiftSettings.clipboardShortcutKey,
 					mods: swiftSettings.clipboardShortcutMods
 				) ?? .defaultClipboard
 		}
 
-		if let data = userDefaults.data(forKey: recentAppsKey),
-		   let apps = try? JSONDecoder().decode([RecentApp].self, from: data)
-		{
-			recentApps = apps
-		}
+		recentApps = userDefaults.decodable([RecentApp].self, forKey: recentAppsKey) ?? []
+		pinnedApps = userDefaults.decodable([RecentApp].self, forKey: pinnedAppsKey) ?? []
+		customFallbackEngines = userDefaults.decodable([WebSearchEngine].self, forKey: customEnginesKey) ?? []
 
-		if let data = userDefaults.data(forKey: pinnedAppsKey),
-		   let apps = try? JSONDecoder().decode([RecentApp].self, from: data)
-		{
-			pinnedApps = apps
-		}
-
-		if let data = userDefaults.data(forKey: customEnginesKey),
-		   let engines = try? JSONDecoder().decode([WebSearchEngine].self, from: data)
-		{
-			customFallbackEngines = engines
-		}
-
-		if let data = userDefaults.data(forKey: engineKeywordsKey),
-		   let keywords = try? JSONDecoder().decode([String: String].self, from: data)
-		{
-			engineKeywords = keywords
-		}
-
-		if let data = userDefaults.data(forKey: disabledDefaultEnginesKey),
-		   let disabled = try? JSONDecoder().decode(Set<String>.self, from: data)
-		{
-			disabledDefaultEngines = disabled
-		}
+		engineKeywords = userDefaults.decodable([String: String].self, forKey: engineKeywordsKey) ?? [:]
+		disabledDefaultEngines = userDefaults.decodable(Set<String>.self, forKey: disabledDefaultEnginesKey) ?? []
 
 		if userDefaults.object(forKey: showFooterHintsKey) != nil {
 			showFooterHints = userDefaults.bool(forKey: showFooterHintsKey)
@@ -330,78 +305,24 @@ class AppSettings: ObservableObject {
 			showQuickSelect = userDefaults.bool(forKey: showQuickSelectKey)
 		}
 
-		if let data = userDefaults.data(forKey: pinAppShortcutKey),
-		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
-		{
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: pinAppShortcutKey) {
 			pinAppShortcut = shortcut
 		}
-
-		if let data = userDefaults.data(forKey: revealAppShortcutKey),
-		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
-		{
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: revealAppShortcutKey) {
 			revealAppShortcut = shortcut
 		}
-
-		if let data = userDefaults.data(forKey: copyPathShortcutKey),
-		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
-		{
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: copyPathShortcutKey) {
 			copyPathShortcut = shortcut
 		}
-
-		if let data = userDefaults.data(forKey: quitAppShortcutKey),
-		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
-		{
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: quitAppShortcutKey) {
 			quitAppShortcut = shortcut
 		}
-
-		if let data = userDefaults.data(forKey: hideAppShortcutKey),
-		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
-		{
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: hideAppShortcutKey) {
 			hideAppShortcut = shortcut
 		}
-
-		if let data = userDefaults.data(forKey: saveClipboardShortcutKey),
-		   let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data)
-		{
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: saveClipboardShortcutKey) {
 			saveClipboardShortcut = shortcut
 		}
-	}
-
-	private func keyboardShortcutFromStrings(key: String, mods: [String]) -> KeyboardShortcut? {
-		let keyCode = stringToKeyCode(key)
-		guard keyCode != nil else { return nil }
-
-		var modifierFlags: UInt32 = 0
-		for mod in mods {
-			switch mod.lowercased() {
-			case "command": modifierFlags |= UInt32(cmdKey)
-			case "option": modifierFlags |= UInt32(optionKey)
-			case "shift": modifierFlags |= UInt32(shiftKey)
-			case "control": modifierFlags |= UInt32(controlKey)
-			default: break
-			}
-		}
-
-		return KeyboardShortcut(keyCode: keyCode!, modifiers: modifierFlags)
-	}
-
-	private func stringToKeyCode(_ key: String) -> UInt32? {
-		let keyMap: [String: Int] = [
-			"space": kVK_Space, "esc": kVK_Escape, "return": kVK_Return, "tab": kVK_Tab,
-			"delete": kVK_Delete, "left": kVK_LeftArrow, "right": kVK_RightArrow,
-			"up": kVK_UpArrow, "down": kVK_DownArrow,
-			"a": kVK_ANSI_A, "b": kVK_ANSI_B, "c": kVK_ANSI_C, "d": kVK_ANSI_D,
-			"e": kVK_ANSI_E, "f": kVK_ANSI_F, "g": kVK_ANSI_G, "h": kVK_ANSI_H,
-			"i": kVK_ANSI_I, "j": kVK_ANSI_J, "k": kVK_ANSI_K, "l": kVK_ANSI_L,
-			"m": kVK_ANSI_M, "n": kVK_ANSI_N, "o": kVK_ANSI_O, "p": kVK_ANSI_P,
-			"q": kVK_ANSI_Q, "r": kVK_ANSI_R, "s": kVK_ANSI_S, "t": kVK_ANSI_T,
-			"u": kVK_ANSI_U, "v": kVK_ANSI_V, "w": kVK_ANSI_W, "x": kVK_ANSI_X,
-			"y": kVK_ANSI_Y, "z": kVK_ANSI_Z,
-			"0": kVK_ANSI_0, "1": kVK_ANSI_1, "2": kVK_ANSI_2, "3": kVK_ANSI_3,
-			"4": kVK_ANSI_4, "5": kVK_ANSI_5, "6": kVK_ANSI_6, "7": kVK_ANSI_7,
-			"8": kVK_ANSI_8, "9": kVK_ANSI_9
-		]
-		return keyMap[key.lowercased()].map { UInt32($0) }
 	}
 
 	func addRecentApp(name: String, path: String) {
@@ -414,16 +335,12 @@ class AppSettings: ObservableObject {
 		updated.insert(RecentApp(name: name, path: path, timestamp: now), at: 0)
 		recentApps = Array(updated.prefix(maxResults))
 
-		if let data = try? JSONEncoder().encode(recentApps) {
-			userDefaults.set(data, forKey: recentAppsKey)
-		}
+		userDefaults.setEncodable(recentApps, forKey: recentAppsKey)
 	}
 
 	func cleanInvalidApps() {
-		let fileManager = FileManager.default
-
 		let validRecent = recentApps.filter { app in
-			let exists = fileManager.fileExists(atPath: app.path)
+			let exists = app.path.fileExists
 			if !exists {
 				print("Removing invalid recent app: \(app.name) at \(app.path)")
 			}
@@ -432,16 +349,14 @@ class AppSettings: ObservableObject {
 
 		if validRecent.count != recentApps.count {
 			recentApps = validRecent
-			if let data = try? JSONEncoder().encode(recentApps) {
-				userDefaults.set(data, forKey: recentAppsKey)
-			}
+			userDefaults.setEncodable(recentApps, forKey: recentAppsKey)
 		}
 
 		let validPinned = pinnedApps.filter { item in
 			if item.path.hasPrefix("cmd_") {
 				return true
 			}
-			let exists = fileManager.fileExists(atPath: item.path)
+			let exists = item.path.fileExists
 			if !exists {
 				print("Removing invalid pinned app: \(item.name) at \(item.path)")
 			}
@@ -450,9 +365,7 @@ class AppSettings: ObservableObject {
 
 		if validPinned.count != pinnedApps.count {
 			pinnedApps = validPinned
-			if let data = try? JSONEncoder().encode(pinnedApps) {
-				userDefaults.set(data, forKey: pinnedAppsKey)
-			}
+			userDefaults.setEncodable(pinnedApps, forKey: pinnedAppsKey)
 		}
 	}
 
@@ -465,12 +378,8 @@ class AppSettings: ObservableObject {
 			recentApps.removeAll { $0.path == path }
 		}
 
-		if let data = try? JSONEncoder().encode(pinnedApps) {
-			userDefaults.set(data, forKey: pinnedAppsKey)
-		}
-		if let data = try? JSONEncoder().encode(recentApps) {
-			userDefaults.set(data, forKey: recentAppsKey)
-		}
+		userDefaults.setEncodable(pinnedApps, forKey: pinnedAppsKey)
+		userDefaults.setEncodable(recentApps, forKey: recentAppsKey)
 	}
 
 	func isAppPinned(path: String) -> Bool {
@@ -485,16 +394,14 @@ class AppSettings: ObservableObject {
 			return
 		}
 
-		saveWorkItem?.cancel()
-		saveWorkItem = DispatchWorkItem { [weak self] in
+		saveDebouncer.debounce { [weak self] in
 			self?.saveNow()
 		}
-		DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: saveWorkItem!)
 	}
 
 	private func saveNow() {
-		let (launcherKey, launcherMods) = keyboardShortcutToStrings(launcherShortcut)
-		let (clipboardKey, clipboardMods) = keyboardShortcutToStrings(clipboardShortcut)
+		let (launcherKey, launcherMods) = ShortcutManager.encode(launcherShortcut)
+		let (clipboardKey, clipboardMods) = ShortcutManager.encode(clipboardShortcut)
 
 		_ = FFI.settingsStorageSave(
 			settingsStorage,
@@ -516,17 +423,9 @@ class AppSettings: ObservableObject {
 			searchFolders: searchFolders
 		)
 
-		if let data = try? JSONEncoder().encode(customFallbackEngines) {
-			userDefaults.set(data, forKey: customEnginesKey)
-		}
-
-		if let data = try? JSONEncoder().encode(engineKeywords) {
-			userDefaults.set(data, forKey: engineKeywordsKey)
-		}
-
-		if let data = try? JSONEncoder().encode(disabledDefaultEngines) {
-			userDefaults.set(data, forKey: disabledDefaultEnginesKey)
-		}
+		userDefaults.setEncodable(customFallbackEngines, forKey: customEnginesKey)
+		userDefaults.setEncodable(engineKeywords, forKey: engineKeywordsKey)
+		userDefaults.setEncodable(disabledDefaultEngines, forKey: disabledDefaultEnginesKey)
 
 		userDefaults.set(showFooterHints, forKey: showFooterHintsKey)
 		userDefaults.set(compactMode, forKey: compactModeKey)
@@ -534,65 +433,12 @@ class AppSettings: ObservableObject {
 		userDefaults.set(imageSavePath, forKey: imageSavePathKey)
 		userDefaults.set(showQuickSelect, forKey: showQuickSelectKey)
 
-		if let data = try? JSONEncoder().encode(pinAppShortcut) {
-			userDefaults.set(data, forKey: pinAppShortcutKey)
-		}
-		if let data = try? JSONEncoder().encode(revealAppShortcut) {
-			userDefaults.set(data, forKey: revealAppShortcutKey)
-		}
-		if let data = try? JSONEncoder().encode(copyPathShortcut) {
-			userDefaults.set(data, forKey: copyPathShortcutKey)
-		}
-		if let data = try? JSONEncoder().encode(quitAppShortcut) {
-			userDefaults.set(data, forKey: quitAppShortcutKey)
-		}
-		if let data = try? JSONEncoder().encode(hideAppShortcut) {
-			userDefaults.set(data, forKey: hideAppShortcutKey)
-		}
-		if let data = try? JSONEncoder().encode(saveClipboardShortcut) {
-			userDefaults.set(data, forKey: saveClipboardShortcutKey)
-		}
-	}
-
-	private func keyboardShortcutToStrings(_ shortcut: KeyboardShortcut) -> (
-		key: String, mods: [String]
-	) {
-		let keyString = keyCodeToString(shortcut.keyCode)
-		var mods: [String] = []
-
-		if shortcut.modifiers & UInt32(cmdKey) != 0 {
-			mods.append("command")
-		}
-		if shortcut.modifiers & UInt32(optionKey) != 0 {
-			mods.append("option")
-		}
-		if shortcut.modifiers & UInt32(shiftKey) != 0 {
-			mods.append("shift")
-		}
-		if shortcut.modifiers & UInt32(controlKey) != 0 {
-			mods.append("control")
-		}
-
-		return (keyString, mods)
-	}
-
-	private func keyCodeToString(_ keyCode: UInt32) -> String {
-		let reverseMap: [Int: String] = [
-			kVK_Space: "space", kVK_Escape: "esc", kVK_Return: "return", kVK_Tab: "tab",
-			kVK_Delete: "delete", kVK_LeftArrow: "left", kVK_RightArrow: "right",
-			kVK_UpArrow: "up", kVK_DownArrow: "down",
-			kVK_ANSI_A: "a", kVK_ANSI_B: "b", kVK_ANSI_C: "c", kVK_ANSI_D: "d",
-			kVK_ANSI_E: "e", kVK_ANSI_F: "f", kVK_ANSI_G: "g", kVK_ANSI_H: "h",
-			kVK_ANSI_I: "i", kVK_ANSI_J: "j", kVK_ANSI_K: "k", kVK_ANSI_L: "l",
-			kVK_ANSI_M: "m", kVK_ANSI_N: "n", kVK_ANSI_O: "o", kVK_ANSI_P: "p",
-			kVK_ANSI_Q: "q", kVK_ANSI_R: "r", kVK_ANSI_S: "s", kVK_ANSI_T: "t",
-			kVK_ANSI_U: "u", kVK_ANSI_V: "v", kVK_ANSI_W: "w", kVK_ANSI_X: "x",
-			kVK_ANSI_Y: "y", kVK_ANSI_Z: "z",
-			kVK_ANSI_0: "0", kVK_ANSI_1: "1", kVK_ANSI_2: "2", kVK_ANSI_3: "3",
-			kVK_ANSI_4: "4", kVK_ANSI_5: "5", kVK_ANSI_6: "6", kVK_ANSI_7: "7",
-			kVK_ANSI_8: "8", kVK_ANSI_9: "9"
-		]
-		return reverseMap[Int(keyCode)] ?? "space"
+		userDefaults.setEncodable(pinAppShortcut, forKey: pinAppShortcutKey)
+		userDefaults.setEncodable(revealAppShortcut, forKey: revealAppShortcutKey)
+		userDefaults.setEncodable(copyPathShortcut, forKey: copyPathShortcutKey)
+		userDefaults.setEncodable(quitAppShortcut, forKey: quitAppShortcutKey)
+		userDefaults.setEncodable(hideAppShortcut, forKey: hideAppShortcutKey)
+		userDefaults.setEncodable(saveClipboardShortcut, forKey: saveClipboardShortcutKey)
 	}
 
 	func save() {

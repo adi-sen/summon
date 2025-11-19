@@ -1,6 +1,13 @@
 import Cocoa
 import Foundation
 
+private let sharedDateFormatter: DateFormatter = {
+	let formatter = DateFormatter()
+	formatter.dateStyle = .medium
+	formatter.timeStyle = .medium
+	return formatter
+}()
+
 enum ClipboardItemType: UInt8 {
 	case text = 0
 	case image = 1
@@ -46,10 +53,7 @@ struct ClipboardEntry {
 
 	var formattedDate: String {
 		let date = Date(timeIntervalSince1970: timestamp)
-		let formatter = DateFormatter()
-		formatter.dateStyle = .medium
-		formatter.timeStyle = .medium
-		return formatter.string(from: date)
+		return sharedDateFormatter.string(from: date)
 	}
 
 	var timeAgo: String {
@@ -68,6 +72,12 @@ struct ClipboardEntry {
 		      FileManager.default.fileExists(atPath: filePath)
 		else { return nil }
 		return NSImage(contentsOfFile: filePath)
+	}
+
+	func loadImageAndPaste(to pasteboard: NSPasteboard) {
+		if let image = fullImage {
+			pasteboard.writeObjects([image])
+		}
 	}
 }
 
@@ -182,6 +192,11 @@ final class ClipboardStorage {
 	func clear() {
 		_ = FFI.clipboardStorageClear(handle)
 		cleanupAllImageFiles()
+	}
+
+	func removeAt(index: Int) {
+		_ = FFI.clipboardStorageRemoveAt(handle, index: Int32(index))
+		cleanupOrphanedImageFiles()
 	}
 
 	private func cleanupOrphanedImageFiles() {

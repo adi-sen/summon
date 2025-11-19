@@ -126,4 +126,8 @@ final class ClipboardManager {
 			break
 		}
 	}
+
+	func removeEntry(at index: Int) {
+		storage.removeAt(index: index)
+	}
 }
