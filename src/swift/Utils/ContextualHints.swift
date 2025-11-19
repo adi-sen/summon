@@ -33,4 +33,11 @@ struct HintAction: Identifiable {
 	let id = UUID()
 	let shortcut: String
 	let label: String
+	let action: (() -> Void)?
+
+	init(shortcut: String, label: String, action: (() -> Void)? = nil) {
+		self.shortcut = shortcut
+		self.label = label
+		self.action = action
+	}
 }

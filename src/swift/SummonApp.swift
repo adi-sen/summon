@@ -1,22 +1,6 @@
 import Carbon
 import SwiftUI
 
-extension Notification.Name {
-	static let showClipboard = Notification.Name("showClipboard")
-	static let showLauncher = Notification.Name("showLauncher")
-	static let showSettings = Notification.Name("showSettings")
-	static let switchToExtensionsTab = Notification.Name("switchToExtensionsTab")
-	static let shortcutsChanged = Notification.Name("shortcutsChanged")
-	static let clearIconCache = Notification.Name("clearIconCache")
-	static let windowHidden = Notification.Name("windowHidden")
-	static let settingsChanged = Notification.Name("settingsChanged")
-	static let trayIconSettingChanged = Notification.Name("trayIconSettingChanged")
-	static let dockIconSettingChanged = Notification.Name("dockIconSettingChanged")
-	static let trafficLightsSettingChanged = Notification.Name("trafficLightsSettingChanged")
-	static let closeAllDropdowns = Notification.Name("closeAllDropdowns")
-	static let saveClipboardAsSnippet = Notification.Name("saveClipboardAsSnippet")
-}
-
 @main
 struct SummonApp: App {
 	@NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -133,7 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 		indexCommands()
 		initializeFileSearchIfEnabled()
 
-		Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
+		Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
 			self?.performMemoryCleanup()
 		}
 	}
@@ -144,6 +128,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 			if let window, !window.isVisible {
 				NotificationCenter.default.post(name: .clearIconCache, object: nil)
+				ActionIconGenerator.clearCache()
+				WebIconDownloader.clearCache()
 			}
 
 			malloc_zone_pressure_relief(nil, 0)
@@ -410,12 +396,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 			window.orderOut(nil)
 
 			autoreleasepool {
-				clipboardManager?.cleanupOldEntries()
-				IconCache.shared.clear()
-				ThumbnailCache.shared.clear()
+				performMemoryCleanup()
 			}
-
-			malloc_zone_pressure_relief(nil, 0)
 		} else {
 			checkForNewApps()
 			NotificationCenter.default.post(name: .showLauncher, object: nil)
@@ -616,8 +598,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 		   closingWindow === settingsWindowController?.window
 		{
 			NotificationCenter.default.post(name: .closeAllDropdowns, object: nil)
-			ThumbnailCache.shared.clear()
-			IconCache.shared.clear()
+			ImageCache.thumbnail.clear()
+			ImageCache.icon.clear()
 			FontCache.shared.clear()
 			updateActivationPolicy()
 		}

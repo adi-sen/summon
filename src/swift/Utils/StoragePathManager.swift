@@ -89,4 +89,9 @@ struct StoragePathManager {
 		}
 		return nil
 	}
+
+	static func getPicturesDirectory() -> URL {
+		FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first
+			?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Pictures")
+	}
 }

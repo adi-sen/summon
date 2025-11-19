@@ -32,6 +32,11 @@ enum DesignTokens {
 		static let iconSize: CGFloat = 28
 		static let buttonHeight: CGFloat = 32
 		static let minTouchTarget: CGFloat = 44
+		static let searchBarHeight: CGFloat = 52
+		static let resultRowHeight: CGFloat = 44
+		static let defaultListHeight: CGFloat = 308
+		static let dividerHeight: CGFloat = 1
+		static let footerHeight: CGFloat = 32
 	}
 
 	enum Dropdown {

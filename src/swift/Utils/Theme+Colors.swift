@@ -1,61 +1,44 @@
 import SwiftUI
 
-extension Theme {
-	var textColorUI: Color {
-		Color(red: textColor.0, green: textColor.1, blue: textColor.2)
-	}
-
-	var secondaryTextColorUI: Color {
-		Color(red: secondaryTextColor.0, green: secondaryTextColor.1, blue: secondaryTextColor.2)
-	}
-
-	var accentColorUI: Color {
-		Color(red: accentColor.0, green: accentColor.1, blue: accentColor.2)
-	}
-
-	var backgroundColorUI: Color {
-		Color(red: backgroundColor.0, green: backgroundColor.1, blue: backgroundColor.2)
-	}
-
-	var searchBarColorUI: Color {
-		Color(red: searchBarColor.0, green: searchBarColor.1, blue: searchBarColor.2)
-	}
-
-	var previewColorUI: Color {
-		Color(red: previewColor.0, green: previewColor.1, blue: previewColor.2)
-	}
-
-	var metadataColorUI: Color {
-		Color(red: metadataColor.0, green: metadataColor.1, blue: metadataColor.2)
-	}
-}
-
 extension AppSettings {
+	private func colorUI(from tuple: (Double, Double, Double)) -> Color {
+		Color(red: tuple.0, green: tuple.1, blue: tuple.2)
+	}
+
 	var textColorUI: Color {
-		theme.textColorUI
+		colorUI(from: theme.textColor)
 	}
 
 	var secondaryTextColorUI: Color {
-		theme.secondaryTextColorUI
+		colorUI(from: theme.secondaryTextColor)
 	}
 
 	var accentColorUI: Color {
-		theme.accentColorUI
+		colorUI(from: theme.accentColor)
 	}
 
 	var backgroundColorUI: Color {
-		theme.backgroundColorUI
+		colorUI(from: theme.backgroundColor)
 	}
 
 	var searchBarColorUI: Color {
-		theme.searchBarColorUI
+		colorUI(from: theme.searchBarColor)
 	}
 
 	var previewColorUI: Color {
-		theme.previewColorUI
+		colorUI(from: theme.previewColor)
 	}
 
 	var metadataColorUI: Color {
-		theme.metadataColorUI
+		colorUI(from: theme.metadataColor)
 	}
+
+	var secondaryTextColorUI40: Color { secondaryTextColorUI.opacity(0.4) }
+	var secondaryTextColorUI70: Color { secondaryTextColorUI.opacity(0.7) }
+	var secondaryTextColorUI50: Color { secondaryTextColorUI.opacity(0.5) }
+	var secondaryTextColorUI60: Color { secondaryTextColorUI.opacity(0.6) }
+	var accentColorUI15: Color { accentColorUI.opacity(0.15) }
+	var accentColorUI30: Color { accentColorUI.opacity(0.3) }
+	var searchBarColorUI30: Color { searchBarColorUI.opacity(0.3) }
+	var searchBarColorUI50: Color { searchBarColorUI.opacity(0.5) }
 }

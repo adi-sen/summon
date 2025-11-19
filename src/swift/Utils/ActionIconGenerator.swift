@@ -2,21 +2,32 @@ import AppKit
 import SwiftUI
 
 enum ActionIconGenerator {
+	private static let iconCache = ImageCache(maxSize: 200)
+
 	static func loadIcon(iconName: String, title: String, url: String?) -> NSImage? {
+		let cacheKey = "\(iconName)-\(title)-\(url ?? "")"
+		if let cached = iconCache.get(cacheKey) {
+			return cached
+		}
+
 		if iconName.hasPrefix("/") || iconName.hasPrefix("~"),
 		   let image = NSImage(contentsOfFile: NSString(string: iconName).expandingTildeInPath as String)
 		{
+			iconCache.set(cacheKey, image: image)
 			return image
 		}
 
 		if iconName.hasPrefix("web:") {
 			let path = "\(NSHomeDirectory())/Library/Application Support/Summon/WebIcons/\(String(iconName.dropFirst(4))).png"
 			if let image = NSImage(contentsOfFile: path) {
+				iconCache.set(cacheKey, image: image)
 				return image
 			}
 		}
 
-		return generateIcon(for: title, iconName: iconName, url: url)
+		let icon = generateIcon(for: title, iconName: iconName, url: url)
+		iconCache.set(cacheKey, image: icon)
+		return icon
 	}
 
 	static func generateIcon(for actionName: String, iconName: String, url: String?) -> NSImage {
@@ -134,5 +145,9 @@ enum ActionIconGenerator {
 		let hue = Double(hash % 360) / 360.0
 
 		return NSColor(hue: hue, saturation: 0.65, brightness: 0.75, alpha: 1.0)
+	}
+
+	static func clearCache() {
+		iconCache.clear()
 	}
 }
