@@ -307,9 +307,16 @@ impl FileIndexer {
 	fn scan_all_directories(&self) -> bool {
 		let config = self.config.read();
 
-		for dir in &config.directories {
-			if dir.exists() {
+		if config.directories.len() > 1 {
+			use rayon::prelude::*;
+			config.directories.par_iter().filter(|dir| dir.exists()).for_each(|dir| {
 				Self::scan_directory(dir, &self.index, &config, &self.file_count);
+			});
+		} else {
+			for dir in &config.directories {
+				if dir.exists() {
+					Self::scan_directory(dir, &self.index, &config, &self.file_count);
+				}
 			}
 		}
 

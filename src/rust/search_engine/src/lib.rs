@@ -35,9 +35,9 @@ impl From<io::Error> for SearchError {
 
 pub type Result<T> = std::result::Result<T, SearchError>;
 
-const CACHE_SIZE: usize = 100;
+const CACHE_SIZE: usize = 256;
 const CACHE_SIZE_NZ: NonZeroUsize = NonZeroUsize::new(CACHE_SIZE).unwrap();
-const PARALLEL_THRESHOLD: usize = 1000;
+const PARALLEL_THRESHOLD: usize = 500;
 const SMALL_VEC_SIZE: usize = 64;
 const HEAP_THRESHOLD: usize = 100;
 
@@ -145,7 +145,8 @@ impl SearchEngine {
 					.items_iter()
 					.par_bridge()
 					.filter_map(|item| {
-						let (score, indices) = self.matcher.match_with_pattern(&pattern, &item.name, query)?;
+						let matcher = fuzzy_matcher::FuzzyMatcher::new();
+						let (score, indices) = matcher.match_with_pattern(&pattern, &item.name, query)?;
 						Some((Arc::clone(item), score, indices))
 					})
 					.collect();
@@ -205,7 +206,9 @@ impl SearchEngine {
 		limit: usize,
 	) {
 		if let Some(ref file_idx) = self.file_indexer {
-			file_idx.map_files(|file_entry| {
+			let file_entries = file_idx.get_all_files();
+
+			for file_entry in &file_entries {
 				let item = indexer::IndexedItem {
 					id:        CompactString::new(&file_entry.path),
 					name:      file_entry.name_compact(),
@@ -219,8 +222,7 @@ impl SearchEngine {
 						heap.pop();
 					}
 				}
-				None::<()>
-			});
+			}
 		} else if let Some(ref scanner) = self.file_scanner {
 			let file_items = scanner.write().scan();
 			for item in file_items.iter() {
@@ -236,19 +238,40 @@ impl SearchEngine {
 
 	fn search_files_vec(&self, pattern: &fuzzy_matcher::FuzzyPattern, query: &str, matches: &mut MatchVec) {
 		if let Some(ref file_idx) = self.file_indexer {
-			file_idx.map_files(|file_entry| {
-				let item = indexer::IndexedItem {
-					id:        CompactString::new(&file_entry.path),
-					name:      file_entry.name_compact(),
-					item_type: indexer::ItemType::File,
-					path:      Some(file_entry.path_compact()),
-					metadata:  None,
-				};
-				if let Some((score, indices)) = self.matcher.match_with_pattern(pattern, &item.name, query) {
-					matches.push((Arc::new(item), score, indices));
+			let file_entries = file_idx.get_all_files();
+			matches.reserve(file_entries.len().min(1000));
+
+			if file_entries.len() >= PARALLEL_THRESHOLD {
+				let parallel_matches: Vec<_> = file_entries
+					.par_iter()
+					.filter_map(|file_entry| {
+						let matcher = fuzzy_matcher::FuzzyMatcher::new();
+						let item = indexer::IndexedItem {
+							id:        CompactString::new(&file_entry.path),
+							name:      file_entry.name_compact(),
+							item_type: indexer::ItemType::File,
+							path:      Some(file_entry.path_compact()),
+							metadata:  None,
+						};
+						let (score, indices) = matcher.match_with_pattern(pattern, &item.name, query)?;
+						Some((Arc::new(item), score, indices))
+					})
+					.collect();
+				matches.extend(parallel_matches);
+			} else {
+				for file_entry in &file_entries {
+					let item = indexer::IndexedItem {
+						id:        CompactString::new(&file_entry.path),
+						name:      file_entry.name_compact(),
+						item_type: indexer::ItemType::File,
+						path:      Some(file_entry.path_compact()),
+						metadata:  None,
+					};
+					if let Some((score, indices)) = self.matcher.match_with_pattern(pattern, &item.name, query) {
+						matches.push((Arc::new(item), score, indices));
+					}
 				}
-				None::<()>
-			});
+			}
 		} else if let Some(ref scanner) = self.file_scanner {
 			let file_items = scanner.write().scan();
 			matches.reserve(file_items.len());

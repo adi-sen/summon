@@ -11,6 +11,7 @@ parking_lot.workspace = true
 compact_str.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
+rayon.workspace = true
 storage_utils = { path = "../storage_utils" }
 notify = "8.2"
 notify-debouncer-full = "0.6"

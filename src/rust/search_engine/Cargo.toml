@@ -13,7 +13,7 @@ rustc-hash.workspace = true
 compact_str.workspace = true
 smallvec.workspace = true
 walkdir.workspace = true
-rayon = "1.10"
+rayon.workspace = true
 file_indexer = { path = "../file_indexer" }
 
 [lib]

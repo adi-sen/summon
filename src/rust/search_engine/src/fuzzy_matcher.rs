@@ -1,8 +1,7 @@
+pub use nucleo_matcher::pattern::Pattern as FuzzyPattern;
 use nucleo_matcher::{Config, Matcher, Utf32String, pattern::{CaseMatching, Normalization, Pattern}};
 use parking_lot::Mutex;
 use smallvec::SmallVec;
-
-pub use nucleo_matcher::pattern::Pattern as FuzzyPattern;
 
 pub struct FuzzyMatcher {
 	matcher:     Mutex<Matcher>,
@@ -41,7 +40,12 @@ impl FuzzyMatcher {
 
 		let bonus_score = Self::calculate_bonus(candidate, query, i64::from(score), &indices_buf);
 
-		Some((bonus_score, indices_buf.iter().map(|&i| i as usize).collect()))
+		let mut result_indices = SmallVec::with_capacity(indices_buf.len());
+		for &idx in indices_buf.iter() {
+			result_indices.push(idx as usize);
+		}
+
+		Some((bonus_score, result_indices))
 	}
 
 	#[inline]

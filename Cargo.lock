@@ -445,6 +445,7 @@ dependencies = [
  "notify",
  "notify-debouncer-full",
  "parking_lot",
+ "rayon",
  "rkyv",
  "rustc-hash",
  "serde",

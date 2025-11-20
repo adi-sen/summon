@@ -65,7 +65,7 @@ class SearchCoordinator: ObservableObject {
 						self.resultBuffer.append(self.createCalculatorResult(calcResult, query: query))
 					}
 
-					let appResults = self.searchEngine.search(query, limit: maxResults)
+					let appResults = self.searchEngine.search(query, limit: maxResults * 2)
 					let validAppResults = self.filterValidApps(appResults)
 					self.resultBuffer.append(contentsOf: self.createAppResults(validAppResults))
 
@@ -124,13 +124,17 @@ class SearchCoordinator: ObservableObject {
 
 	private func createAppResults(_ appResults: [SearchResult]) -> [CategoryResult] {
 		if recentAppsCacheGeneration != settings.recentAppsGeneration {
-			recentAppsCache = Dictionary(
-				uniqueKeysWithValues: settings.recentApps.enumerated().map { ($1.path, $0) }
-			)
+			recentAppsCache.removeAll(keepingCapacity: true)
+			for (index, app) in settings.recentApps.enumerated() {
+				recentAppsCache[app.path] = index
+			}
 			recentAppsCacheGeneration = settings.recentAppsGeneration
 		}
 
-		return appResults.map { result in
+		var results: [CategoryResult] = []
+		results.reserveCapacity(appResults.count)
+
+		for result in appResults {
 			let isCommand = result.id.hasPrefix("cmd_")
 			var score = result.score
 
@@ -138,48 +142,59 @@ class SearchCoordinator: ObservableObject {
 				score += Int64(10000 - (recentIndex * 100))
 			}
 
-			return CategoryResult(
-				id: result.id,
-				name: result.name,
-				category: isCommand ? "Command" : "Applications",
-				path: result.path,
-				action: isCommand
-					? {
-						CommandRegistry.shared.executeCommand(id: result.id)
-					} : nil,
-				fullContent: nil,
-				clipboardEntry: nil,
-				icon: nil,
-				score: score
+			results.append(
+				CategoryResult(
+					id: result.id,
+					name: result.name,
+					category: isCommand ? "Command" : "Applications",
+					path: result.path,
+					action: isCommand
+						? {
+							CommandRegistry.shared.executeCommand(id: result.id)
+						} : nil,
+					fullContent: nil,
+					clipboardEntry: nil,
+					icon: nil,
+					score: score
+				)
 			)
 		}
+
+		return results
 	}
 
 	private func createActionResults(_ actionResults: [FFI.SwiftActionResult]) -> [CategoryResult] {
-		actionResults.map { result in
+		var results: [CategoryResult] = []
+		results.reserveCapacity(actionResults.count)
+
+		for result in actionResults {
 			let icon = ActionIconGenerator.loadIcon(
 				iconName: result.icon,
 				title: result.title,
 				url: result.url
 			)
 
-			return CategoryResult(
-				id: result.id,
-				name: result.title,
-				category: "Action",
-				path: result.subtitle,
-				action: {
-					if let url = URL(string: result.url), url.scheme != nil {
-						NSWorkspace.shared.open(url)
-					}
-					NSApp.keyWindow?.orderOut(nil)
-				},
-				fullContent: nil,
-				clipboardEntry: nil,
-				icon: icon,
-				score: Int64(result.score * 100)
+			results.append(
+				CategoryResult(
+					id: result.id,
+					name: result.title,
+					category: "Action",
+					path: result.subtitle,
+					action: {
+						if let url = URL(string: result.url), url.scheme != nil {
+							NSWorkspace.shared.open(url)
+						}
+						NSApp.keyWindow?.orderOut(nil)
+					},
+					fullContent: nil,
+					clipboardEntry: nil,
+					icon: icon,
+					score: Int64(result.score * 100)
+				)
 			)
 		}
+
+		return results
 	}
 
 	private func createFallbackResults(query: String, currentResults: [CategoryResult])
