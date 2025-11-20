@@ -268,6 +268,11 @@ extension ContentView {
 	}
 
 	func handleAppShortcuts(_ event: NSEvent) -> NSEvent? {
+		if matchesShortcut(event, settings.clearQueryHistoryShortcut) {
+			handleClearQueryHistory()
+			return nil
+		}
+
 		guard !isClipboardMode else { return nil }
 
 		if matchesShortcut(event, settings.pinAppShortcut) {
@@ -295,6 +300,13 @@ extension ContentView {
 		return nil
 	}
 
+	func handleClearQueryHistory() {
+		QueryHistoryManager.shared.clearHistory()
+		historyNavigationIndex = nil
+		historyQueries = []
+		currentEditedQuery = ""
+	}
+
 	func handleQuickSelect(_ event: NSEvent) -> NSEvent? {
 		guard let char = event.charactersIgnoringModifiers?.first,
 		      let digit = char.wholeNumberValue,
@@ -311,5 +323,60 @@ extension ContentView {
 		guard shouldTrigger else { return nil }
 		handleAltNumber(digit)
 		return nil
+	}
+
+	func handleUpArrow() {
+		guard !isClipboardMode else {
+			if selectedIndex > 0 { selectedIndex -= 1 }
+			return
+		}
+
+		if searchText.isEmpty, results.isEmpty || selectedIndex == 0 {
+			if let lastQuery = QueryHistoryManager.shared.getLastQuery() {
+				searchText = lastQuery
+				historyNavigationIndex = 0
+				return
+			}
+		}
+
+		if historyNavigationIndex == nil {
+			currentEditedQuery = searchText
+			historyQueries = QueryHistoryManager.shared.getAllQueries()
+		}
+
+		if let currentIndex = historyNavigationIndex {
+			let nextIndex = currentIndex + 1
+			if nextIndex < historyQueries.count {
+				historyNavigationIndex = nextIndex
+				searchText = historyQueries[nextIndex]
+			}
+		} else if !historyQueries.isEmpty {
+			historyNavigationIndex = 0
+			searchText = historyQueries[0]
+		}
+
+		if historyNavigationIndex != nil { return }
+		if selectedIndex > 0 { selectedIndex -= 1 }
+	}
+
+	func handleDownArrow() {
+		guard !isClipboardMode else {
+			if selectedIndex < results.count - 1 { selectedIndex += 1 }
+			return
+		}
+
+		if let currentIndex = historyNavigationIndex {
+			if currentIndex > 0 {
+				historyNavigationIndex = currentIndex - 1
+				searchText = historyQueries[currentIndex - 1]
+			} else {
+				historyNavigationIndex = nil
+				searchText = currentEditedQuery
+				currentEditedQuery = ""
+			}
+			return
+		}
+
+		if selectedIndex < results.count - 1 { selectedIndex += 1 }
 	}
 }

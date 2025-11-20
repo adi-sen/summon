@@ -68,6 +68,10 @@ struct KeyboardShortcut: Codable, Equatable {
 	static var defaultGetInfo: KeyboardShortcut {
 		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_I), modifiers: UInt32(cmdKey))
 	}
+
+	static var defaultClearQueryHistory: KeyboardShortcut {
+		KeyboardShortcut(keyCode: UInt32(kVK_ANSI_K), modifiers: UInt32(cmdKey | shiftKey))
+	}
 }
 
 struct RecentApp: Codable, Equatable {
@@ -186,6 +190,9 @@ class AppSettings: ObservableObject {
 	@Published var customFallbackEngines: [WebSearchEngine] = []
 	@Published var engineKeywords: [String: String] = [:]
 	@Published var disabledDefaultEngines: Set<String> = []
+	@Published var maxQueryHistory: Int = 50
+	@Published var enableQueryHistory: Bool = true
+	@Published var clearQueryHistoryShortcut: KeyboardShortcut = .defaultClearQueryHistory
 
 	private var settingsStorage: FFI.SettingsStorageHandle?
 	private let userDefaults = UserDefaults.standard
@@ -206,6 +213,9 @@ class AppSettings: ObservableObject {
 	private let quitAppShortcutKey = "app_quitAppShortcut"
 	private let hideAppShortcutKey = "app_hideAppShortcut"
 	private let saveClipboardShortcutKey = "app_saveClipboardShortcut"
+	private let maxQueryHistoryKey = "app_maxQueryHistory"
+	private let enableQueryHistoryKey = "app_enableQueryHistory"
+	private let clearQueryHistoryShortcutKey = "app_clearQueryHistoryShortcut"
 
 	deinit {
 		FFI.settingsStorageFree(settingsStorage)
@@ -323,6 +333,16 @@ class AppSettings: ObservableObject {
 		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: saveClipboardShortcutKey) {
 			saveClipboardShortcut = shortcut
 		}
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: clearQueryHistoryShortcutKey) {
+			clearQueryHistoryShortcut = shortcut
+		}
+
+		if userDefaults.object(forKey: maxQueryHistoryKey) != nil {
+			maxQueryHistory = userDefaults.integer(forKey: maxQueryHistoryKey)
+		}
+		if userDefaults.object(forKey: enableQueryHistoryKey) != nil {
+			enableQueryHistory = userDefaults.bool(forKey: enableQueryHistoryKey)
+		}
 	}
 
 	func addRecentApp(name: String, path: String) {
@@ -439,6 +459,10 @@ class AppSettings: ObservableObject {
 		userDefaults.setEncodable(quitAppShortcut, forKey: quitAppShortcutKey)
 		userDefaults.setEncodable(hideAppShortcut, forKey: hideAppShortcutKey)
 		userDefaults.setEncodable(saveClipboardShortcut, forKey: saveClipboardShortcutKey)
+		userDefaults.setEncodable(clearQueryHistoryShortcut, forKey: clearQueryHistoryShortcutKey)
+
+		userDefaults.set(maxQueryHistory, forKey: maxQueryHistoryKey)
+		userDefaults.set(enableQueryHistory, forKey: enableQueryHistoryKey)
 	}
 
 	func save() {

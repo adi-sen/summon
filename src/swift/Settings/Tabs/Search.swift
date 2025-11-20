@@ -14,6 +14,7 @@ struct SearchTab: View {
 
 	enum SearchSection: String, CaseIterable {
 		case results = "Results"
+		case history = "History"
 		case sources = "Sources"
 		case webSearch = "Web Search"
 	}
@@ -110,6 +111,7 @@ struct SearchTab: View {
 	private func iconForSection(_ section: SearchSection) -> String {
 		switch section {
 		case .results: "list.number"
+		case .history: "clock.arrow.circlepath"
 		case .sources: "folder.fill"
 		case .webSearch: "network"
 		}
@@ -120,6 +122,8 @@ struct SearchTab: View {
 		switch selectedSection {
 		case .results:
 			resultsSection
+		case .history:
+			historySection
 		case .sources:
 			sourcesSection
 		case .webSearch:
@@ -159,6 +163,52 @@ struct SearchTab: View {
 						}
 					)
 				)
+			}
+		}
+	}
+
+	private var historySection: some View {
+		VStack(alignment: .leading, spacing: 16) {
+			ListItem(
+				icon: .sfSymbol("clock.arrow.circlepath", settings.accentColorUI),
+				title: "Enable Query History",
+				subtitle: "Remember searches for quick recall with ↑/↓ arrows"
+			) {
+				Switch(
+					isOn: Binding(
+						get: { settings.enableQueryHistory },
+						set: {
+							settings.enableQueryHistory = $0
+							settings.scheduleSave()
+						}
+					)
+				)
+			}
+
+			ListItem(
+				icon: .sfSymbol("tray.full", settings.accentColorUI),
+				title: "Maximum History",
+				subtitle: "Number of queries to remember"
+			) {
+				RangeSlider(
+					value: Binding(
+						get: { Double(settings.maxQueryHistory) },
+						set: { settings.maxQueryHistory = Int($0) }
+					),
+					range: 10 ... 200,
+					step: 10,
+					valueLabel: { "\(Int($0))" }
+				)
+			}
+
+			ListItem(
+				icon: .sfSymbol("trash", settings.accentColorUI),
+				title: "Clear History",
+				subtitle: "Remove all saved queries"
+			) {
+				Button("Clear", icon: "trash", style: .danger, size: .small) {
+					QueryHistoryManager.shared.clearHistory()
+				}
 			}
 		}
 	}

@@ -36,6 +36,9 @@ struct ContentView: View {
 	@State private var lastMousePosition: CGPoint?
 	@State private var hoveredIndex: Int?
 	@State private var mouseMovedMonitor: Any?
+	@State var historyNavigationIndex: Int?
+	@State var historyQueries: [String] = []
+	@State var currentEditedQuery = ""
 
 	var results: [CategoryResult] {
 		isClipboardMode ? clipboardResults : searchCoordinator.results
@@ -238,16 +241,10 @@ struct ContentView: View {
 						onSubmit: launchSelected,
 						onEscape: handleEscape,
 						onUpArrow: {
-							lastMousePosition = nil
-							if selectedIndex > 0 {
-								selectedIndex -= 1
-							}
+							handleUpArrow()
 						},
 						onDownArrow: {
-							lastMousePosition = nil
-							if selectedIndex < results.count - 1 {
-								selectedIndex += 1
-							}
+							handleDownArrow()
 						},
 						onAltNumber: { number in
 							handleAltNumber(number)
@@ -440,6 +437,10 @@ struct ContentView: View {
 			.shadow(color: Color.black.opacity(0.3), radius: 12, x: 0, y: 6)
 		}
 		.onChange(of: searchText) { newValue in
+			if historyNavigationIndex == nil {
+				historyQueries = []
+				currentEditedQuery = ""
+			}
 			performSearch(newValue)
 		}
 		.onChange(of: results.count) { count in
@@ -487,15 +488,12 @@ struct ContentView: View {
 		selectedIndex = 0
 		isClipboardMode = true
 		lastMousePosition = nil
-
 		clipboardCoordinator.loadHistory()
 		clipboardCoordinator.resetToFirstPage()
 		clipboardResults = clipboardCoordinator.createClipboardResults(searchQuery: "")
 	}
 
-	var showPreview: Bool {
-		isClipboardMode && selectedClipboardEntry != nil
-	}
+	var showPreview: Bool { isClipboardMode && selectedClipboardEntry != nil }
 
 	var selectedResult: CategoryResult? {
 		guard selectedIndex < results.count else { return nil }
@@ -513,12 +511,7 @@ struct ContentView: View {
 			selectedIndex = 0
 			return
 		}
-
-		if query.isEmpty {
-			performLandingPageSearch()
-			return
-		}
-
+		if query.isEmpty { performLandingPageSearch(); return }
 		searchCoordinator.performSearch(query)
 		selectedIndex = 0
 	}
@@ -578,69 +571,47 @@ struct ContentView: View {
 
 	func copyToClipboard(_ text: String) {
 		clipboardManager.willCopyToClipboard()
-
 		let pasteboard = NSPasteboard.general
 		pasteboard.clearContents()
 		pasteboard.setString(text, forType: .string)
-
 		closeAndReset()
 	}
 
 	func copyImageToClipboard(_ image: NSImage) {
 		clipboardManager.willCopyToClipboard()
-
 		let pasteboard = NSPasteboard.general
 		pasteboard.clearContents()
 		pasteboard.writeObjects([image])
-
 		closeAndReset()
 	}
 
 	func launchSelected() {
 		guard selectedIndex < results.count else { return }
 		let result = results[selectedIndex]
+		if !isClipboardMode, !searchText.isEmpty { QueryHistoryManager.shared.addQuery(searchText) }
 
 		if let action = result.action {
 			action()
-
 			guard result.id != "load_more" else {
 				clipboardCoordinator.loadNextPage()
-				clipboardResults = clipboardCoordinator.createClipboardResults(
-					searchQuery: searchText)
+				clipboardResults = clipboardCoordinator.createClipboardResults(searchQuery: searchText)
 				return
 			}
-
-			guard result.id == "cmd_clipboard" else {
-				closeAndReset()
-				return
-			}
-
+			guard result.id == "cmd_clipboard" else { closeAndReset(); return }
 			selectedIndex = 0
 			return
 		}
 
 		if let path = result.path {
-			if result.category == "Applications" {
-				settings.addRecentApp(name: result.name, path: path)
-			}
-
+			if result.category == "Applications" { settings.addRecentApp(name: result.name, path: path) }
 			NSWorkspace.shared.openApplication(
-				at: URL(fileURLWithPath: path),
-				configuration: NSWorkspace.OpenConfiguration()
-			) { _, error in
-				if let error {
-					print("Failed to launch: \(error)")
-				}
-			}
-
+				at: URL(fileURLWithPath: path), configuration: NSWorkspace.OpenConfiguration()
+			) { _, error in if let error { print("Failed to launch: \(error)") } }
 			closeAndReset()
 		}
 	}
 
-	func handleEscape() {
-		NSApp.keyWindow?.orderOut(nil)
-		resetState()
-	}
+	func handleEscape() { NSApp.keyWindow?.orderOut(nil); resetState() }
 
 	func closeAndReset() {
 		NSApp.keyWindow?.orderOut(nil)
@@ -654,50 +625,32 @@ struct ContentView: View {
 	func setupMouseMovedMonitor() {
 		mouseMovedMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { event in
 			guard let hovered = self.hoveredIndex else { return event }
-
 			let mouseLocation = NSEvent.mouseLocation
-
 			if let lastPosition = self.lastMousePosition {
-				let dx = mouseLocation.x - lastPosition.x
-				let dy = mouseLocation.y - lastPosition.y
-				let distanceSquared = dx * dx + dy * dy
-
-				if distanceSquared > 9.0 {
+				let dx = mouseLocation.x - lastPosition.x, dy = mouseLocation.y - lastPosition.y
+				if dx * dx + dy * dy > 9.0 {
 					self.selectedIndex = hovered
 					self.lastMousePosition = mouseLocation
 				}
-			} else {
-				self.lastMousePosition = mouseLocation
-			}
-
+			} else { self.lastMousePosition = mouseLocation }
 			return event
 		}
 	}
 
 	func removeMouseMovedMonitor() {
-		if let monitor = mouseMovedMonitor {
-			NSEvent.removeMonitor(monitor)
-			mouseMovedMonitor = nil
-		}
+		if let monitor = mouseMovedMonitor { NSEvent.removeMonitor(monitor); mouseMovedMonitor = nil }
 	}
 
 	func handleMouseHover(index: Int) {
 		guard hoveredIndex != index else { return }
-
 		let mouseLocation = NSEvent.mouseLocation
-
 		if let lastPosition = lastMousePosition {
-			let dx = mouseLocation.x - lastPosition.x
-			let dy = mouseLocation.y - lastPosition.y
-			let distanceSquared = dx * dx + dy * dy
-
-			if distanceSquared > 9.0 {
+			let dx = mouseLocation.x - lastPosition.x, dy = mouseLocation.y - lastPosition.y
+			if dx * dx + dy * dy > 9.0 {
 				selectedIndex = index
 				lastMousePosition = mouseLocation
 			}
-		} else {
-			lastMousePosition = mouseLocation
-		}
+		} else { lastMousePosition = mouseLocation }
 	}
 
 	func resetState() {
@@ -708,6 +661,8 @@ struct ContentView: View {
 			isClipboardMode = false
 			selectedIndex = 0
 			lastMousePosition = nil
+			historyNavigationIndex = nil
+			currentEditedQuery = ""
 
 			ImageCache.icon.clear()
 			ImageCache.thumbnail.clear()
