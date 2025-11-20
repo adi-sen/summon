@@ -194,6 +194,16 @@ class AppSettings: ObservableObject {
 	@Published var enableQueryHistory: Bool = true
 	@Published var clearQueryHistoryShortcut: KeyboardShortcut = .defaultClearQueryHistory
 
+	@Published var enableDictionary: Bool = true
+	@Published var dictionaryPrefix: String = "def"
+	@Published var dictionaryShortcut: KeyboardShortcut? = nil
+
+	@Published var notesStoragePath: String = ""
+	@Published var notesShortcut: KeyboardShortcut? = nil
+	@Published var notesVimMode: Bool = false
+	@Published var notesShowLineNumbers: Bool = true
+	@Published var notesFontSize: Double = 14.0
+
 	private var settingsStorage: FFI.SettingsStorageHandle?
 	private let userDefaults = UserDefaults.standard
 	private let saveDebouncer = Debouncer(delay: 0.5)
@@ -216,6 +226,14 @@ class AppSettings: ObservableObject {
 	private let maxQueryHistoryKey = "app_maxQueryHistory"
 	private let enableQueryHistoryKey = "app_enableQueryHistory"
 	private let clearQueryHistoryShortcutKey = "app_clearQueryHistoryShortcut"
+	private let enableDictionaryKey = "app_enableDictionary"
+	private let dictionaryPrefixKey = "app_dictionaryPrefix"
+	private let dictionaryShortcutKey = "app_dictionaryShortcut"
+	private let notesStoragePathKey = "app_notesStoragePath"
+	private let notesShortcutKey = "app_notesShortcut"
+	private let notesVimModeKey = "app_notesVimMode"
+	private let notesShowLineNumbersKey = "app_notesShowLineNumbers"
+	private let notesFontSizeKey = "app_notesFontSize"
 
 	deinit {
 		FFI.settingsStorageFree(settingsStorage)
@@ -343,6 +361,38 @@ class AppSettings: ObservableObject {
 		if userDefaults.object(forKey: enableQueryHistoryKey) != nil {
 			enableQueryHistory = userDefaults.bool(forKey: enableQueryHistoryKey)
 		}
+
+		if userDefaults.object(forKey: enableDictionaryKey) != nil {
+			enableDictionary = userDefaults.bool(forKey: enableDictionaryKey)
+		}
+		if let prefix = userDefaults.string(forKey: dictionaryPrefixKey) {
+			dictionaryPrefix = prefix
+		}
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: dictionaryShortcutKey) {
+			dictionaryShortcut = shortcut
+		}
+
+		if let path = userDefaults.string(forKey: notesStoragePathKey), !path.isEmpty {
+			notesStoragePath = path
+		} else {
+			notesStoragePath = NSHomeDirectory() + "/Documents/Notes"
+		}
+
+		if let shortcut = userDefaults.decodable(KeyboardShortcut.self, forKey: notesShortcutKey) {
+			notesShortcut = shortcut
+		}
+
+		if userDefaults.object(forKey: notesVimModeKey) != nil {
+			notesVimMode = userDefaults.bool(forKey: notesVimModeKey)
+		}
+
+		if userDefaults.object(forKey: notesShowLineNumbersKey) != nil {
+			notesShowLineNumbers = userDefaults.bool(forKey: notesShowLineNumbersKey)
+		}
+
+		if userDefaults.object(forKey: notesFontSizeKey) != nil {
+			notesFontSize = userDefaults.double(forKey: notesFontSizeKey)
+		}
 	}
 
 	func addRecentApp(name: String, path: String) {
@@ -463,6 +513,16 @@ class AppSettings: ObservableObject {
 
 		userDefaults.set(maxQueryHistory, forKey: maxQueryHistoryKey)
 		userDefaults.set(enableQueryHistory, forKey: enableQueryHistoryKey)
+
+		userDefaults.set(enableDictionary, forKey: enableDictionaryKey)
+		userDefaults.set(dictionaryPrefix, forKey: dictionaryPrefixKey)
+		userDefaults.setEncodable(dictionaryShortcut, forKey: dictionaryShortcutKey)
+
+		userDefaults.set(notesStoragePath, forKey: notesStoragePathKey)
+		userDefaults.setEncodable(notesShortcut, forKey: notesShortcutKey)
+		userDefaults.set(notesVimMode, forKey: notesVimModeKey)
+		userDefaults.set(notesShowLineNumbers, forKey: notesShowLineNumbersKey)
+		userDefaults.set(notesFontSize, forKey: notesFontSizeKey)
 	}
 
 	func save() {

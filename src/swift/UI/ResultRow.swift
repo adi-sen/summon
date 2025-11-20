@@ -27,6 +27,10 @@ struct ResultRow: View {
 	var body: some View {
 		if result.category == "Calculator" {
 			calculatorRow
+		} else if result.category == "Dictionary" {
+			dictionaryRow
+		} else if result.category == "DictionaryNotFound" {
+			dictionaryNotFoundRow
 		} else {
 			standardRow
 		}
@@ -71,6 +75,236 @@ struct ResultRow: View {
 				.stroke(isSelected ? accentColor.opacity(0.4) : Color.clear, lineWidth: 2)
 		)
 		.padding(.horizontal, DesignTokens.Spacing.sm)
+		.padding(.vertical, DesignTokens.Spacing.xxs)
+	}
+
+	@ViewBuilder
+	private var dictionaryRow: some View {
+		if settings.compactMode {
+			compactDictionaryRow
+		} else {
+			expandedDictionaryRow
+		}
+	}
+
+	private var compactDictionaryRow: some View {
+		VStack(alignment: .leading, spacing: 6) {
+			HStack(alignment: .firstTextBaseline, spacing: 6) {
+				Text(result.name)
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.xlarge)).weight(.bold))
+					.foregroundColor(textColor)
+					.lineLimit(1)
+
+				if let pronunciation = extractPronunciation(result.path) {
+					Text("/\(pronunciation)/")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+						.foregroundColor(textColor.opacity(0.45))
+						.lineLimit(1)
+				}
+			}
+
+			if let definition = result.path {
+				let structured = parseDefinitionStructure(definition)
+				ForEach(Array(structured.prefix(1)), id: \.id) { section in
+					dictionarySection(section, compact: true)
+				}
+			}
+		}
+		.padding(.horizontal, DesignTokens.Spacing.md)
+		.padding(.vertical, 8)
+		.frame(maxWidth: .infinity, alignment: .leading)
+		.background(Color.clear)
+		.padding(.horizontal, DesignTokens.Spacing.xs)
+		.padding(.vertical, 0)
+	}
+
+	private var expandedDictionaryRow: some View {
+		VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+			HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
+				Text(result.name)
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.xlarge + 4)).weight(.bold))
+					.foregroundColor(textColor)
+					.lineLimit(1)
+
+				if let pronunciation = extractPronunciation(result.path) {
+					Text("/" + pronunciation + "/")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.large)))
+						.foregroundColor(textColor.opacity(0.5))
+						.lineLimit(1)
+				}
+			}
+
+			if let definition = result.path {
+				let structured = parseDefinitionStructure(definition)
+				ForEach(structured, id: \.id) { section in
+					dictionarySection(section, compact: false)
+				}
+			}
+		}
+		.padding(.horizontal, DesignTokens.Spacing.lg)
+		.padding(.vertical, DesignTokens.Spacing.md)
+		.frame(maxWidth: .infinity, alignment: .leading)
+		.background(Color.clear)
+		.padding(.horizontal, DesignTokens.Spacing.xs)
+		.padding(.vertical, DesignTokens.Spacing.xxs)
+	}
+
+	struct DefinitionSection: Identifiable {
+		let id = UUID()
+		let partOfSpeech: String?
+		let definitions: [String]
+	}
+
+	private func extractPronunciation(_ definition: String?) -> String? {
+		guard let def = definition else { return nil }
+		let pattern = "\\|([^|]+)\\|"
+		if let regex = try? NSRegularExpression(pattern: pattern),
+		   let match = regex.firstMatch(in: def, range: NSRange(def.startIndex..., in: def)),
+		   let range = Range(match.range(at: 1), in: def) {
+			return String(def[range])
+		}
+		return nil
+	}
+
+	private func parseDefinitionStructure(_ definition: String) -> [DefinitionSection] {
+		// Single-pass cleaning with combined regex
+		guard let firstPipe = definition.firstIndex(of: "|") else {
+			return []
+		}
+
+		var text = String(definition[definition.index(after: firstPipe)...])
+
+		// Combined regex for all removals in one pass
+		let cleanPattern = #"\|[^|]+\||\((?:also|plural)[^)]*\)|\[no object\]|\bmainly\s+\w+\s+\w+\b"#
+		text = text.replacingOccurrences(of: cleanPattern, with: "", options: .regularExpression)
+
+		// Early termination at ORIGIN
+		if let originIdx = text.range(of: "ORIGIN", options: .caseInsensitive)?.lowerBound {
+			text = String(text[..<originIdx])
+		}
+
+		// Pre-split by bullets once
+		let bulletParts = text.split(separator: "•", omittingEmptySubsequences: false)
+
+		let posPatterns = ["exclamation", "noun", "verb", "adjective", "adverb", "preposition", "conjunction"]
+		var sections: [DefinitionSection] = []
+		var currentPos: String?
+		var currentDefs: [String] = []
+
+		for part in bulletParts {
+			let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
+			guard !trimmed.isEmpty else { continue }
+
+			// Check if this part contains a new part of speech
+			var foundNewPos = false
+			for pos in posPatterns where trimmed.lowercased().contains(pos) {
+				// Save previous section
+				if let prevPos = currentPos, !currentDefs.isEmpty {
+					sections.append(DefinitionSection(partOfSpeech: prevPos, definitions: currentDefs))
+				}
+				currentPos = pos
+				currentDefs = []
+				foundNewPos = true
+
+				// Extract definition from this part (after POS marker)
+				if let posRange = trimmed.range(of: pos, options: .caseInsensitive) {
+					let afterPos = trimmed[posRange.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+					if let def = extractSingleDefinition(String(afterPos)) {
+						currentDefs.append(def)
+					}
+				}
+				break
+			}
+
+			// Regular definition (no new POS)
+			if !foundNewPos, let def = extractSingleDefinition(trimmed) {
+				currentDefs.append(def)
+			}
+		}
+
+		// Append last section
+		if let pos = currentPos, !currentDefs.isEmpty {
+			sections.append(DefinitionSection(partOfSpeech: pos, definitions: currentDefs))
+		}
+
+		return sections
+	}
+
+	private func extractSingleDefinition(_ text: String) -> String? {
+		var cleaned = text
+
+		// Remove leading POS keywords
+		for pos in ["exclamation", "noun", "verb", "adjective", "adverb"] {
+			if cleaned.lowercased().hasPrefix(pos) {
+				cleaned = String(cleaned.dropFirst(pos.count)).trimmingCharacters(in: .whitespaces)
+				break
+			}
+		}
+
+		// Extract before colon (examples)
+		if let colonIdx = cleaned.firstIndex(of: ":") {
+			cleaned = String(cleaned[..<colonIdx])
+		}
+
+		cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+
+		return cleaned.count > 5 && !cleaned.hasPrefix("\"") ? cleaned : nil
+	}
+
+	@ViewBuilder
+	private func dictionarySection(_ section: DefinitionSection, compact: Bool) -> some View {
+		VStack(alignment: .leading, spacing: 3) {
+			if let pos = section.partOfSpeech {
+				HStack(spacing: 4) {
+					Circle()
+						.fill(textColor.opacity(0.3))
+						.frame(width: 3, height: 3)
+					Text(pos)
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)).italic())
+						.foregroundColor(textColor.opacity(0.55))
+						.tracking(0.3)
+				}
+			}
+
+			ForEach(Array(section.definitions.enumerated()), id: \.offset) { index, def in
+				if compact && index >= 3 { EmptyView() } else {
+					HStack(alignment: .top, spacing: 8) {
+						if section.definitions.count > 1 {
+							Text("\(index + 1)")
+								.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)).monospacedDigit())
+								.foregroundColor(accentColor.opacity(0.6))
+								.frame(width: 16, alignment: .trailing)
+						}
+
+						Text(def)
+							.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+							.foregroundColor(textColor.opacity(0.88))
+							.fixedSize(horizontal: false, vertical: true)
+					}
+				}
+			}
+		}
+	}
+
+	private var dictionaryNotFoundRow: some View {
+		VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+			Text(result.name)
+				.font(Font(settings.uiFont.withSize(settings.compactMode ? DesignTokens.Typography.large : DesignTokens.Typography.xlarge)).weight(.semibold))
+				.foregroundColor(textColor)
+				.lineLimit(1)
+
+			if let message = result.path {
+				Text(message)
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+					.foregroundColor(textColor.opacity(0.6))
+					.lineLimit(1)
+			}
+		}
+		.padding(.horizontal, DesignTokens.Spacing.md)
+		.padding(.vertical, DesignTokens.Spacing.md)
+		.frame(maxWidth: .infinity, alignment: .leading)
+		.background(Color.clear)
+		.padding(.horizontal, DesignTokens.Spacing.xs)
 		.padding(.vertical, DesignTokens.Spacing.xxs)
 	}
 
@@ -140,6 +374,7 @@ struct ResultRow: View {
 
 		switch result.category {
 		case "Calculator": return "equal.circle.fill"
+		case "Dictionary": return "book.closed.fill"
 		case "Action": return "globe"
 		case "Clipboard":
 			if let entry = result.clipboardEntry {
@@ -160,6 +395,7 @@ struct ResultRow: View {
 
 		switch result.category {
 		case "Calculator": return accentColor
+		case "Dictionary": return accentColor
 		default: return Color.secondary.opacity(0.8)
 		}
 	}
@@ -180,7 +416,7 @@ struct ResultRow: View {
 			return
 		}
 
-		let noIconCategories = ["Clipboard", "Action", "Command", "Calculator"]
+		let noIconCategories = ["Clipboard", "Action", "Command", "Calculator", "Dictionary"]
 		guard !noIconCategories.contains(result.category), let path = result.path else { return }
 
 		if let cachedIcon = ImageCache.icon.get(path) {

@@ -10,6 +10,7 @@ struct ContentView: View {
 
 	@StateObject var searchCoordinator: SearchCoordinator
 	@StateObject var clipboardCoordinator: ClipboardCoordinator
+	@StateObject var notesCoordinator: NotesCoordinator
 
 	init(searchEngine: SearchEngine, clipboardManager: ClipboardManager) {
 		self.searchEngine = searchEngine
@@ -28,11 +29,16 @@ struct ContentView: View {
 				clipboardManager: clipboardManager,
 				settings: AppSettings.shared
 			))
+		_notesCoordinator = StateObject(
+			wrappedValue: NotesCoordinator(
+				settings: AppSettings.shared
+			))
 	}
 
 	@State var searchText = ""
 	@State var selectedIndex = 0
 	@State var isClipboardMode = false
+	@State var isNotesMode = false
 	@State private var lastMousePosition: CGPoint?
 	@State private var hoveredIndex: Int?
 	@State private var mouseMovedMonitor: Any?
@@ -41,7 +47,13 @@ struct ContentView: View {
 	@State var currentEditedQuery = ""
 
 	var results: [CategoryResult] {
-		isClipboardMode ? clipboardResults : searchCoordinator.results
+		if isNotesMode {
+			return notesResults
+		} else if isClipboardMode {
+			return clipboardResults
+		} else {
+			return searchCoordinator.results
+		}
 	}
 
 	var clipboardHistory: [ClipboardEntry] {
@@ -49,6 +61,7 @@ struct ContentView: View {
 	}
 
 	@State var clipboardResults: [CategoryResult] = []
+	@State var notesResults: [CategoryResult] = []
 	@State private var cachedLandingResults: [CategoryResult] = []
 	@State private var landingCacheKey: String = ""
 
@@ -60,6 +73,8 @@ struct ContentView: View {
 		let topPadding: CGFloat = DesignTokens.Spacing.xs
 		let bottomBuffer: CGFloat = DesignTokens.Spacing.xxs
 
+		let hasDictionaryResult = results.first?.category == "Dictionary" || results.first?.category == "DictionaryNotFound"
+
 		if isClipboardMode {
 			return DesignTokens.Layout.searchBarHeight + DesignTokens.Layout.dividerHeight + topPadding
 				+ CGFloat(maxVisibleRows) * DesignTokens.Layout.resultRowHeight
@@ -70,6 +85,13 @@ struct ContentView: View {
 			guard actualRows > 0 else {
 				return DesignTokens.Layout.searchBarHeight
 			}
+
+			if hasDictionaryResult, let firstResult = results.first {
+				let baseHeight = DesignTokens.Layout.searchBarHeight + DesignTokens.Layout.dividerHeight + topPadding + bottomBuffer + footerHeight
+				let definitionHeight = estimateDictionaryHeight(firstResult)
+				return baseHeight + definitionHeight
+			}
+
 			return DesignTokens.Layout.searchBarHeight + DesignTokens.Layout.dividerHeight + topPadding
 				+ CGFloat(actualRows) * DesignTokens.Layout.resultRowHeight
 				+ bottomBuffer + footerHeight
@@ -78,6 +100,26 @@ struct ContentView: View {
 		return DesignTokens.Layout.searchBarHeight + DesignTokens.Layout.dividerHeight + topPadding
 			+ CGFloat(maxVisibleRows) * DesignTokens.Layout.resultRowHeight
 			+ bottomBuffer + footerHeight
+	}
+
+	private func estimateDictionaryHeight(_ result: CategoryResult) -> CGFloat {
+		let wordHeight: CGFloat = 28
+		let padding: CGFloat = DesignTokens.Spacing.xs * 2
+
+		guard let definition = result.path else {
+			return wordHeight + padding
+		}
+
+		let parts = definition.components(separatedBy: CharacterSet(charactersIn: ".;"))
+		let meaningfulParts = parts.filter { $0.trimmingCharacters(in: .whitespacesAndNewlines).count > 10 }
+
+		let maxDefinitions = 3
+		let actualDefinitions = min(meaningfulParts.count, maxDefinitions)
+
+		let posHeaderHeight: CGFloat = 16
+		let definitionLineHeight: CGFloat = 18
+
+		return wordHeight + posHeaderHeight + CGFloat(actualDefinitions) * definitionLineHeight + padding
 	}
 
 	var shouldShowFooter: Bool {
@@ -94,7 +136,7 @@ struct ContentView: View {
 		guard !results.isEmpty, selectedIndex < results.count else { return false }
 
 		let selectedResult = results[selectedIndex]
-		let isRelevant = ["Applications", "Pinned", "Recent", "Command", "Action", "Web"]
+		let isRelevant = ["Applications", "Pinned", "Recent", "Command", "Action", "Web", "Dictionary", "DictionaryNotFound"]
 			.contains(selectedResult.category)
 
 		return isRelevant
@@ -231,6 +273,27 @@ struct ContentView: View {
 
 	var body: some View {
 		ZStack {
+			if notesCoordinator.editingNote != nil || notesCoordinator.isCreatingNew {
+				Color.black.opacity(0.4)
+					.ignoresSafeArea()
+					.onTapGesture {
+						notesCoordinator.editingNote = nil
+						notesCoordinator.isCreatingNew = false
+					}
+
+				NoteEditorView(
+					coordinator: notesCoordinator,
+					isPresented: Binding(
+						get: { notesCoordinator.editingNote != nil || notesCoordinator.isCreatingNew },
+						set: { if !$0 {
+							notesCoordinator.editingNote = nil
+							notesCoordinator.isCreatingNew = false
+						}}
+					)
+				)
+				.environmentObject(settings)
+			}
+
 			VStack(spacing: 0) {
 				HStack(spacing: DesignTokens.Spacing.md + 2) {
 					SearchField(
@@ -394,6 +457,8 @@ struct ContentView: View {
 							}
 						} else if !isClipboardMode, selectedIndex < results.count {
 							let selectedResult = results[selectedIndex]
+							let isDictionary = selectedResult.category == "Dictionary"
+							let isDictionaryNotFound = selectedResult.category == "DictionaryNotFound"
 							let isApp =
 								selectedResult.category == "Applications"
 									|| selectedResult.category == "Pinned"
@@ -403,7 +468,13 @@ struct ContentView: View {
 								selectedResult.category == "Action"
 									|| selectedResult.category == "Web"
 
-							if isApp {
+							if isDictionary {
+								ContextualHints(hints: [HintAction(shortcut: "↩", label: "Copy definition")])
+							} else if isDictionaryNotFound {
+								Text("No definition found")
+									.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+									.foregroundColor(settings.secondaryTextColorUI)
+							} else if isApp {
 								if let appInfo = selectedAppInfo {
 									AppInfoDisplay(info: appInfo)
 								} else if let path = selectedResult.path {
@@ -466,10 +537,14 @@ struct ContentView: View {
 		}
 		.onReceive(NotificationCenter.default.publisher(for: .showLauncher)) { _ in
 			isClipboardMode = false
+			isNotesMode = false
 			searchText = ""
 			selectedIndex = 0
 			lastMousePosition = nil
 			performLandingPageSearch()
+		}
+		.onReceive(NotificationCenter.default.publisher(for: .showNotes)) { _ in
+			showNotes()
 		}
 		.onReceive(NotificationCenter.default.publisher(for: .showSettings)) { _ in
 			onOpenSettings?()
@@ -487,10 +562,21 @@ struct ContentView: View {
 		searchText = ""
 		selectedIndex = 0
 		isClipboardMode = true
+		isNotesMode = false
 		lastMousePosition = nil
 		clipboardCoordinator.loadHistory()
 		clipboardCoordinator.resetToFirstPage()
 		clipboardResults = clipboardCoordinator.createClipboardResults(searchQuery: "")
+	}
+
+	func showNotes() {
+		searchText = ""
+		selectedIndex = 0
+		isClipboardMode = false
+		isNotesMode = true
+		lastMousePosition = nil
+		notesCoordinator.loadNotes()
+		notesResults = notesCoordinator.searchNotes(query: "")
 	}
 
 	var showPreview: Bool { isClipboardMode && selectedClipboardEntry != nil }
@@ -506,6 +592,11 @@ struct ContentView: View {
 	}
 
 	func performSearch(_ query: String) {
+		if isNotesMode {
+			notesResults = notesCoordinator.searchNotes(query: query)
+			selectedIndex = 0
+			return
+		}
 		if isClipboardMode {
 			clipboardResults = clipboardCoordinator.createClipboardResults(searchQuery: query)
 			selectedIndex = 0
@@ -618,6 +709,7 @@ struct ContentView: View {
 		searchCoordinator.cancelSearch()
 		searchText = ""
 		isClipboardMode = false
+		isNotesMode = false
 		selectedIndex = 0
 		lastMousePosition = nil
 	}
@@ -657,8 +749,10 @@ struct ContentView: View {
 		autoreleasepool {
 			searchCoordinator.resetResults()
 			clipboardResults = []
+			notesResults = []
 			searchText = ""
 			isClipboardMode = false
+			isNotesMode = false
 			selectedIndex = 0
 			lastMousePosition = nil
 			historyNavigationIndex = nil

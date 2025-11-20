@@ -10,6 +10,7 @@ class SearchCoordinator: ObservableObject {
 	private let searchEngine: SearchEngine
 	private let settings: AppSettings
 	private let calculator: Calculator
+	private let dictionaryService = DictionaryService()
 	private let searchDebouncer = Debouncer(delay: 0.05)
 	private var searchGeneration = 0
 	private var recentAppsCache: [String: Int] = [:]
@@ -61,26 +62,35 @@ class SearchCoordinator: ObservableObject {
 				let maxResults = self.settings.maxResults
 
 				autoreleasepool {
-					if let calcResult = self.evaluateCalculator(query) {
-						self.resultBuffer.append(self.createCalculatorResult(calcResult, query: query))
-					}
+					if let (word, dictResult) = self.checkDictionaryMode(query) {
+						if let result = dictResult {
+							self.resultBuffer.append(self.createDictionaryResult(result))
+						} else if !word.isEmpty {
+							self.resultBuffer.append(self.createDictionaryNotFoundResult(word))
+						}
+					} else {
+						if let calcResult = self.evaluateCalculator(query) {
+							self.resultBuffer.append(self.createCalculatorResult(calcResult, query: query))
+						}
 
-					let appResults = self.searchEngine.search(query, limit: maxResults * 2)
-					let validAppResults = self.filterValidApps(appResults)
-					self.resultBuffer.append(contentsOf: self.createAppResults(validAppResults))
+						let appResults = self.searchEngine.search(query, limit: maxResults * 2)
+						let validAppResults = self.filterValidApps(appResults)
+						self.resultBuffer.append(contentsOf: self.createAppResults(validAppResults))
 
-					let actionResults = ActionManager.shared.search(query: query)
-					self.resultBuffer.append(contentsOf: self.createActionResults(actionResults))
+						let actionResults = ActionManager.shared.search(query: query)
+						self.resultBuffer.append(contentsOf: self.createActionResults(actionResults))
 
-					if self.shouldShowFallback(query: query, currentResults: self.resultBuffer) {
-						self.resultBuffer.append(
-							contentsOf: self.createFallbackResults(
-								query: query, currentResults: self.resultBuffer
-							))
+						if self.shouldShowFallback(query: query, currentResults: self.resultBuffer) {
+							self.resultBuffer.append(
+								contentsOf: self.createFallbackResults(
+									query: query, currentResults: self.resultBuffer
+								))
+						}
+
+						self.resultBuffer.sort { $0.score > $1.score }
 					}
 				}
 
-				self.resultBuffer.sort { $0.score > $1.score }
 				let finalResults = Array(self.resultBuffer.prefix(maxResults))
 
 				let endTime = CFAbsoluteTimeGetCurrent()
@@ -326,5 +336,114 @@ class SearchCoordinator: ObservableObject {
 		guard hasNumber, hasMathOp || hasCurrency || hasFunction else { return nil }
 
 		return calculator.evaluate(trimmed)
+	}
+
+	private func checkDictionaryMode(_ query: String) -> (String, DictionaryResult?)? {
+		guard settings.enableDictionary else { return nil }
+
+		let trimmed = query.trimmingCharacters(in: .whitespaces)
+		let prefix = settings.dictionaryPrefix.lowercased()
+
+		guard !prefix.isEmpty else { return nil }
+
+		let trimmedLower = trimmed.lowercased()
+		let searchPrefix = prefix.hasSuffix(":") ? prefix : prefix + ":"
+
+		if trimmedLower.hasPrefix(searchPrefix) {
+			let word = String(trimmed.dropFirst(searchPrefix.count)).trimmingCharacters(
+				in: .whitespaces
+			)
+			return (word, word.isEmpty ? nil : dictionaryService.lookup(word))
+		} else if trimmedLower.hasPrefix(prefix + " ") {
+			let word = String(trimmed.dropFirst(prefix.count + 1)).trimmingCharacters(
+				in: .whitespaces
+			)
+			return (word, word.isEmpty ? nil : dictionaryService.lookup(word))
+		}
+
+		return nil
+	}
+
+	private func createDictionaryResult(_ result: DictionaryResult) -> CategoryResult {
+		let cleanDefinition = cleanDefinitionForCopy(result.definition)
+		let wordCopy = result.word
+
+		return CategoryResult(
+			id: "dict_\(result.word)",
+			name: result.word,
+			category: "Dictionary",
+			path: result.definition,
+			action: {
+				let copyText = "\(wordCopy)\n\n\(cleanDefinition)"
+				let pasteboard = NSPasteboard.general
+				pasteboard.clearContents()
+				pasteboard.setString(copyText, forType: .string)
+			},
+			fullContent: result.definition,
+			clipboardEntry: nil,
+			icon: nil,
+			score: 0
+		)
+	}
+
+	private func cleanDefinitionForCopy(_ definition: String) -> String {
+		var result = definition
+
+		result = result.replacingOccurrences(
+			of: #"\s*\(also[^)]*\)"#, with: "", options: .regularExpression
+		)
+		result = result.replacingOccurrences(
+			of: #"\s*\|[^|]*\|"#, with: "", options: .regularExpression
+		)
+
+		let parts = result.components(separatedBy: CharacterSet(charactersIn: ".;"))
+		var cleaned: [String] = []
+		var defNumber = 1
+
+		let posPatterns = ["noun", "verb", "adjective", "adverb", "exclamation", "preposition", "conjunction", "pronoun"]
+
+		for part in parts {
+			let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
+			guard !trimmed.isEmpty else { continue }
+
+			let lowerTrimmed = trimmed.lowercased()
+
+			if lowerTrimmed.hasPrefix("origin") {
+				break
+			}
+
+			if trimmed.hasPrefix("\"") || trimmed.contains("example") || trimmed.count < 10 {
+				continue
+			}
+
+			if posPatterns.contains(where: { lowerTrimmed.contains($0) }) {
+				if let pos = posPatterns.first(where: { lowerTrimmed.contains($0) }) {
+					cleaned.append("\n\(pos)")
+					defNumber = 1
+					continue
+				}
+			}
+
+			cleaned.append("\(defNumber). \(trimmed)")
+			defNumber += 1
+		}
+
+		return cleaned.joined(separator: "\n")
+	}
+
+	private func createDictionaryNotFoundResult(_ word: String) -> CategoryResult {
+		let message = "No definition found for '\(word)'"
+
+		return CategoryResult(
+			id: "dict_notfound_\(word)",
+			name: word,
+			category: "DictionaryNotFound",
+			path: message,
+			action: nil,
+			fullContent: message,
+			clipboardEntry: nil,
+			icon: nil,
+			score: 0
+		)
 	}
 }

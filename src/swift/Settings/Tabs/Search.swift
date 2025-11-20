@@ -15,6 +15,7 @@ struct SearchTab: View {
 	enum SearchSection: String, CaseIterable {
 		case results = "Results"
 		case history = "History"
+		case dictionary = "Dictionary"
 		case sources = "Sources"
 		case webSearch = "Web Search"
 	}
@@ -112,6 +113,7 @@ struct SearchTab: View {
 		switch section {
 		case .results: "list.number"
 		case .history: "clock.arrow.circlepath"
+		case .dictionary: "book.closed.fill"
 		case .sources: "folder.fill"
 		case .webSearch: "network"
 		}
@@ -124,6 +126,8 @@ struct SearchTab: View {
 			resultsSection
 		case .history:
 			historySection
+		case .dictionary:
+			dictionarySection
 		case .sources:
 			sourcesSection
 		case .webSearch:
@@ -210,6 +214,74 @@ struct SearchTab: View {
 					QueryHistoryManager.shared.clearHistory()
 				}
 			}
+		}
+	}
+
+	private var dictionarySection: some View {
+		VStack(alignment: .leading, spacing: 16) {
+			ListItem(
+				icon: .sfSymbol("book.closed.fill", settings.accentColorUI),
+				title: "Enable Dictionary",
+				subtitle: "Look up word definitions using macOS dictionary"
+			) {
+				Switch(
+					isOn: Binding(
+						get: { settings.enableDictionary },
+						set: {
+							settings.enableDictionary = $0
+							settings.scheduleSave()
+						}
+					)
+				)
+			}
+
+			ListItem(
+				icon: .sfSymbol("text.cursor", settings.accentColorUI),
+				title: "Keyword Trigger",
+				subtitle: "Type keyword + word (e.g., 'def ephemeral'). When keyword is active, only dictionary results shown."
+			) {
+				HStack(spacing: DesignTokens.Spacing.xs) {
+					TextField(
+						"def",
+						text: Binding(
+							get: { settings.dictionaryPrefix },
+							set: {
+								settings.dictionaryPrefix = $0
+								settings.scheduleSave()
+							}
+						)
+					)
+					.textFieldStyle(PlainTextFieldStyle())
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.body)))
+					.foregroundColor(settings.textColorUI)
+					.padding(.horizontal, DesignTokens.Spacing.sm)
+					.padding(.vertical, DesignTokens.Spacing.xs)
+					.background(settings.searchBarColorUI)
+					.cornerRadius(DesignTokens.CornerRadius.sm)
+					.frame(width: 120)
+				}
+			}
+
+			VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+				HStack(spacing: 6) {
+					Image(systemName: "info.circle.fill")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+						.foregroundColor(settings.accentColorUI.opacity(0.7))
+					Text("Keyword-based activation")
+						.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small)))
+						.foregroundColor(settings.textColorUI.opacity(0.8))
+				}
+				Text("When you type the keyword, search switches to dictionary-only mode. No app results, actions, or web fallbacks will appear.")
+					.font(Font(settings.uiFont.withSize(DesignTokens.Typography.small - 1)))
+					.foregroundColor(settings.secondaryTextColorUI.opacity(0.7))
+					.lineLimit(nil)
+					.fixedSize(horizontal: false, vertical: true)
+					.padding(.leading, 22)
+			}
+			.padding(.horizontal, DesignTokens.Spacing.sm)
+			.padding(.vertical, DesignTokens.Spacing.sm)
+			.background(settings.searchBarColorUI.opacity(0.3))
+			.cornerRadius(DesignTokens.CornerRadius.md)
 		}
 	}
 
